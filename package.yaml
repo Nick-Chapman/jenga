@@ -1,10 +1,10 @@
-name:                jenga2
+name:                jenga
 version:             0.1.0.0
 description:         Redo of the jenga build system.
 license:             BSD3
 author:              Nick Chapman
 maintainer:          nic@amadido.co.uk
-github:              Nick-Chapman/jenga2.git
+github:              Nick-Chapman/jenga.git
 
 dependencies:
 - base >= 4.7 && < 5
@@ -36,6 +36,6 @@ library:
   source-dirs: src
 
 executables:
-  main.exe:
+  jenga:
     main:                app/main.hs
-    dependencies:        jenga2
+    dependencies:        jenga

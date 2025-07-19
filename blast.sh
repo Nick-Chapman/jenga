@@ -29,7 +29,8 @@ while true; do
       for pid in $(cat /tmp/blast.log | grep ran | cut -d[ -f2- | cut -d] -f1); do
           cat /tmp/blast.log | sed "s|^.$pid. .*$||" > /tmp/blast.log.$pid
       done
-      cat /tmp/blast.log
+      #cat /tmp/blast.log
+      cat /tmp/blast.log | grep locked: | cut -d' ' -f2- | sort | uniq -c
       exit
   else
       echo

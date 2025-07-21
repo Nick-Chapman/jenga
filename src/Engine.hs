@@ -277,10 +277,14 @@ doBuild config@Config{logMode,seeD} how = do
             when seeD $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
             tryGainingLock seeD wkd $ \case
               True -> do
-                -- We got the lock, so we run the job....
-                wtargets <- runJobAndSaveWitness config action wkd witKey wdeps rule
-                let digest = lookWitMap (locateKey sought) wtargets
-                pure digest
+                -- We got the lock, check again for the trace...
+                verifyWitness sought wkd >>= \case
+                  Just digest -> pure digest
+                  Nothing -> do
+                    -- We have the lock and there is still no trace, so we run the job....
+                    wtargets <- runJobAndSaveWitness config action wkd witKey wdeps rule
+                    let digest = lookWitMap (locateKey sought) wtargets
+                    pure digest
               False -> do
                 when seeD $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
                 -- Another process beat us to the lock; it's running the job.

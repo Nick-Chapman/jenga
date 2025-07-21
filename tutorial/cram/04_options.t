@@ -1,6 +1,6 @@
 
 
-  $ (cd $TESTDIR/../..; jenga build -q)
+  $ (cd $TESTDIR/../..; jenga build src -q)
   $ echo exec $TESTDIR/../../,jenga/src/jenga '"$@"' > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH

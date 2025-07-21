@@ -15,23 +15,26 @@ install-jenga
 expect=$(jenga build -fp $scope -j1 | grep ran | cut -d' ' -f3 | paste -sd+ | bc)
 echo "expect:" $expect
 
-max=0 # 0 means forever
+max=10000 # 0 means forever
 
+w=0
 i=0
 while true; do
   i=$((i+1))
-  echo -n "$i:"
+  echo -n "wrong=$w, $i:"
   jenga build --debug -fp $scope -j$JOBS > /tmp/blast.log
   got=$(cat /tmp/blast.log | grep ran | cut -d' ' -f3 | paste -sd+ | bc)
   echo -n $got
   if [ $got != $expect ]; then
       echo ' **WRONG**';
-      for pid in $(cat /tmp/blast.log | grep ran | cut -d[ -f2- | cut -d] -f1); do
-          cat /tmp/blast.log | sed "s|^.$pid. .*$||" > /tmp/blast.log.$pid
-      done
+      w=$((w+1))
+      #for pid in $(cat /tmp/blast.log | grep ran | cut -d[ -f2- | cut -d] -f1); do
+      #    cat /tmp/blast.log | sed "s|^.$pid. .*$||" > /tmp/blast.log.$pid
+      #done
       #cat /tmp/blast.log
-      cat /tmp/blast.log | grep locked: | cut -d' ' -f2- | sort | uniq -c
-      exit
+      #cat /tmp/blast.log | grep locked: | cut -d' ' -f2- | sort | uniq -c
+      #exit
+      cp /tmp/blast.log /tmp/blast-wrong-$w.log
   else
       echo
   fi

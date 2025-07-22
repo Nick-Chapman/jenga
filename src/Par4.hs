@@ -75,14 +75,14 @@ data K4 a b = K4
   , err :: Int -> [Char] -> Res b       -- failure; input consumed (so an error!)
   }
 
-parse :: FilePath -> Par a -> String -> a
+parse :: FilePath -> Par a -> String -> Either String a
 parse filename parStart chars0  = do
 
   case (run 0 chars0 parStart kFinal) of
-    Left i -> error $ printf "%s: failed to parse: %s" filename (report i)
+    Left i -> Left $ printf "%s: failed to parse: %s" filename (report i)
     Right (a,i) -> do
-      if i == length chars0 then a else
-        error $ printf "%s: unparsed input from: %s" filename (report i)
+      if i == length chars0 then Right a else
+        Left $ printf "%s: unparsed input from: %s" filename (report i)
 
   where
     _seeall :: String = printf "\nContents:%s\n%s%s\n" bar chars0 bar

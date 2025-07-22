@@ -170,11 +170,6 @@ artifactsDir = Loc ",jenga"
 ----------------------------------------------------------------------
 -- Elaborate
 
-type OrErr a = Either ErrMessage a
-data ErrMessage = ErrMessage String
-
-instance Show ErrMessage where show (ErrMessage s) = printf "Error: %s" s
-
 data System = System { rules :: [Rule], how :: How }
 
 type How = Map Key Rule
@@ -182,40 +177,36 @@ type How = Map Key Rule
 runElaboration :: Config -> G () -> B System
 runElaboration config m =
   loop m system0 k0 >>= \case
-    Left mes -> do
-      error $ printf "runElaboration -> Error:\n%s\n" (show mes) -- TODO BFail
-    Right system -> do
+    system -> do
       pure system
 
   where
     system0 :: System
     system0 = System { rules = [], how = Map.empty }
 
-    k0 :: System -> () -> B (OrErr System)
-    k0 s () = pure (Right s)
+    k0 :: System -> () -> B System
+    k0 s () = pure s
 
-    loop :: G a -> System -> (System -> a -> B (OrErr System)) -> B (OrErr System)
+    loop :: G a -> System -> (System -> a -> B System) -> B System
     loop m system k = case m of
       GRet a -> k system a
       GBind m f -> loop m system $ \system a -> loop (f a) system k
       GLog mes -> do
         Execute (XLog (printf "log: %s" mes))
         k system ()
-      GFail mes -> pure (Left (ErrMessage mes)) -- ignore k
+      GFail mes -> bfail mes --ignore k
       GRule rule -> do
         let Rule{targets} = rule
         xs <- sequence [ do b <- Execute (XFileExists loc); pure (key,b)
                         | key@(Key loc) <- targets ]
         case [ key | (key,isSource) <- xs, isSource ] of
           clashS@(_:_) -> do
-            let mes = printf "rule targets clash with source :%s" (show clashS)
-            pure (Left (ErrMessage mes))
+            bfail $ printf "rule targets clash with source :%s" (show clashS)
           [] -> do
             let System{rules,how} = system
             case filter (flip Map.member how) targets of
               clashR@(_:_) -> do
-                let mes = printf "rule targets defined by previous rule :%s" (show clashR)
-                pure (Left (ErrMessage mes))
+                bfail $ printf "rule targets defined by previous rule :%s" (show clashR)
               [] -> do
                 how <- pure $ List.foldl' (flip (flip Map.insert rule)) how targets
                 k system { rules = rule : rules, how } ()
@@ -250,7 +241,7 @@ doBuild config@Config{logMode,seeD} how = do
         let Key loc = sought
         Execute (XFileExists loc) >>= \case
           False -> do
-            error (printf "'%s' is not source and has no build rule" (show sought)) -- TODO BFail
+            bfail (printf "'%s' : is not source and has no build rule" (show sought))
           True -> do
             digest <- copyIntoCache loc
             pure digest
@@ -296,7 +287,8 @@ doBuild config@Config{logMode,seeD} how = do
                     -- This may also occur when the the build does not fail
                     -- We are too eager in expecting the witness trace to appear
                     -- TODO: perhaps we should spin for it?
-                    error "other process encountered build failure" -- TODO BFail
+                    --error "other process encountered build failure" -- TODO BFail
+                    BResult (FAIL [])
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
 awaitLockYielding Config{seeD} wkd = loop 0
@@ -381,7 +373,7 @@ buildWithRule Config{keepSandBoxes} sought action depWit rule = do
   setupInputs sandbox depWit
   BRunActionInDir sandbox action >>= \case
     False ->
-      bfail (printf "target='%s': action failed (rule '%s')"
+      bfail (printf "'%s': action failed for rule '%s'"
              (show sought) rulename)
     True -> do
       targetWit <- cacheOutputs sandbox rule
@@ -419,7 +411,7 @@ cacheOutputs sandbox Rule{rulename,targets} = do
         let sandboxLoc = sandbox </> show tag
         Execute (XFileExists sandboxLoc) >>= \case
           False -> do
-            error (printf "rule '%s' failed to produced declared target '%s'" rulename (show target)) -- TODO BFail
+            bfail (printf "'%s' : not produced as declared by rule '%s'" (show target) rulename)
           True -> do
             digest <- linkIntoCache sandboxLoc
             pure (tag,digest)

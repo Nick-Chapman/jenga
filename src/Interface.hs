@@ -23,6 +23,7 @@ data G a where
   GIsDirectory :: Loc -> G Bool
   GExists :: Loc -> G Bool
   GReadKey :: Key -> G String
+  -- TODO: construct for parallel generation
 
 data Rule = Rule
   { rulename :: String

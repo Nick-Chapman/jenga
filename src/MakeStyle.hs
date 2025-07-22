@@ -16,8 +16,9 @@ elaborate config0  = do
     elabRuleFile :: Key -> G ()
     elabRuleFile config  = do
       s <- GReadKey config
-      let clauses = Par4.parse (show config) gram s
-      mapM_ elabClause clauses
+      case Par4.parse (show config) gram s of
+        Left parseError -> GFail parseError
+        Right clauses -> mapM_ elabClause clauses
 
       where
         elabClause :: Clause -> G ()

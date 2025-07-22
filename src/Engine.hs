@@ -183,7 +183,7 @@ runElaboration :: Config -> G () -> B System
 runElaboration config m =
   loop m system0 k0 >>= \case
     Left mes -> do
-      error $ printf "runElaboration -> Error:\n%s\n" (show mes)
+      error $ printf "runElaboration -> Error:\n%s\n" (show mes) -- TODO BFail
     Right system -> do
       pure system
 
@@ -244,13 +244,13 @@ doBuild :: Config -> How -> Key -> B Digest
 doBuild config@Config{logMode,seeD} how = do
   -- TODO: document this flow.
   -- TODO: check for cycles.
-  memoDigestByKey $ \sought -> do
+  BMemoKey $ \sought -> do
     case Map.lookup sought how of
       Nothing -> do
         let Key loc = sought
         Execute (XFileExists loc) >>= \case
           False -> do
-            error (printf "'%s' is not source and has no build rule" (show sought))
+            error (printf "'%s' is not source and has no build rule" (show sought)) -- TODO BFail
           True -> do
             digest <- copyIntoCache loc
             pure digest
@@ -282,7 +282,7 @@ doBuild config@Config{logMode,seeD} how = do
                   Just digest -> pure digest
                   Nothing -> do
                     -- We have the lock and there is still no trace, so we run the job....
-                    wtargets <- runJobAndSaveWitness config action wkd witKey wdeps rule
+                    wtargets <- runJobAndSaveWitness config sought action wkd witKey wdeps rule
                     let digest = lookWitMap (locateKey sought) wtargets
                     pure digest
               False -> do
@@ -296,7 +296,7 @@ doBuild config@Config{logMode,seeD} how = do
                     -- This may also occur when the the build does not fail
                     -- We are too eager in expecting the witness trace to appear
                     -- TODO: perhaps we should spin for it?
-                    error "other process encountered build failure"
+                    error "other process encountered build failure" -- TODO BFail
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
 awaitLockYielding Config{seeD} wkd = loop 0
@@ -319,35 +319,24 @@ tryGainingLock debug wkd f = do
     Just lock -> do
       when debug $ Execute $ XLog (printf "L: locked: %s" (show wkd))
       -- Run the critical section while the lock is held.
-      res <- f True
+      res <- BCatch (f True)
       -- Critical section finished; release the lock (unlink and unlok).
       Execute $ do
         XUnLink (Loc lockPath)
         XIO (unlockFile lock)
         when debug $ XLog $ printf "L: unlocked %s" (show wkd)
-        pure res
+      BResult res
     Nothing ->
       -- We lost the race; another process has the lock.
       f False
 
-runJobAndSaveWitness :: Config -> Action -> WitKeyDigest -> WitnessKey -> WitMap -> Rule -> B WitMap
-runJobAndSaveWitness config action wkd witKey wdeps rule = do
-  wtargets <- buildWithRule config action wdeps rule
+runJobAndSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitnessKey -> WitMap -> Rule -> B WitMap
+runJobAndSaveWitness config sought action wkd witKey wdeps rule = do
+  wtargets <- buildWithRule config sought action wdeps rule
   let val = WitnessValue { wtargets }
   let wit = Witness { key = witKey, val }
   saveWitness wkd wit
   pure wtargets
-
-
-
-memoDigestByKey :: (Key -> B Digest) -> Key -> B Digest
-memoDigestByKey f sought = do
-  BGetKey sought >>= \case
-    Just digest -> pure digest
-    Nothing -> do
-      digest <- f sought
-      BSetKey sought digest
-      pure digest
 
 
 gatherDeps :: Config -> How -> D a -> B ([Key],a)
@@ -384,15 +373,16 @@ existsKey how key =
     Execute (XFileExists loc)
 
 
-buildWithRule :: Config -> Action -> WitMap -> Rule -> B WitMap
-buildWithRule Config{keepSandBoxes} action depWit rule = do
+buildWithRule :: Config -> Key -> Action -> WitMap -> Rule -> B WitMap
+buildWithRule Config{keepSandBoxes} sought action depWit rule = do
   sandbox <- BNewSandbox
   let Rule{rulename} = rule
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
   BRunActionInDir sandbox action >>= \case
     False ->
-      error (printf "action failed for rule '%s'" rulename)
+      bfail (printf "target='%s': action failed (rule '%s')"
+             (show sought) rulename)
     True -> do
       targetWit <- cacheOutputs sandbox rule
       when (not keepSandBoxes) $ Execute (XRemoveDirRecursive sandbox)
@@ -429,7 +419,7 @@ cacheOutputs sandbox Rule{rulename,targets} = do
         let sandboxLoc = sandbox </> show tag
         Execute (XFileExists sandboxLoc) >>= \case
           False -> do
-            error (printf "rule '%s' failed to produced declared target '%s'" rulename (show target))
+            error (printf "rule '%s' failed to produced declared target '%s'" rulename (show target)) -- TODO BFail
           True -> do
             digest <- linkIntoCache sandboxLoc
             pure (tag,digest)
@@ -595,6 +585,25 @@ fromQ = \case
 ----------------------------------------------------------------------
 -- B: build monad
 
+data BuildRes a = FAIL [Reason] | SUCC a
+
+type Reason = String
+
+mergeBuildRes :: (BuildRes a, BuildRes b) -> BuildRes (a,b)
+mergeBuildRes = \case
+  (SUCC a, SUCC b) -> SUCC (a,b)
+  (FAIL reasons1, FAIL reasons2) -> FAIL (reasons1 ++ reasons2)
+  (FAIL reasons, SUCC{}) -> FAIL reasons
+  (SUCC{}, FAIL reasons) -> FAIL reasons
+
+removeReasons :: BuildRes a -> BuildRes a
+removeReasons = \case
+  succ@SUCC{} -> succ
+  FAIL{}  -> FAIL[]
+
+bfail :: Reason -> B a
+bfail r1 = BResult (FAIL [r1])
+
 parallel :: [B a] -> B [a]
 parallel = \case
   [] -> pure []
@@ -602,19 +611,19 @@ parallel = \case
   p:ps -> (\(x,xs) -> x:xs) <$> BPar p (parallel ps)
 
 instance Functor B where fmap = liftM
-instance Applicative B where pure = BRet; (<*>) = ap
+instance Applicative B where pure = BResult . SUCC; (<*>) = ap
 instance Monad B where (>>=) = BBind
 
-data B a where -- TODO: BFail?
-  BRet :: a -> B a
+data B a where
+  BResult :: BuildRes a -> B a
   BBind :: B a -> (a -> B b) -> B b
   BLog :: String -> B ()
+  BCatch :: B a -> B (BuildRes a)
   BCacheDir :: B Loc
   BNewSandbox :: B Loc
   BRunActionInDir :: Loc -> Action -> B Bool
   Execute :: X a -> B a
-  BGetKey :: Key -> B (Maybe Digest)
-  BSetKey :: Key -> Digest -> B ()
+  BMemoKey :: (Key -> B Digest) -> Key -> B Digest
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
 
@@ -622,7 +631,7 @@ runB :: Loc -> Config -> B () -> IO ()
 runB cacheDir config@Config{keepSandBoxes,logMode,jnum} build0 = do
   nCopies jnum $ do
     runX config $ do
-      loop build bstate0 k0
+      loop build bstate0 kFinal
   where
     build = do
       let see = case logMode of LogQuiet -> False; _ -> True
@@ -641,54 +650,73 @@ runB cacheDir config@Config{keepSandBoxes,logMode,jnum} build0 = do
 
     sandboxParent pid = Loc (printf "/tmp/.jbox/%s" (show pid))
 
-    k0 :: BState -> () -> X ()
-    k0 BState{runCounter,active,blocked} () = do
-      myPid <- XIO getCurrentPid
-      when (not keepSandBoxes) $ XRemoveDirRecursive (sandboxParent myPid)
+    kFinal :: BState -> BuildRes () -> X ()
+    kFinal BState{runCounter,active,blocked} res = do
       when ((length active + length blocked) /= 0) $ error "runB: unexpected left over jobs"
-      let see = case logMode of LogQuiet -> False; _ -> True
-      let i = runCounter
-      when (see && i>0) $ do
-        XLog (printf "ran %s" (pluralize i "action"))
-      pure ()
+      case res of
+        FAIL [] -> do error "unexpected build failure for no reasons"
+        FAIL reasons -> do
+          XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
+                 (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
+          error "stop because build failed" -- TODO: return to caller instead
 
-    loop :: B a -> BState -> (BState -> a -> X ()) -> X ()
+        SUCC () -> do
+          myPid <- XIO getCurrentPid
+          when (not keepSandBoxes) $ XRemoveDirRecursive (sandboxParent myPid)
+          let see = case logMode of LogQuiet -> False; _ -> True
+          let i = runCounter
+          when (see && i>0) $ do
+            XLog (printf "ran %s" (pluralize i "action"))
+          pure ()
+
+    loop :: B a -> BState -> (BState -> BuildRes a -> X ()) -> X ()
     loop m0 s k = case m0 of
-      BRet a -> k s a
-      BBind m f -> loop m s $ \s a -> loop (f a) s k
-      BLog mes -> do XLog mes; k s ()
-      BCacheDir -> k s cacheDir
+      BResult res -> k s res
+      BCatch m -> loop m s $ \s res -> k s (SUCC res)
+
+      BBind m f -> loop m s $ \s -> \case
+        FAIL reasons -> k s (FAIL reasons) -- cant continue; rhs 'f' ignored
+        SUCC a -> loop (f a) s k
+
+      BLog mes -> do XLog mes; k s (SUCC ())
+
+      BCacheDir -> k s (SUCC cacheDir)
       BNewSandbox -> do
         myPid <- XIO getCurrentPid
         let BState{sandboxCounter=i} = s
-        k s { sandboxCounter = 1 + i } (sandboxParent myPid </> show i)
+        k s { sandboxCounter = 1 + i } (SUCC (sandboxParent myPid </> show i))
+
       BRunActionInDir sandbox action@Action{hidden} -> do
         bool <- XRunActionInDir sandbox action
-        k s { runCounter = runCounter s + (if hidden then 0 else 1) } bool
-      Execute x -> do a <- x; k s a
-      BGetKey key -> do
-        let BState{memo} = s
-        case Map.lookup key memo of
-          Nothing -> k s Nothing
-          Just digest -> k s (Just digest)
-      BSetKey key digest -> do
-        let BState{memo} = s
-        k s { memo = Map.insert key digest memo } ()
+        k s { runCounter = runCounter s + (if hidden then 0 else 1)} (SUCC bool)
+
+      Execute x -> do a <- x; k s (SUCC a)
+
+      BMemoKey f key -> do
+        case Map.lookup key (memo s) of
+          Just res -> k s (removeReasons res)
+          Nothing -> do
+            loop (f key) s $ \s res -> do
+              k s { memo = Map.insert key res (memo s) } res
 
       BPar a b -> do
-        -- continutation k is called only when both sides have completed
+        -- continutation k is called only when both sides have completed (succ or fail)
         varA <- XIO (newIORef Nothing)
         varB <- XIO (newIORef Nothing)
         let
           kA s a = do
             XIO (readIORef varB) >>= \case
-              Nothing -> do XIO (writeIORef varA (Just a)); next s
-              Just b -> do k s (a,b)
+              Nothing -> do
+                XIO (writeIORef varA (Just a)); next s
+              Just b -> do
+                k s (mergeBuildRes (a,b))
         let
           kB s b = do
             XIO (readIORef varA) >>= \case
-              Nothing -> do XIO (writeIORef varB (Just b)); next s
-              Just a -> do k s (a,b)
+              Nothing -> do
+                XIO (writeIORef varB (Just b)); next s
+              Just a -> do
+                k s (mergeBuildRes (a,b))
 
         loop a s { active = BJob b kB : active s } kA
 
@@ -726,7 +754,8 @@ initDirs = do
 data BState = BState
   { sandboxCounter :: Int
   , runCounter :: Int -- less that sandboxCounter because of hidden actions
-  , memo :: Map Key Digest
+  , memo :: Map Key (BuildRes Digest)
+  -- active/blocked ar ejust the front/back of a Q -- TODO: name thus
   , active :: [BJob]
   , blocked :: [BJob]
   }
@@ -741,7 +770,7 @@ bstate0 = BState
   }
 
 data BJob where
-  BJob :: B a -> (BState -> a -> X ()) -> BJob
+  BJob :: B a -> (BState -> BuildRes a -> X ()) -> BJob
 
 ----------------------------------------------------------------------
 -- X: execution monad

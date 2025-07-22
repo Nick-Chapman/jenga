@@ -96,7 +96,15 @@ Define and use header file. Build fails because we failed to declare dependecy o
       1 | #include "fib.h"
         |          ^~~~~~~
   compilation terminated.
-  jenga.exe: action failed for rule 'build.jenga:7'
+  A: gcc -Wall -c main.c -o main.o
+  main.c:2:10: fatal error: fib.h: No such file or directory
+      2 | #include "fib.h"
+        |          ^~~~~~~
+  compilation terminated.
+  Build failed for 2 reasons:
+  (1) target='fib.o': action failed (rule 'build.jenga:7')
+  (2) target='main.o': action failed (rule 'build.jenga:4')
+  jenga.exe: stop because build failed
   CallStack (from HasCallStack):
 
 Add missing dep to both compile rules

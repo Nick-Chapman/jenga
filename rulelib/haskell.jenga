@@ -40,12 +40,16 @@ all.options : ?ghc-options ?default-extensions
   touch ghc-option default-extensions
   (cat ghc-options ; cat default-extensions | sed 's|^|-X|') | sort > all.options
 
-ghc.linker : ghc.exe pkgdb packs
-  echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat packs) '"$@"'  -package containers > ghc.linker
+ghc.linker : ghc.exe pkgdb package-id-flags
+  echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat package-id-flags) '"$@"'  -package containers > ghc.linker
   chmod +x ghc.linker
 
-## TODO: automate the discovery of the package-id hashes
+package-id-flags: versioned-packages
+  cat versioned-packages | sed 's|^|-package-id |' | sort | uniq > package-id-flags
 
-packs: ?packages
+versioned-packages: pkgdb packages-egrep-pattern
+  (cd $(cat pkgdb); ls) | egrep $(cat packages-egrep-pattern) | sed 's|.conf$||' >> versioned-packages
+
+packages-egrep-pattern: ?packages
   touch packages
-  cat packages | sed 's|^|-package-id |' | sort | uniq > packs
+  echo '('$(echo $(echo NOMATCH; cat packages | sed 's|$|-.*-|') | tr ' ' '|')')' > packages-egrep-pattern

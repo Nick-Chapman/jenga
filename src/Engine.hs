@@ -35,7 +35,7 @@ type UserProg = [String] -> G ()
 engineMain :: UserProg -> IO ()
 engineMain userProg = do
   config@Config{cacheDirSpec,logMode} <- CommandLine.exec
-  let see = case logMode of LogQuiet -> False; _ -> True
+  let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
   cacheDir <-
@@ -51,7 +51,7 @@ engineMain userProg = do
         pure (Loc dir  </> ".cache/jenga")
       CacheDirTemp -> do
         let loc = Loc (printf "/tmp/.cache/jenga/%s" (show myPid))
-        when see $ putOut (printf "using temporary cache: %s" (show loc))
+        when (not quiet) $ putOut (printf "using temporary cache: %s" (show loc))
         pure loc
 
   elaborateAndBuild cacheDir config userProg
@@ -59,7 +59,6 @@ engineMain userProg = do
 
 elaborateAndBuild :: Loc -> Config -> UserProg -> IO ()
 elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
-  --let see = case logMode of LogQuiet -> False; _ -> True
   case buildMode of
 
     ModeListTargets -> do
@@ -131,11 +130,11 @@ pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
 
 reportSystem :: Config -> System -> B ()
 reportSystem Config{logMode} system = do
-  let see = case logMode of LogQuiet -> False; _ -> True
+  let quiet = case logMode of LogQuiet -> True; _ -> False
   let System{rules} = system
   let nRules = sum [ if hidden then 0 else 1 | Rule{hidden} <- rules ]
   let nTargets = sum [ length targets |  Rule{targets,hidden} <- rules, not hidden ]
-  when see $ BLog $ printf "elaborated %s and %s" (pluralize nRules "rule") (pluralize nTargets "target")
+  when (not quiet) $ BLog $ printf "elaborated %s and %s" (pluralize nRules "rule") (pluralize nTargets "target")
 
 buildAndMaterialize :: Config -> How -> Key -> B ()
 buildAndMaterialize config how key = do
@@ -232,7 +231,7 @@ locateKey (Key (Loc fp)) = Loc (FP.takeFileName fp)
 -- Build
 
 doBuild :: Config -> How -> Key -> B Digest
-doBuild config@Config{logMode,seeD} how = do
+doBuild config@Config{debugDemand,debugLocking} how = do
   -- TODO: document this flow.
   -- TODO: check for cycles.
   BMemoKey $ \sought -> do
@@ -247,8 +246,7 @@ doBuild config@Config{logMode,seeD} how = do
             pure digest
 
       Just rule@Rule{depcom} -> do
-        let seeV = case logMode of LogVerbose -> True; _ -> False
-        when seeV $ BLog (printf "B: Require: %s" (show sought))
+        when debugDemand $ BLog (printf "B: Require: %s" (show sought))
         (deps,action@Action{commands}) <- gatherDeps config how depcom
 
         wdeps <- (WitMap . Map.fromList) <$>
@@ -260,13 +258,13 @@ doBuild config@Config{logMode,seeD} how = do
         let wkd = digestWitnessKey witKey
 
         -- If the witness trace already exists, use it.
-        when seeD $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
+        when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
         verifyWitness sought wkd >>= \case
           Just digest -> pure digest
           Nothing -> do
             -- If not, someone has to run the job...
-            when seeD $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
-            tryGainingLock seeD wkd $ \case
+            when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
+            tryGainingLock debugLocking wkd $ \case
               True -> do
                 -- We got the lock, check again for the trace...
                 verifyWitness sought wkd >>= \case
@@ -277,7 +275,7 @@ doBuild config@Config{logMode,seeD} how = do
                     let digest = lookWitMap (locateKey sought) wtargets
                     pure digest
               False -> do
-                when seeD $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
+                when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
                 -- Another process beat us to the lock; it's running the job.
                 awaitLockYielding config wkd
                 -- Now it will have finished.
@@ -291,7 +289,7 @@ doBuild config@Config{logMode,seeD} how = do
                     BResult (FAIL [])
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
-awaitLockYielding Config{seeD} wkd = loop 0
+awaitLockYielding Config{debugLocking} wkd = loop 0
   where
     loop :: Int -> B ()
     loop i = do
@@ -299,7 +297,7 @@ awaitLockYielding Config{seeD} wkd = loop 0
       tryGainingLock False wkd $ \case
         False -> loop (i+1)
         True -> do
-          when seeD $ Execute $ XLog (printf "L: spun (%d) awaiting lock %s" i (show wkd))
+          when debugLocking $ Execute $ XLog (printf "L: spun (%d) awaiting lock %s" i (show wkd))
           pure ()
 
 tryGainingLock :: Bool -> WitKeyDigest -> (Bool -> B a) -> B a
@@ -795,17 +793,13 @@ data X a where
   XRemoveDirRecursive :: Loc -> X ()
 
 runX :: Config -> X a -> IO a
-runX config@Config{logMode,seeX,seeI,seeD} = loop
+runX config@Config{logMode,debugExternal,debugInternal,debugLocking} = loop
   where
 
     log mes = maybePrefixPid config mes >>= putOut
 
-    seeA = case logMode of LogQuiet -> False; _ -> True
-    logA,logX,logI,logD :: String -> IO ()
-    logA mes = when seeA $ log (printf "A: %s" mes)
-    logX mes = when seeX $ log (printf "X: %s" mes)
-    logI mes = when seeI $ log (printf "I: %s" mes)
-    logD mes = when seeD $ log (printf "L: %s" mes) -- locking debug
+    logI :: String -> IO ()
+    logI mes = when debugInternal $ log (printf "I: %s" mes)
 
     loop :: X a -> IO a
     loop x = case x of
@@ -818,11 +812,8 @@ runX config@Config{logMode,seeX,seeI,seeD} = loop
       -- sandboxed execution of user's action; for now always a bash command
       XRunActionInDir (Loc dir) Action{hidden,commands} -> all id <$> do
         forM commands $ \command -> do
-
-          let showHidden = False -- command line flag?
-          if showHidden
-            then logA $ printf "%s%s" command (if hidden then " (hidden)" else "")
-            else when (not hidden) $ logA $ command
+          let quiet = case logMode of LogQuiet -> True; _ -> False
+          when (not hidden && not quiet) $ log $ printf "A: %s" command
 
           (exitCode,stdout,stderr) <-
             withCurrentDirectory dir (readCreateProcessWithExitCode (shell command) "")
@@ -835,7 +826,7 @@ runX config@Config{logMode,seeX,seeI,seeD} = loop
       -- other commands with shell out to external process
       XDigest (Loc fp) -> do
         let command = printf "md5sum %s" fp
-        logX command
+        when debugExternal $ log (printf "X: %s" command)
         output <- readCreateProcess (shell command) ""
         let str = case (splitOn " " output) of [] -> error "XDigest/split"; x:_ -> x
         pure (Digest str)
@@ -872,7 +863,8 @@ runX config@Config{logMode,seeX,seeI,seeD} = loop
         logI $ printf "cat %s" fp
         readFile fp
       XWriteFile contents (Loc dest) -> do
-        logD $ printf "cat> %s" dest
+        let mes :: String = printf "cat> %s" dest
+        when debugLocking $ log (printf "L: %s" mes)
         writeFileFlush dest contents
       XTryHardLink (Loc src) (Loc dest) -> do
         logI $ printf "ln %s %s" src dest

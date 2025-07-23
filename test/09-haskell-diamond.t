@@ -23,7 +23,7 @@
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]
 
-  $ jenga build -v
+  $ jenga build --debug-demand
   elaborated 9 rules and 13 targets
   B: Require: example/ghc-path
   B: Require: example/ghc.exe

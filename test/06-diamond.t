@@ -21,7 +21,7 @@
 The example has a diamond dependency on target 'b', reached via 'ab' and 'bc'.
 During any build (incuding a zero-rebuild) we should require 'b' more than once.
 
-  $ jenga build -v
+  $ jenga build --debug-demand
   elaborated 6 rules and 6 targets
   B: Require: example/top
   B: Require: example/ab

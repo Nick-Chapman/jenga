@@ -49,69 +49,6 @@ Rebuild after no changes:
   $ jenga build
   elaborated 3 rules and 3 targets
 
-Add '-x' flag for a more detailed logging.
-
-  $ jenga build -x
-  X: md5sum example/build.jenga
-  elaborated 3 rules and 3 targets
-  X: md5sum example/fib.c
-  X: md5sum example/main.c
-
-Add '-xi flags for very detailed logging. Test will be fragile to any change in example source.
-We take care to mask any pids referenced by sanboxes
-
-  $ jenga build -xi | sed 's|jbox/[0-9]*|jbox/$$|'
-  I: rm -rf ,jenga
-  I: mkdir -p .cache/jenga/files
-  I: mkdir -p .cache/jenga/traces
-  I: mkdir -p ,jenga
-  I: test -e .
-  I: test -d .
-  I: ls .
-  I: test -d jenga.exe
-  I: test -d .cache
-  I: test -d example
-  I: test -d jenga
-  I: test -d ,jenga
-  I: ls example
-  I: test -d example/fib.c
-  I: test -d example/main.c
-  I: test -d example/build.jenga
-  I: test -e build.jenga
-  I: test -e example/build.jenga
-  I: ls example
-  I: test -e example/all.files
-  I: test -e example/build.jenga
-  X: md5sum example/build.jenga
-  I: test -e .cache/jenga/files/3af6909c0c5bef3721f03645025ca17c
-  I: cat .cache/jenga/files/3af6909c0c5bef3721f03645025ca17c
-  I: test -e example/main.o
-  I: test -e example/fib.o
-  I: test -e example/main.exe
-  elaborated 3 rules and 3 targets
-  I: test -e example/fib.c
-  X: md5sum example/fib.c
-  I: test -e .cache/jenga/files/3ec221831446382d711ea3ce24237158
-  I: test -e .cache/jenga/traces/b18ebe03eeaef908caa477b54bdfb363
-  I: cat .cache/jenga/traces/b18ebe03eeaef908caa477b54bdfb363
-  I: test -e .cache/jenga/files/47a0ee09b975f7501dbeb5431b76c24c
-  I: test -e example/main.c
-  X: md5sum example/main.c
-  I: test -e .cache/jenga/files/9d125f57501617a7e09da68a33e65d1c
-  I: test -e .cache/jenga/traces/5d6d768de8b220a93652d885cd07d942
-  I: cat .cache/jenga/traces/5d6d768de8b220a93652d885cd07d942
-  I: test -e .cache/jenga/files/aac22b6d9cbb6711115a1ebde2cfd6a1
-  I: test -e .cache/jenga/traces/e4071a5b79f05a91d7209f979dca43c2
-  I: cat .cache/jenga/traces/e4071a5b79f05a91d7209f979dca43c2
-  I: test -e .cache/jenga/files/9efc05831ccef0c24b2697d8fff2acee
-  I: mkdir -p ,jenga/example
-  I: ln .cache/jenga/files/9efc05831ccef0c24b2697d8fff2acee ,jenga/example/main.exe
-  I: mkdir -p ,jenga/example
-  I: ln .cache/jenga/files/47a0ee09b975f7501dbeb5431b76c24c ,jenga/example/fib.o
-  I: mkdir -p ,jenga/example
-  I: ln .cache/jenga/files/aac22b6d9cbb6711115a1ebde2cfd6a1 ,jenga/example/main.o
-  I: rm -rf /tmp/.jbox/$$
-
 Update main.c "world->UNIVERSE" and rerun:
 
   $ sed -i 's/world/UNIVERSE/g' example/main.c

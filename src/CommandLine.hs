@@ -5,7 +5,7 @@ module CommandLine
 
 import Options.Applicative
 
-data LogMode = LogQuiet | LogActions | LogVerbose
+data LogMode = LogQuiet | LogActions
 
 data Config = Config
   { jnum :: Int
@@ -13,9 +13,10 @@ data Config = Config
   , cacheDirSpec :: CacheDirSpec
   , keepSandBoxes :: Bool
   , logMode :: LogMode
-  , seeX :: Bool
-  , seeI :: Bool
-  , seeD :: Bool
+  , debugDemand :: Bool
+  , debugExternal :: Bool
+  , debugInternal :: Bool
+  , debugLocking :: Bool
   , buildMode :: BuildMode
   , args :: [FilePath]
   }
@@ -104,7 +105,7 @@ runCommand = sharedOptions LogQuiet
   <*>
   pure []
 
-
+-- TODO: try applicative do
 sharedOptions :: LogMode -> Parser (BuildMode -> [FilePath] -> Config)
 sharedOptions defaultLogMode = Config
   <$>
@@ -142,13 +143,9 @@ sharedOptions defaultLogMode = Config
      <> long "quiet"
      <> help "Build quietly, except for errors")
     <|>
-    flag' LogVerbose
-    (short 'v'
-     <> long "verbose"
-     <> help "Build verbosely, showing build-targets checked")
-    <|>
     pure defaultLogMode
   )
-  <*> switch (short 'x' <> help "(DEV) Log execution of externally run commands")
-  <*> switch (short 'i' <> help "(DEV) Log execution of internal file system access")
-  <*> switch (long "debug" <> help "(DEV) Log debug lines")
+  <*> switch (long "debug-demand" <> help "Debug demanded build targets")
+  <*> switch (long "debug-external" <> help "Debug calls to md5sum")
+  <*> switch (long "debug-internal" <> help "Debug file system access")
+  <*> switch (long "debug-locking" <> help "Debug locking behaviour")

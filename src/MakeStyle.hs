@@ -1,7 +1,7 @@
 module MakeStyle (elaborate) where
 
 import Data.List.Split (splitOn)
-import Interface (G(..),Rule(..),Action(..),D(..),Key(..))
+import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Loc,What(..))
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 import StdBuildUtils ((</>),dirKey,baseKey)
 import Text.Printf (printf)
@@ -60,7 +60,7 @@ elaborate config0  = do
     -- hidden rule so user-rules can access the list of file names
     allFilesName = "all.files"
     allFilesRule =  do
-      allFiles <- map Key <$> GGlob dir
+      allFiles <- map Key <$> glob dir
       GRule (Rule { rulename = printf "glob-%s" (show dir)
                   , dir
                   , hidden = True
@@ -71,6 +71,12 @@ elaborate config0  = do
                                                   (unlines (map baseKey allFiles))
                                                   allFilesName]
                                     })})
+
+glob :: Loc -> G [Loc]
+glob dir = do
+  GWhat dir >>= \case
+    Directory entries -> pure [ dir </> e | e <- entries ]
+    _what -> GFail (printf "glob: expected %s to be a directory" (show dir))
 
 filterDepsFor :: [String] -> String -> [String]
 filterDepsFor targets contents = do

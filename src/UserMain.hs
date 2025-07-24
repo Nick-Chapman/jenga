@@ -2,41 +2,36 @@ module UserMain (main) where
 
 import Data.List.Ordered (nubSort)
 import Engine (engineMain)
-import Interface (G(..),Key(..),Loc(..))
+import Interface (G(..),Key(..),Loc(..),What(..))
 import MakeStyle qualified (elaborate)
 import StdBuildUtils ((</>))
 
 main :: IO ()
 main = engineMain $ \args -> do
+  configs <- findConfigs args
+  sequence_ [ MakeStyle.elaborate (Key config) | config <- configs ]
+
+findConfigs :: [String] -> G [Loc]
+findConfigs args = do
   let args' = case args of [] -> ["."]; _ -> args
-  xss <- mapM findStartingPointsFromTopLoc args'
-  case nubSort (concat xss) of
-    [] -> GFail "UserMain: nothing to build"
-    dirs -> mapM_ elaborateConfig dirs
+  configs <- concat <$> sequence [ findFrom (Loc arg) | arg <- args' ]
+  pure (nubSort configs)
 
-elaborateConfig :: Loc -> G ()
-elaborateConfig dir = do
-  let config = dir </> "build.jenga"
-  GExists config >>= \case
-    True -> MakeStyle.elaborate (Key config)
-    False -> pure ()
-
-findStartingPointsFromTopLoc :: String -> G [Loc]
-findStartingPointsFromTopLoc arg = do
-  let loc = Loc arg
-  GExists loc >>= \case
-    False -> pure []
-    True -> do
-      GIsDirectory loc >>= \case
-        False -> pure []
-        True -> findSubdirsDeep loc
-
-findSubdirsDeep :: Loc -> G [Loc]
-findSubdirsDeep loc@(Loc fp) = do
-  if blockName fp then pure [] else do
-    subs <- findSubdirs loc
-    subsubs <- mapM findSubdirsDeep subs
-    pure (loc : concat subsubs)
+findFrom :: Loc -> G [Loc]
+findFrom loc = do
+  GWhat loc >>= \case
+    Missing -> pure []
+    Link -> pure []
+    File -> pure []
+    Directory{entries} -> do
+      case "build.jenga" `elem` entries of
+        False -> configs
+        True -> do
+          let config = loc </> "build.jenga"
+          (config:) <$> configs
+      where
+        configs = concat <$> sequence [ findFrom (loc </> e)
+                                      | e <- entries , not (blockName e)]
 
 blockName :: String -> Bool
 blockName = \case
@@ -45,9 +40,3 @@ blockName = \case
   ".cache" -> True
   ",jenga" -> True
   _ -> False
-
-findSubdirs :: Loc -> G [Loc]
-findSubdirs loc = do
-  locs <- GGlob loc
-  blocs <- sequence [ do b <- GIsDirectory loc; pure (b,loc) | loc <- locs ]
-  pure [ loc | (b,loc) <- blocs, b ]

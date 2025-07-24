@@ -12,7 +12,7 @@ import Data.List qualified as List (foldl')
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Interface (G(..),D(..),Rule(..),Action(..),Key(..),Loc(..))
+import Interface (G(..),D(..),Rule(..),Action(..),Key(..),Loc(..),What(..))
 import StdBuildUtils ((</>),dirLoc)
 import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile,getHomeDirectory)
 import System.Environment (lookupEnv)
@@ -20,7 +20,7 @@ import System.Exit(ExitCode(..))
 import System.FileLock (tryLockFile,SharedExclusive(Exclusive),unlockFile)
 import System.FilePath qualified as FP
 import System.IO (hFlush,hPutStrLn,stderr,stdout,withFile,IOMode(WriteMode),hPutStr)
-import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory)
+import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,getSymbolicLinkStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory,isSymbolicLink)
 import System.Posix.Process (forkProcess)
 import System.Process (shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
 import Text.Printf (printf)
@@ -210,19 +210,25 @@ runElaboration config m =
                 how <- pure $ List.foldl' (flip (flip Map.insert rule)) how targets
                 k system { rules = rule : rules, how } ()
 
-      GGlob dir -> do
-        locs <- Execute (XGlob dir)
-        k system locs
-      GExists loc -> do
-        bool <- Execute (XFileExists loc)
-        k system bool
-      GIsDirectory loc -> do
-        bool <- Execute (XIsdirectory loc)
-        k system bool
+      GWhat loc -> do
+        Execute (xwhat loc) >>= k system
+
       GReadKey key -> do
         let System{how} = system
         contents <- readKey config how key -- make cause building
         k system contents
+
+xwhat :: Loc -> X What
+xwhat loc = do
+  XFileExists loc >>= \case
+    False -> pure Missing
+    True -> do
+      XIsSymbolicLink loc >>= \case
+        True -> pure Link
+        False -> do
+          XIsDirectory loc >>= \case
+            False -> pure File
+            True -> Directory <$> XListDir loc
 
 locateKey :: Key -> Loc
 locateKey (Key (Loc fp)) = Loc (FP.takeFileName fp)
@@ -779,10 +785,12 @@ data X a where
   XRunActionInDir :: Loc -> Action -> X Bool
   XDigest :: Loc -> X Digest
 
-  XMakeDir :: Loc -> X ()
-  XGlob :: Loc -> X [Loc]
   XFileExists :: Loc -> X Bool
-  XIsdirectory :: Loc -> X Bool
+  XIsSymbolicLink :: Loc -> X Bool
+  XIsDirectory :: Loc -> X Bool
+  XListDir :: Loc -> X [String]
+
+  XMakeDir :: Loc -> X ()
   XCopyFile :: Loc -> Loc -> X ()
   XTransferFileMode :: Loc -> Loc -> X ()
   XMakeReadOnly :: Loc -> X ()
@@ -832,23 +840,28 @@ runX config@Config{logMode,debugExternal,debugInternal,debugLocking} = loop
         pure (Digest str)
 
       -- internal file system access (log approx equivalent external command)
-      XMakeDir (Loc fp) -> do
-        logI $ printf "mkdir -p %s" fp
-        createDirectoryIfMissing True fp
-      XGlob (Loc fp) -> do
-        logI $ printf "ls %s" fp
-        xs <- listDirectory fp
-        pure [ Loc fp </> x | x <- xs ]
+
       XFileExists (Loc fp) -> do
         logI $ printf "test -e %s" fp
-        fileExist fp
-      XIsdirectory (Loc fp) -> do
+        safeFileExist fp
+      XIsSymbolicLink (Loc fp) -> do
+        logI $ printf "test -L %s" fp
+        status <- getSymbolicLinkStatus fp
+        pure (isSymbolicLink status)
+      XIsDirectory (Loc fp) -> do
         logI $ printf "test -d %s" fp
-        fileExist fp >>= \case
+        safeFileExist fp >>= \case
           False -> pure False
           True -> do
             status <- getFileStatus fp
             pure (isDirectory status)
+      XListDir (Loc fp) -> do
+        logI $ printf "ls %s" fp
+        safeListDirectory fp
+
+      XMakeDir (Loc fp) -> do
+        logI $ printf "mkdir -p %s" fp
+        createDirectoryIfMissing True fp
       XCopyFile (Loc src) (Loc dest) -> do
         logI $ printf "cp %s %s" src dest
         copyFile src dest
@@ -883,6 +896,15 @@ writeFileFlush fp str = do
   when False $ syncFile fp
   pure ()
 
+
+safeFileExist :: FilePath -> IO Bool
+safeFileExist fp = do
+  try (fileExist fp) >>= \case
+    Right b -> pure b
+    Left (_e::SomeException) -> do
+      --putErr (show _e)
+      pure False
+
 tryCreateLink :: FilePath -> FilePath -> IO (Maybe String)
 tryCreateLink a b = do
   try (createLink a b) >>= \case
@@ -898,6 +920,14 @@ safeRemoveLink fp = do
     Left (_e::SomeException) -> do
       --putErr (show _e)
       pure ()
+
+safeListDirectory :: FilePath -> IO [String]
+safeListDirectory fp = do
+  try (listDirectory fp) >>= \case
+    Right xs -> pure xs
+    Left (_e::SomeException) -> do
+      --putErr (show _e)
+      pure []
 
 nCopies :: Int -> IO () -> IO ()
 nCopies n io =

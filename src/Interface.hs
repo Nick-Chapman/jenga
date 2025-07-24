@@ -4,7 +4,8 @@ module Interface
   , Action(..)  -- A user action which is run when a rule triggers.
   , D(..)       -- The Dependency monad.
   , Key(..)     -- An identifier for targets and dependencies.
-  , Loc(..)     -- A relative file-path location.
+  , Loc(..)     -- A file-path location.
+  , What(..)    -- what kind of file-system object is at a given location
   ) where
 
 import Control.Monad (ap,liftM)
@@ -19,11 +20,11 @@ data G a where
   GLog :: String -> G ()
   GFail :: String -> G a
   GRule :: Rule -> G ()
-  GGlob :: Loc -> G [Loc]
-  GIsDirectory :: Loc -> G Bool
-  GExists :: Loc -> G Bool
+  GWhat :: Loc -> G What
   GReadKey :: Key -> G String
   -- TODO: construct for parallel generation
+
+data What = Missing | File | Link | Directory { entries :: [String] }
 
 data Rule = Rule
   { rulename :: String
@@ -50,6 +51,7 @@ data D a where
   DReadKey :: Key -> D String
   DExistsKey :: Key -> D Bool
 
+-- TODO: Is this two level Key, Loc really necessary or usefule?
 data Key = Key Loc deriving (Eq,Ord)
 
 data Loc = Loc FilePath deriving (Eq,Ord)

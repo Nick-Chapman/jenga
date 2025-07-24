@@ -3,7 +3,7 @@
 
 ## caller must pre-define (before the include): executable-name
 ## caller must also define: main-entry ghc-version pkgdb
-## caller may optionally define: ghc-options default-extensions packages
+## caller may optionally define: ghc-options default-extensions packages xdepends
 
 hs.files : all.files
   egrep '^[^#]+.hs$' all.files > hs.files # ignore filenames containing '#'
@@ -27,10 +27,16 @@ include link.rule
 
 o.files : module.names : cat module.names | sed 's|$|.o|' > o.files
 
-depends : ghc.compiler @hs.files : ./ghc.compiler -M *.hs -dep-makefile depends
+depends : ghc.compiler @hs.files ?xdepends
+  ./ghc.compiler -M *.hs -dep-makefile depends
+  touch xdepends
+  cat xdepends >> depends
 
 ghc.exe: ghc-version
-  echo /home/nic/.ghcup/bin/ghc-$(cat ghc-version) > ghc.exe
+  echo ~/.ghcup/bin/ghc-$(cat ghc-version) > ghc.exe
+
+ghc.pkgdb :
+  echo ~/.ghcup/ghc/9.8.4/lib/ghc-9.8.4/lib/package.conf.d > ghc.pkgdb
 
 ghc.compiler : ghc.exe pkgdb all.options
   echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$@"' > ghc.compiler
@@ -47,9 +53,10 @@ ghc.linker : ghc.exe pkgdb package-id-flags
 package-id-flags: versioned-packages
   cat versioned-packages | sed 's|^|-package-id |' | sort | uniq > package-id-flags
 
-versioned-packages: pkgdb packages-egrep-pattern
-  (cd $(cat pkgdb); ls) | egrep $(cat packages-egrep-pattern) | sed 's|.conf$||' >> versioned-packages
+versioned-packages: ghc.pkgdb pkgdb packages-egrep-pattern
+  (cd $(cat ghc.pkgdb); ls) | egrep $(cat packages-egrep-pattern) | sed 's|.conf$||' >>versioned-packages
+  (cd $(cat pkgdb); ls) | egrep $(cat packages-egrep-pattern) | sed 's|.conf$||' >>versioned-packages
 
 packages-egrep-pattern: ?packages
   touch packages
-  echo '('$(echo $(echo NOMATCH; cat packages | sed 's|$|-.*-|') | tr ' ' '|')')' > packages-egrep-pattern
+  echo '('$(echo $(echo NOMATCH; cat packages | sed 's|$|-.*-.*.conf$|') | tr ' ' '|')')' > packages-egrep-pattern

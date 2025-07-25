@@ -11,7 +11,7 @@ data Config = Config
   { jnum :: Int
   , seePid :: Bool
   , cacheDirSpec :: CacheDirSpec
-  , keepSandBoxes :: Bool
+  , keepSandBoxes :: Bool -- TODO: what is the point of this?
   , logMode :: LogMode
   , debugDemand :: Bool
   , debugExternal :: Bool

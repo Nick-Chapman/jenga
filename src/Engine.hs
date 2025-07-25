@@ -4,7 +4,7 @@ import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Control.Exception (try,SomeException)
 import Control.Monad (ap,liftM)
-import Control.Monad (when,forM)
+import Control.Monad (when,forM,forM_)
 import Data.Hash.MD5 qualified as MD5
 import Data.IORef (newIORef,readIORef,writeIORef)
 import Data.List (intercalate)
@@ -19,7 +19,8 @@ import System.Environment (lookupEnv)
 import System.Exit(ExitCode(..))
 import System.FileLock (tryLockFile,SharedExclusive(Exclusive),unlockFile)
 import System.FilePath qualified as FP
-import System.IO (hFlush,hPutStrLn,stderr,stdout,withFile,IOMode(WriteMode),hPutStr)
+import System.IO (hFlush,hPutStrLn,withFile,IOMode(WriteMode),hPutStr)
+import System.IO qualified as IO (stderr,stdout)
 import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,getSymbolicLinkStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory,isSymbolicLink)
 import System.Posix.Process (forkProcess)
 import System.Process (shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
@@ -277,7 +278,7 @@ doBuild config@Config{debugDemand,debugLocking} how = do
                   Just digest -> pure digest
                   Nothing -> do
                     -- We have the lock and there is still no trace, so we run the job....
-                    wtargets <- runJobAndSaveWitness config sought action wkd witKey wdeps rule
+                    wtargets <- runActionSaveWitness config sought action wkd witKey wdeps rule
                     let digest = lookWitMap (locateKey sought) wtargets
                     pure digest
               False -> do
@@ -326,14 +327,6 @@ tryGainingLock debug wkd f = do
       -- We lost the race; another process has the lock.
       f False
 
-runJobAndSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitnessKey -> WitMap -> Rule -> B WitMap
-runJobAndSaveWitness config sought action wkd witKey wdeps rule = do
-  wtargets <- buildWithRule config sought action wdeps rule
-  let val = WitnessValue { wtargets }
-  let wit = Witness { key = witKey, val }
-  saveWitness wkd wit
-  pure wtargets
-
 
 gatherDeps :: Config -> How -> D a -> B ([Key],a)
 gatherDeps config how d = loop d [] k0
@@ -369,20 +362,28 @@ existsKey how key =
     Execute (XFileExists loc)
 
 
-buildWithRule :: Config -> Key -> Action -> WitMap -> Rule -> B WitMap
-buildWithRule Config{keepSandBoxes} sought action depWit rule = do
+runActionSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitnessKey -> WitMap -> Rule -> B WitMap
+runActionSaveWitness Config{keepSandBoxes} sought action wkd witKey depWit rule = do
   sandbox <- BNewSandbox
   let Rule{rulename} = rule
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
-  BRunActionInDir sandbox action >>= \case
+  ares <- BRunActionInDir sandbox action
+  Execute (XIO (showActionRes ares))
+  let ok = actionResIsOk ares
+  case ok of
     False ->
+      -- TODO: save witness-to-failure here
       bfail (printf "'%s': action failed for rule '%s'"
              (show sought) rulename)
     True -> do
-      targetWit <- cacheOutputs sandbox rule
+      wtargets <- cacheOutputs sandbox rule
       when (not keepSandBoxes) $ Execute (XRemoveDirRecursive sandbox)
-      pure targetWit
+
+      let val = WitnessSUCC { wtargets }
+      let wit = Witness { key = witKey, val }
+      saveWitness wkd wit
+      pure wtargets
 
 setupInputs :: Loc -> WitMap -> B ()
 setupInputs sandbox (WitMap m1) = do
@@ -467,9 +468,12 @@ instance Show Digest where show (Digest str) = str
 ----------------------------------------------------------------------
 -- Build witnesses (AKA constructive traces)
 
+-- TODO: what is the need to store the WitnessKey in  a Witness?
 data Witness = Witness { key :: WitnessKey, val :: WitnessValue }
 
-data WitnessValue = WitnessValue { wtargets :: WitMap }
+data WitnessValue
+  = WitnessSUCC { wtargets :: WitMap }
+  | WitnessFAIL
 
 -- TODO: target set in witness key? i.e. forcing rerun when add or remove targets
 data WitnessKey = WitnessKey { commands :: [String], wdeps :: WitMap } deriving Show
@@ -495,14 +499,16 @@ verifyWitness sought wkd = do
     Nothing -> pure Nothing
     Just wit -> do
       let Witness{val} = wit
-      let WitnessValue{wtargets} = val
-      let WitMap m = wtargets
-      ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
-      if not ok then pure Nothing else do
-        -- The following lookup can fail if the sought-key was not recorded.
-        -- i.e. we have added a target; but the actions/deps are otherwise unchanged
-        -- the user action will have to be rerun.
-        pure $ Map.lookup (locateKey sought) m
+      case val of
+        WitnessFAIL{} -> undefined -- TODO
+        WitnessSUCC{wtargets} -> do
+          let WitMap m = wtargets
+          ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
+          if not ok then pure Nothing else do
+            -- The following lookup can fail if the sought-key was not recorded.
+            -- i.e. we have added a target; but the actions/deps are otherwise unchanged
+            -- the user action will have to be rerun.
+            pure $ Map.lookup (locateKey sought) m
 
 lookupWitness :: WitKeyDigest -> B (Maybe Witness)
 lookupWitness wkd = do
@@ -543,7 +549,7 @@ exportWitness :: Witness -> String
 exportWitness = show . toQ
 
 data QWitness
-  = WIT { command :: String
+  = WIT { command :: String -- TODO: remove this old form
         , deps :: QWitMap
         , targets :: QWitMap
         }
@@ -561,22 +567,50 @@ toQ :: Witness -> QWitness
 toQ wit = do
   let Witness{key,val} = wit
   let WitnessKey{commands,wdeps} = key
-  let WitnessValue{wtargets} = val
-  let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
-  TRACE { commands, deps = fromStore wdeps, targets = fromStore wtargets }
+  case val of
+    WitnessFAIL{} -> undefined -- TODO:
+    WitnessSUCC{wtargets} -> do
+      let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
+      TRACE { commands, deps = fromStore wdeps, targets = fromStore wtargets }
 
 fromQ :: QWitness -> Witness
 fromQ = \case
   WIT{command,deps,targets} -> do
     let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
     let key = WitnessKey{commands=[command], wdeps = toStore deps}
-    let val = WitnessValue{wtargets = toStore targets}
+    let val = WitnessSUCC{wtargets = toStore targets}
     Witness{key,val}
   TRACE{commands,deps,targets} -> do
     let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
     let key = WitnessKey{commands, wdeps = toStore deps}
-    let val = WitnessValue{wtargets = toStore targets}
+    let val = WitnessSUCC{wtargets = toStore targets}
     Witness{key,val}
+
+----------------------------------------------------------------------
+-- Result from running actions
+
+data ActionRes = ActionRes [CommandRes]
+
+data CommandRes = CommandRes
+  { command :: String
+  , exitCode :: ExitCode
+  , stdout :: String
+  , stderr :: String
+  }
+
+actionResIsOk :: ActionRes -> Bool
+actionResIsOk (ActionRes xs) =
+  all id [ ok
+         | CommandRes{exitCode} <- xs
+         , let ok = case exitCode of ExitSuccess -> True; ExitFailure{} -> False
+         ]
+
+showActionRes :: ActionRes -> IO ()
+showActionRes (ActionRes xs) = do
+  forM_ xs $ \CommandRes{command=_,exitCode=_,stdout,stderr} -> do
+    -- TODO: show command run; show exit code; distinuish stdout/stderr
+    putStr stdout
+    putStr stderr
 
 ----------------------------------------------------------------------
 -- B: build monad
@@ -617,7 +651,7 @@ data B a where
   BCatch :: B a -> B (BuildRes a)
   BCacheDir :: B Loc
   BNewSandbox :: B Loc
-  BRunActionInDir :: Loc -> Action -> B Bool
+  BRunActionInDir :: Loc -> Action -> B ActionRes
   Execute :: X a -> B a
   BMemoKey :: (Key -> B Digest) -> Key -> B Digest
   BPar :: B a -> B b -> B (a,b)
@@ -683,8 +717,8 @@ runB cacheDir config@Config{keepSandBoxes,logMode,jnum} build0 = do
         k s { sandboxCounter = 1 + i } (SUCC (sandboxParent myPid </> show i))
 
       BRunActionInDir sandbox action@Action{hidden} -> do
-        bool <- XRunActionInDir sandbox action
-        k s { runCounter = runCounter s + (if hidden then 0 else 1)} (SUCC bool)
+        res <- XRunActionInDir sandbox action
+        k s { runCounter = runCounter s + (if hidden then 0 else 1)} (SUCC res)
 
       Execute x -> do a <- x; k s (SUCC a)
 
@@ -782,7 +816,7 @@ data X a where
   XLogErr :: String -> X ()
   XIO :: IO a -> X a
 
-  XRunActionInDir :: Loc -> Action -> X Bool
+  XRunActionInDir :: Loc -> Action -> X ActionRes
   XDigest :: Loc -> X Digest
 
   XFileExists :: Loc -> X Bool
@@ -817,19 +851,14 @@ runX config@Config{logMode,debugExternal,debugInternal,debugLocking} = loop
       XLog mes -> log mes
       XLogErr mes -> maybePrefixPid config mes >>= putErr
 
-      -- sandboxed execution of user's action; for now always a bash command
-      XRunActionInDir (Loc dir) Action{hidden,commands} -> all id <$> do
+      -- sandboxed execution of user's action; for now always a list of bash commands
+      XRunActionInDir (Loc dir) Action{hidden,commands} -> ActionRes <$> do
         forM commands $ \command -> do
           let quiet = case logMode of LogQuiet -> True; _ -> False
           when (not hidden && not quiet) $ log $ printf "A: %s" command
-
           (exitCode,stdout,stderr) <-
             withCurrentDirectory dir (readCreateProcessWithExitCode (shell command) "")
-          -- TODO: better management & report of stdout/stderr
-          putStr stdout
-          putStr stderr
-          let ok = case exitCode of ExitSuccess -> True; ExitFailure{} -> False
-          pure ok
+          pure $ CommandRes { command, exitCode, stdout, stderr }
 
       -- other commands with shell out to external process
       XDigest (Loc fp) -> do
@@ -945,12 +974,12 @@ maybePrefixPid Config{seePid} mes = do
 
 putErr :: String -> IO ()
 putErr s = do
-  hPutStrLn stderr s
-  hFlush stderr
+  hPutStrLn IO.stderr s
+  hFlush IO.stderr
   pure ()
 
 putOut :: String -> IO ()
 putOut s = do
-  hPutStrLn stdout s
-  hFlush stdout
+  hPutStrLn IO.stdout s
+  hFlush IO.stdout
   pure ()

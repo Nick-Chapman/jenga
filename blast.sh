@@ -22,7 +22,7 @@ i=0
 while true; do
   i=$((i+1))
   echo -n "wrong=$w, $i:"
-  jenga build --debug -fp $scope -j$JOBS > /tmp/blast.log
+  jenga build --debug-locking -fp $scope -j$JOBS > /tmp/blast.log
   got=$(cat /tmp/blast.log | grep ran | cut -d' ' -f3 | paste -sd+ | bc)
   echo -n $got
   if [ $got != $expect ]; then

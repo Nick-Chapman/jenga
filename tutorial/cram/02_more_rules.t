@@ -96,11 +96,13 @@ Define and use header file. Build fails because we failed to declare dependecy o
       1 | #include "fib.h"
         |          ^~~~~~~
   compilation terminated.
+  ExitFailure 1
   A: gcc -Wall -c main.c -o main.o
   main.c:2:10: fatal error: fib.h: No such file or directory
       2 | #include "fib.h"
         |          ^~~~~~~
   compilation terminated.
+  ExitFailure 1
   ran 2 actions
   Build failed for 2 reasons:
   (1) 'fib.o': action failed for rule 'build.jenga:7'

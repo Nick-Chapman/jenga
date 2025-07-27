@@ -379,8 +379,10 @@ runActionSaveWitness Config{keepSandBoxes} sought action wkd witKey depWit rule 
   Execute (XIO (showActionRes ares))
   let ok = actionResIsOk ares
   case ok of
-    False ->
-      -- TODO: save witness-to-failure here
+    False -> do
+      let val = WitnessFAIL ares
+      let wit = Witness { key = witKey, val }
+      saveWitness wkd wit
       bfail (printf "'%s': action failed for rule '%s'"
              (show sought) rulename)
     True -> do
@@ -475,12 +477,12 @@ instance Show Digest where show (Digest str) = str
 ----------------------------------------------------------------------
 -- Build witnesses (AKA constructive traces)
 
--- TODO: what is the need to store the WitnessKey in  a Witness?
+-- TODO: No need to store the WitnessKey in a Witness
 data Witness = Witness { key :: WitnessKey, val :: WitnessValue }
 
 data WitnessValue
   = WitnessSUCC { wtargets :: WitMap }
-  | WitnessFAIL
+  | WitnessFAIL ActionRes
 
 -- TODO: target set in witness key? i.e. forcing rerun when add or remove targets
 data WitnessKey = WitnessKey { commands :: [String], wdeps :: WitMap } deriving Show
@@ -507,7 +509,11 @@ verifyWitness sought wkd = do
     Just wit -> do
       let Witness{val} = wit
       case val of
-        WitnessFAIL{} -> undefined -- TODO
+        WitnessFAIL ares -> do
+          BLog "Just read a WitnessFAIL"
+          Execute (XIO (showActionRes ares))
+          bfail (printf "'%s': action previously failed" (show sought))
+
         WitnessSUCC{wtargets} -> do
           let WitMap m = wtargets
           ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
@@ -555,7 +561,7 @@ importWitness s = fromQ <$> readMaybe s
 exportWitness :: Witness -> String
 exportWitness = show . toQ
 
-data QWitness
+data QWitness -- TODO: no need for key (command+deps)
   = WIT { command :: String -- TODO: remove this old form
         , deps :: QWitMap
         , targets :: QWitMap
@@ -564,7 +570,18 @@ data QWitness
           , deps :: QWitMap
           , targets :: QWitMap
           }
+  | WITFAIL { commands :: [String]
+            , deps :: QWitMap
+            , failure :: [QCommandRes]
+            }
 
+  deriving (Show,Read)
+
+data QCommandRes = RUN
+  { exitCode :: ExitCode
+  , stdout :: String
+  , stderr :: String
+  }
   deriving (Show,Read)
 
 type QWitMap = [(FilePath,QDigest)]
@@ -574,10 +591,12 @@ toQ :: Witness -> QWitness
 toQ wit = do
   let Witness{key,val} = wit
   let WitnessKey{commands,wdeps} = key
+  let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
   case val of
-    WitnessFAIL{} -> undefined -- TODO:
+    WitnessFAIL (ActionRes xs) -> do
+      let fromCommandRes CommandRes{exitCode,stdout,stderr} = RUN{exitCode,stdout,stderr}
+      WITFAIL { commands, deps = fromStore wdeps, failure = map fromCommandRes xs }
     WitnessSUCC{wtargets} -> do
-      let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
       TRACE { commands, deps = fromStore wdeps, targets = fromStore wtargets }
 
 fromQ :: QWitness -> Witness
@@ -592,6 +611,12 @@ fromQ = \case
     let key = WitnessKey{commands, wdeps = toStore deps}
     let val = WitnessSUCC{wtargets = toStore targets}
     Witness{key,val}
+  WITFAIL{commands,deps,failure} -> do
+    let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
+    let key = WitnessKey{commands, wdeps = toStore deps}
+    let toCommandRes RUN{exitCode,stdout,stderr} = CommandRes{exitCode,stdout,stderr}
+    let val = WitnessFAIL (ActionRes (map toCommandRes failure))
+    Witness{key,val}
 
 ----------------------------------------------------------------------
 -- Result from running actions
@@ -599,8 +624,7 @@ fromQ = \case
 data ActionRes = ActionRes [CommandRes]
 
 data CommandRes = CommandRes
-  { command :: String
-  , exitCode :: ExitCode
+  { exitCode :: ExitCode
   , stdout :: String
   , stderr :: String
   }
@@ -614,10 +638,12 @@ actionResIsOk (ActionRes xs) =
 
 showActionRes :: ActionRes -> IO ()
 showActionRes (ActionRes xs) = do
-  forM_ xs $ \CommandRes{command=_,exitCode=_,stdout,stderr} -> do
-    -- TODO: show command run; show exit code; distinuish stdout/stderr
+  forM_ xs $ \CommandRes{exitCode,stdout,stderr} -> do
+    -- TODO: distinuish stdout/stderr? link to rule?
     putStr stdout
     putStr stderr
+    let isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
+    when (isFailure exitCode) $ putStrLn (show exitCode)
 
 ----------------------------------------------------------------------
 -- B: build monad
@@ -861,7 +887,7 @@ runX config@Config{logMode,debugExternal,debugInternal,debugLocking} = loop
           when (not hidden && not quiet) $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-
             withCurrentDirectory dir (readCreateProcessWithExitCode (shell command) "")
-          pure $ CommandRes { command, exitCode, stdout, stderr }
+          pure $ CommandRes { exitCode, stdout, stderr }
 
       -- other commands with shell out to external process
       XDigest (Loc fp) -> do
@@ -927,7 +953,6 @@ writeFileFlush fp str = do
   -- Enabling this prevents lock racing & duplicate actions. But it is a big slow sledgehammer!
   when False $ syncFile fp
   pure ()
-
 
 safeFileExist :: FilePath -> IO Bool
 safeFileExist fp = do

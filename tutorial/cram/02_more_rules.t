@@ -101,11 +101,10 @@ Define and use header file. Build fails because we failed to declare dependecy o
       2 | #include "fib.h"
         |          ^~~~~~~
   compilation terminated.
+  ran 2 actions
   Build failed for 2 reasons:
   (1) 'fib.o': action failed for rule 'build.jenga:7'
   (2) 'main.o': action failed for rule 'build.jenga:4'
-  jenga.exe: stop because build failed
-  CallStack (from HasCallStack):
 
 Add missing dep to both compile rules
   $ sed -i 's/: main.c/: main.c fib.h/' build.jenga

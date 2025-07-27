@@ -63,16 +63,15 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do
-      runB cacheDir config $ do
+      runBuild cacheDir config $ do
         system <- runElaboration config (userProg args)
         reportSystem config system
         let System{rules} = system
         let allTargets = [ target | Rule{hidden,targets} <- rules, target <- targets, not hidden ]
         sequence_ [ BLog (show key) | key <- allTargets ]
 
-
     ModeListRules -> do
-      runB cacheDir config $ do
+      runBuild cacheDir config $ do
         system <- runElaboration config (userProg args)
         reportSystem config system
         let System{how,rules} = system
@@ -87,18 +86,23 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         BLog (intercalate "\n\n" (map show staticRules))
 
     ModeBuild -> do
-      runB cacheDir config $ do
+      runBuild cacheDir config $ do
         system <- runElaboration config (userProg args)
         reportSystem config system
         buildWithSystem config system
 
     ModeBuildAndRun target argsForTarget -> do
-      runB cacheDir config $ do
+      runBuild cacheDir config $ do
         system <- runElaboration config (userProg [FP.takeDirectory target])
         reportSystem config system
         buildWithSystem config system
-      callProcess (printf ",jenga/%s" target) argsForTarget
+        Execute (XIO (callProcess (printf ",jenga/%s" target) argsForTarget))
 
+runBuild :: Loc -> Config -> B () -> IO ()
+runBuild cacheDir config@Config{jnum} b = do
+  nCopies jnum $ do
+    runX config $ do
+      runB cacheDir config b
 
 buildWithSystem :: Config -> System -> B ()
 buildWithSystem config system = do
@@ -289,10 +293,6 @@ doBuild config@Config{debugDemand,debugLocking} how = do
                 verifyWitness sought wkd >>= \case
                   Just digest -> pure digest
                   Nothing ->
-                    -- This may also occur when the the build does not fail
-                    -- We are too eager in expecting the witness trace to appear
-                    -- TODO: perhaps we should spin for it?
-                    --error "other process encountered build failure" -- TODO BFail
                     BResult (FAIL [])
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
@@ -657,11 +657,9 @@ data B a where
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
 
-runB :: Loc -> Config -> B () -> IO ()
-runB cacheDir config@Config{keepSandBoxes,logMode,jnum} build0 = do
-  nCopies jnum $ do
-    runX config $ do
-      loop build bstate0 kFinal
+runB :: Loc -> Config -> B () -> X ()
+runB cacheDir Config{keepSandBoxes,logMode} build0 = do
+  loop build bstate0 kFinal
   where
     build = do
       let see = case logMode of LogQuiet -> False; _ -> True
@@ -672,32 +670,20 @@ runB cacheDir config@Config{keepSandBoxes,logMode,jnum} build0 = do
       initDirs
       build0
 
-    -- TODO: We should cleanup our sandbox dir on abort.
-    -- Currently it gets left if we C-c jenga
-    -- Or if any build command fails; since that aborts jenga (TODO: fix that!)
-    -- This means that even the cram tests leave .jbox droppings around.
-    -- Not the end of the day, but we could be cleaner.
-
     sandboxParent pid = Loc (printf "/tmp/.jbox/%s" (show pid))
 
     kFinal :: BState -> BuildRes () -> X ()
     kFinal BState{runCounter,active,blocked} res = do
       when ((length active + length blocked) /= 0) $ error "runB: unexpected left over jobs"
-      case res of
-        FAIL [] -> do error "unexpected build failure for no reasons"
-        FAIL reasons -> do
-          XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
-                 (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
-          error "stop because build failed" -- TODO: return to caller instead
 
-        SUCC () -> do
-          myPid <- XIO getCurrentPid
-          when (not keepSandBoxes) $ XRemoveDirRecursive (sandboxParent myPid)
-          let see = case logMode of LogQuiet -> False; _ -> True
-          let i = runCounter
-          when (see && i>0) $ do
-            XLog (printf "ran %s" (pluralize i "action"))
-          pure ()
+      myPid <- XIO getCurrentPid
+      when (not keepSandBoxes) $ XRemoveDirRecursive (sandboxParent myPid)
+      let see = case logMode of LogQuiet -> False; _ -> True
+      let i = runCounter
+      when (see && i>0) $ do
+        XLog (printf "ran %s" (pluralize i "action"))
+
+      reportBuildRes res
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X ()) -> X ()
     loop m0 s k = case m0 of
@@ -770,7 +756,6 @@ runB cacheDir config@Config{keepSandBoxes,logMode,jnum} build0 = do
     resume :: BJob -> BState -> X ()
     resume (BJob p k) s = loop p s k
 
-
 initDirs :: B ()
 initDirs = do
   tracesDir <- tracesDir
@@ -780,6 +765,17 @@ initDirs = do
     XMakeDir cachedFilesDir
     XMakeDir tracesDir
     XMakeDir artifactsDir
+
+reportBuildRes :: BuildRes () -> X ()
+reportBuildRes res =
+  case res of
+    FAIL [] ->
+      error "unexpected build failure for no reasons"
+    FAIL reasons ->
+      XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
+             (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
+    SUCC () ->
+      pure ()
 
 data BState = BState
   { sandboxCounter :: Int

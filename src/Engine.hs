@@ -748,10 +748,11 @@ runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
 
       BMemoKey f key -> do
         case Map.lookup key (memo s) of
-          Just res -> k s (removeReasons res)
+          Just WIP -> yield s $ \s _ -> do loop m0 s k
+          Just (Ready res) -> k s (removeReasons res)
           Nothing -> do
-            loop (f key) s $ \s res -> do
-              k s { memo = Map.insert key res (memo s) } res
+            loop (f key) s { memo = Map.insert key WIP (memo s)} $ \s res -> do
+              k s { memo = Map.insert key (Ready res) (memo s) } res
 
       BPar a b -> do
         -- continutation k is called only when both sides have completed (succ or fail)
@@ -774,10 +775,13 @@ runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
 
         loop a s { active = BJob b kB : active s } kA
 
-      BYield -> do
-        let BState{blocked} = s
-        let me = BJob (pure ()) k
-        next s { blocked = me : blocked }
+      BYield -> yield s k
+
+    yield :: BState -> (BState -> BuildRes () -> X ()) -> X ()
+    yield s k = do
+      let BState{blocked} = s
+      let me = BJob (pure ()) k
+      next s { blocked = me : blocked }
 
     next :: BState -> X ()
     next s@BState{active,blocked} = do
@@ -819,11 +823,13 @@ reportBuildRes Config{worker} res =
 data BState = BState
   { sandboxCounter :: Int
   , runCounter :: Int -- less that sandboxCounter because of hidden actions
-  , memo :: Map Key (BuildRes Digest)
+  , memo :: Map Key (OrWIP (BuildRes Digest))
   -- active/blocked ar ejust the front/back of a Q -- TODO: name thus
   , active :: [BJob]
   , blocked :: [BJob]
   }
+
+data OrWIP a = WIP | Ready a
 
 bstate0 :: BState
 bstate0 = BState

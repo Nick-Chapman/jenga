@@ -289,7 +289,7 @@ doBuild config@Config{debugDemand,debugLocking} how = do
                   Just digest -> pure digest
                   Nothing -> do
                     -- We have the lock and there is still no trace, so we run the job....
-                    wtargets <- runActionSaveWitness config sought action wkd witKey wdeps rule
+                    wtargets <- runActionSaveWitness config sought action wkd wdeps rule
                     let digest = lookWitMap (locateKey sought) wtargets
                     pure digest
               False -> do
@@ -369,8 +369,8 @@ existsKey how key =
     Execute (XFileExists loc)
 
 
-runActionSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitnessKey -> WitMap -> Rule -> B WitMap
-runActionSaveWitness config@Config{keepSandBoxes} sought action wkd witKey depWit rule = do
+runActionSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
+runActionSaveWitness config@Config{keepSandBoxes} sought action wkd depWit rule = do
   sandbox <- BNewSandbox
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
@@ -380,15 +380,13 @@ runActionSaveWitness config@Config{keepSandBoxes} sought action wkd witKey depWi
   -- TODO: always remove sandboxes?
   case ok of
     False -> do
-      let val = WitnessFAIL ares
-      let wit = Witness { key = witKey, val }
+      let wit = WitnessFAIL ares
       saveWitness wkd wit
       actionFailed sought rule
     True -> do
       wtargets <- cacheOutputs sandbox rule
       when (not keepSandBoxes) $ Execute (XRemoveDirRecursive sandbox)
-      let val = WitnessSUCC { wtargets }
-      let wit = Witness { key = witKey, val }
+      let wit = WitnessSUCC { wtargets }
       saveWitness wkd wit
       pure wtargets
 
@@ -480,8 +478,7 @@ instance Show Digest where show (Digest str) = str
 ----------------------------------------------------------------------
 -- Build witnesses (AKA constructive traces)
 
--- TODO: No need to store the WitnessKey in a Witness
-data Witness = Witness { key :: WitnessKey, val :: WitnessValue }
+type Witness = WitnessValue
 
 data WitnessValue
   = WitnessSUCC { wtargets :: WitMap }
@@ -510,8 +507,7 @@ verifyWitness config sought wkd rule = do
   lookupWitness wkd >>= \case
     Nothing -> pure Nothing
     Just wit -> do
-      let Witness{val} = wit
-      case val of
+      case wit of
         WitnessFAIL ares -> do
           Execute (showActionRes "found-failure-witness" config ares)
           actionFailed sought rule
@@ -558,7 +554,7 @@ witnessFile wkd = do
   pure (tracesDir </> show wkd)
 
 ----------------------------------------------------------------------
--- export/import Witness data in fixed format using flatter type
+-- export Witnesses via flatter "Q" types (Q is a meaningless prefix)
 
 importWitness :: String -> Maybe Witness
 importWitness s = fromQ <$> readMaybe s
@@ -566,20 +562,9 @@ importWitness s = fromQ <$> readMaybe s
 exportWitness :: Witness -> String
 exportWitness = show . toQ
 
-data QWitness -- TODO: no need for key (command+deps)
-  = WIT { command :: String -- TODO: remove this old form
-        , deps :: QWitMap
-        , targets :: QWitMap
-        }
-  | TRACE { commands :: [String]
-          , deps :: QWitMap
-          , targets :: QWitMap
-          }
-  | WITFAIL { commands :: [String]
-            , deps :: QWitMap
-            , failure :: [QCommandRes]
-            }
-
+data QWitness
+  = Success QWitMap
+  | Failure [QCommandRes]
   deriving (Show,Read)
 
 data QCommandRes = RUN
@@ -593,35 +578,22 @@ type QWitMap = [(FilePath,QDigest)]
 type QDigest = String
 
 toQ :: Witness -> QWitness
-toQ wit = do
-  let Witness{key,val} = wit
-  let WitnessKey{commands,wdeps} = key
-  let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
-  case val of
-    WitnessFAIL (ActionRes xs) -> do
-      let fromCommandRes CommandRes{exitCode,stdout,stderr} = RUN{exitCode,stdout,stderr}
-      WITFAIL { commands, deps = fromStore wdeps, failure = map fromCommandRes xs }
-    WitnessSUCC{wtargets} -> do
-      TRACE { commands, deps = fromStore wdeps, targets = fromStore wtargets }
+toQ = \case
+  WitnessFAIL (ActionRes xs) -> do
+    let fromCommandRes CommandRes{exitCode,stdout,stderr} = RUN{exitCode,stdout,stderr}
+    Failure (map fromCommandRes xs)
+  WitnessSUCC{wtargets} -> do
+    let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
+    Success (fromStore wtargets)
 
 fromQ :: QWitness -> Witness
 fromQ = \case
-  WIT{command,deps,targets} -> do
+  Success targets -> do
     let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
-    let key = WitnessKey{commands=[command], wdeps = toStore deps}
-    let val = WitnessSUCC{wtargets = toStore targets}
-    Witness{key,val}
-  TRACE{commands,deps,targets} -> do
-    let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
-    let key = WitnessKey{commands, wdeps = toStore deps}
-    let val = WitnessSUCC{wtargets = toStore targets}
-    Witness{key,val}
-  WITFAIL{commands,deps,failure} -> do
-    let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
-    let key = WitnessKey{commands, wdeps = toStore deps}
+    WitnessSUCC{wtargets = toStore targets}
+  Failure xs -> do
     let toCommandRes RUN{exitCode,stdout,stderr} = CommandRes{exitCode,stdout,stderr}
-    let val = WitnessFAIL (ActionRes (map toCommandRes failure))
-    Witness{key,val}
+    WitnessFAIL (ActionRes (map toCommandRes xs))
 
 ----------------------------------------------------------------------
 -- Result from running actions

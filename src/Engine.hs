@@ -277,7 +277,7 @@ doBuild config@Config{debugDemand,debugLocking} how = do
 
         -- If the witness trace already exists, use it.
         when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
-        verifyWitness sought wkd >>= \case
+        verifyWitness config sought wkd rule >>= \case
           Just digest -> pure digest
           Nothing -> do
             -- If not, someone has to run the job...
@@ -285,7 +285,7 @@ doBuild config@Config{debugDemand,debugLocking} how = do
             tryGainingLock debugLocking wkd $ \case
               True -> do
                 -- We got the lock, check again for the trace...
-                verifyWitness sought wkd >>= \case
+                verifyWitness config sought wkd rule >>= \case
                   Just digest -> pure digest
                   Nothing -> do
                     -- We have the lock and there is still no trace, so we run the job....
@@ -297,7 +297,7 @@ doBuild config@Config{debugDemand,debugLocking} how = do
                 -- Another process beat us to the lock; it's running the job.
                 awaitLockYielding config wkd
                 -- Now it will have finished.
-                verifyWitness sought wkd >>= \case
+                verifyWitness config sought wkd rule >>= \case
                   Just digest -> pure digest
                   Nothing ->
                     BResult (FAIL [])
@@ -370,29 +370,32 @@ existsKey how key =
 
 
 runActionSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitnessKey -> WitMap -> Rule -> B WitMap
-runActionSaveWitness Config{keepSandBoxes} sought action wkd witKey depWit rule = do
+runActionSaveWitness config@Config{keepSandBoxes} sought action wkd witKey depWit rule = do
   sandbox <- BNewSandbox
-  let Rule{rulename} = rule
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
   ares <- BRunActionInDir sandbox action
-  Execute (XIO (showActionRes ares))
+  Execute (showActionRes "orignal-runner" config ares)
   let ok = actionResIsOk ares
+  -- TODO: always remove sandboxes?
   case ok of
     False -> do
       let val = WitnessFAIL ares
       let wit = Witness { key = witKey, val }
       saveWitness wkd wit
-      bfail (printf "'%s': action failed for rule '%s'"
-             (show sought) rulename)
+      actionFailed sought rule
     True -> do
       wtargets <- cacheOutputs sandbox rule
       when (not keepSandBoxes) $ Execute (XRemoveDirRecursive sandbox)
-
       let val = WitnessSUCC { wtargets }
       let wit = Witness { key = witKey, val }
       saveWitness wkd wit
       pure wtargets
+
+actionFailed :: Key -> Rule -> B a
+actionFailed sought rule = do
+  let Rule{rulename} = rule
+  bfail (printf "'%s': action failed for rule '%s'" (show sought) rulename)
 
 setupInputs :: Loc -> WitMap -> B ()
 setupInputs sandbox (WitMap m1) = do
@@ -502,17 +505,16 @@ lookWitMap loc (WitMap m) = maybe err id $ Map.lookup loc m
 digestWitnessKey :: WitnessKey -> WitKeyDigest
 digestWitnessKey wk = WitKeyDigest (MD5.md5s (MD5.Str (show wk)))
 
-verifyWitness :: Key -> WitKeyDigest -> B (Maybe Digest)
-verifyWitness sought wkd = do
+verifyWitness :: Config -> Key -> WitKeyDigest -> Rule -> B (Maybe Digest)
+verifyWitness config sought wkd rule = do
   lookupWitness wkd >>= \case
     Nothing -> pure Nothing
     Just wit -> do
       let Witness{val} = wit
       case val of
         WitnessFAIL ares -> do
-          BLog "Just read a WitnessFAIL"
-          Execute (XIO (showActionRes ares))
-          bfail (printf "'%s': action previously failed" (show sought))
+          Execute (showActionRes "found-failure-witness" config ares)
+          actionFailed sought rule
 
         WitnessSUCC{wtargets} -> do
           let WitMap m = wtargets
@@ -636,14 +638,17 @@ actionResIsOk (ActionRes xs) =
          , let ok = case exitCode of ExitSuccess -> True; ExitFailure{} -> False
          ]
 
-showActionRes :: ActionRes -> IO ()
-showActionRes (ActionRes xs) = do
-  forM_ xs $ \CommandRes{exitCode,stdout,stderr} -> do
-    -- TODO: distinuish stdout/stderr? link to rule?
-    putStr stdout
-    putStr stderr
-    let isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
-    when (isFailure exitCode) $ putStrLn (show exitCode)
+showActionRes :: String -> Config -> ActionRes -> X ()
+showActionRes _who Config{worker} (ActionRes xs) = do
+  when (not worker) $ do
+    --XLog (show ("showActionRes",_who))
+    XIO $ do
+      forM_ xs $ \CommandRes{exitCode,stdout,stderr} -> do
+        -- TODO: distinuish stdout/stderr? link to rule?
+        putStr stdout
+        putStr stderr
+        let isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
+        when (isFailure exitCode) $ putStrLn (show exitCode)
 
 ----------------------------------------------------------------------
 -- B: build monad
@@ -691,7 +696,7 @@ data B a where
   BYield :: B ()
 
 runB :: Loc -> Config -> B () -> X ()
-runB cacheDir Config{keepSandBoxes,logMode} build0 = do
+runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
   loop build bstate0 kFinal
   where
     build = do
@@ -716,7 +721,7 @@ runB cacheDir Config{keepSandBoxes,logMode} build0 = do
       when (see && i>0) $ do
         XLog (printf "ran %s" (pluralize i "action"))
 
-      reportBuildRes res
+      reportBuildRes config res
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X ()) -> X ()
     loop m0 s k = case m0 of
@@ -799,14 +804,15 @@ initDirs = do
     XMakeDir tracesDir
     XMakeDir artifactsDir
 
-reportBuildRes :: BuildRes () -> X ()
-reportBuildRes res =
+reportBuildRes :: Config -> BuildRes () -> X ()
+reportBuildRes Config{worker} res =
   case res of
     FAIL [] ->
       error "unexpected build failure for no reasons"
-    FAIL reasons ->
-      XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
-             (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
+    FAIL reasons -> do
+      when (not worker) $ do
+        XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
+              (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
     SUCC () ->
       pure ()
 

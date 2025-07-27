@@ -535,7 +535,10 @@ lookupWitness wkd = do
       case importWitness contents of
         Just wit -> pure (Just wit)
         Nothing -> do
-          --XLog (printf "importWitness failed: [%s]" contents)
+          -- We failed to parse rhe witness file. Perhaps it got corrupted.
+          -- Or perhaps we encountered a witness with an out-of-date format.
+          XLogErr (printf "removing bad witness file: %s" (show witFile))
+          XUnLink witFile
           pure Nothing
 
 existsCacheFile :: Digest -> B Bool

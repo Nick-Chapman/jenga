@@ -8,7 +8,8 @@ import Options.Applicative
 data LogMode = LogQuiet | LogActions
 
 data Config = Config
-  { jnum :: Int
+  { worker :: Bool -- can't set on command line; but convenient to have in config
+  , jnum :: Int
   , seePid :: Bool
   , cacheDirSpec :: CacheDirSpec
   , keepSandBoxes :: Bool -- TODO: what is the point of this?
@@ -107,7 +108,7 @@ runCommand = sharedOptions LogQuiet
 
 -- TODO: try applicative do
 sharedOptions :: LogMode -> Parser (BuildMode -> [FilePath] -> Config)
-sharedOptions defaultLogMode = Config
+sharedOptions defaultLogMode = Config False
   <$>
   option auto (short 'j'
                <> value 1

@@ -63,7 +63,7 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do
-      runBuild cacheDir config $ do
+      runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         reportSystem config system
         let System{rules} = system
@@ -71,7 +71,7 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         sequence_ [ BLog (show key) | key <- allTargets ]
 
     ModeListRules -> do
-      runBuild cacheDir config $ do
+      runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         reportSystem config system
         let System{how,rules} = system
@@ -86,23 +86,29 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         BLog (intercalate "\n\n" (map show staticRules))
 
     ModeBuild -> do
-      runBuild cacheDir config $ do
+      runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         reportSystem config system
         buildWithSystem config system
 
     ModeBuildAndRun target argsForTarget -> do
-      runBuild cacheDir config $ do
+      runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [FP.takeDirectory target])
         reportSystem config system
         buildWithSystem config system
         Execute (XIO (callProcess (printf ",jenga/%s" target) argsForTarget))
 
-runBuild :: Loc -> Config -> B () -> IO ()
-runBuild cacheDir config@Config{jnum} b = do
-  nCopies jnum $ do
+runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
+runBuild cacheDir config f = do
+  nCopies config $ \config -> do
     runX config $ do
-      runB cacheDir config b
+      runB cacheDir config (f config)
+
+nCopies :: Config -> (Config -> IO ()) -> IO ()
+nCopies config@Config{jnum} f =
+  if jnum < 1 then error "nCopies<1" else do
+    sequence_ $ replicate (jnum-1) $ do _ <- forkProcess (f $ config { worker = True }); pure ()
+    f config
 
 buildWithSystem :: Config -> System -> B ()
 buildWithSystem config system = do
@@ -134,12 +140,13 @@ pluralize :: Int -> String -> String
 pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
 
 reportSystem :: Config -> System -> B ()
-reportSystem Config{logMode} system = do
+reportSystem Config{logMode,worker} system = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   let System{rules} = system
   let nRules = sum [ if hidden then 0 else 1 | Rule{hidden} <- rules ]
   let nTargets = sum [ length targets |  Rule{targets,hidden} <- rules, not hidden ]
-  when (not quiet) $ BLog $ printf "elaborated %s and %s" (pluralize nRules "rule") (pluralize nTargets "target")
+  when (not quiet && not worker) $
+    BLog $ printf "elaborated %s and %s" (pluralize nRules "rule") (pluralize nTargets "target")
 
 buildAndMaterialize :: Config -> How -> Key -> B ()
 buildAndMaterialize config how key = do
@@ -953,12 +960,6 @@ safeListDirectory fp = do
     Left (_e::SomeException) -> do
       --putErr (show _e)
       pure []
-
-nCopies :: Int -> IO () -> IO ()
-nCopies n io =
-  if n < 1 then error "nCopies<1" else do
-    sequence_ $ replicate (n-1) $ do _ <- forkProcess io; pure ()
-    io
 
 maybePrefixPid :: Config -> String -> IO String
 maybePrefixPid Config{seePid} mes = do

@@ -9,7 +9,13 @@ import StdBuildUtils ((</>))
 main :: IO ()
 main = engineMain $ \args -> do
   configs <- findConfigs args
-  sequence_ [ MakeStyle.elaborate (Key config) | config <- configs ]
+  parallel_ [ MakeStyle.elaborate (Key config) | config <- configs ]
+
+parallel_ :: [G ()] -> G ()
+parallel_ = \case
+  [] -> pure ()
+  [g] -> g
+  g:gs -> (\((),()) -> ()) <$> GPar g (parallel_ gs)
 
 findConfigs :: [String] -> G [Loc]
 findConfigs args = do

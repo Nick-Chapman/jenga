@@ -217,7 +217,7 @@ runElaboration config m =
             let System{rules,how} = system
             case filter (flip Map.member how) targets of
               clashR@(_:_) -> do
-                bfail $ printf "rule targets defined by previous rule :%s" (show clashR)
+                bfail $ printf "rule targets defined by earlier rule :%s" (show clashR)
               [] -> do
                 how <- pure $ List.foldl' (flip (flip Map.insert rule)) how targets
                 k system { rules = rule : rules, how } ()
@@ -229,6 +229,11 @@ runElaboration config m =
         let System{how} = system
         contents <- readKey config how key -- make cause building
         k system contents
+
+      GPar g1 g2 -> do -- TODO: actually work in parallel
+        loop g1 system $ \system a1 -> do
+          loop g2 system $ \system a2 -> do
+            k system (a1,a2)
 
 xwhat :: Loc -> X What
 xwhat loc = do

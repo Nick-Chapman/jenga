@@ -307,7 +307,7 @@ buildRule config@Config{debugLocking} how =
             -- Now it will have finished.
             verifyWitness config wkd rule >>= \case
               Just w -> pure w
-              Nothing -> error "expected witness trace" --BResult (FAIL [])
+              Nothing -> BResult (FAIL [])
 
 verifyWitness :: Config -> WitKeyDigest -> Rule -> B (Maybe WitMap)
 verifyWitness config wkd rule = do
@@ -798,10 +798,9 @@ initDirs = do
 reportBuildRes :: Config -> BuildRes () -> X ()
 reportBuildRes Config{worker} res =
   case res of
-    FAIL [] ->
-      error "unexpected build failure for no reasons"
     FAIL reasons -> do
       when (not worker) $ do
+        -- TODO: Sometimes see 0 reasons when use -j<NUM>
         XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
               (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
     SUCC () ->

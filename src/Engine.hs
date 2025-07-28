@@ -150,7 +150,7 @@ reportSystem Config{logMode,worker} system = do
 
 buildAndMaterialize :: Config -> How -> Key -> B ()
 buildAndMaterialize config how key = do
-  digest <- doBuild config how key
+  digest <- buildTarget config how key
   materialize digest key
   pure ()
 
@@ -248,8 +248,8 @@ locateKey (Key (Loc fp)) = Loc (FP.takeFileName fp)
 ----------------------------------------------------------------------
 -- Build
 
-doBuild :: Config -> How -> Key -> B Digest
-doBuild config@Config{debugDemand,debugLocking} how = do
+buildTarget :: Config -> How -> Key -> B Digest
+buildTarget config@Config{debugDemand} how = do
   -- TODO: document this flow.
   -- TODO: check for cycles.
   BMemoKey $ \sought -> do
@@ -263,44 +263,59 @@ doBuild config@Config{debugDemand,debugLocking} how = do
             digest <- copyIntoCache loc
             pure digest
 
-      Just rule@Rule{depcom} -> do
+      Just rule -> do
         when debugDemand $ BLog (printf "B: Require: %s" (show sought))
-        (deps,action@Action{commands}) <- gatherDeps config how depcom
+        wtargets <- buildRule config how rule
+        let digest = lookWitMap (locateKey sought) wtargets
+        pure digest
 
-        wdeps <- (WitMap . Map.fromList) <$>
-          parallel [ do digest <- doBuild config how dep; pure (locateKey dep,digest)
-                   | dep <- deps
-                   ]
+buildRule :: Config -> How -> Rule -> B WitMap
+buildRule config@Config{debugLocking} how rule@Rule{depcom} = do
+  (deps,action@Action{commands}) <- gatherDeps config how depcom
+  wdeps <- (WitMap . Map.fromList) <$>
+    parallel [ do digest <- buildTarget config how dep; pure (locateKey dep,digest)
+             | dep <- deps
+             ]
+  let witKey = WitnessKey { commands, wdeps }
+  let wkd = digestWitnessKey witKey
+  -- If the witness trace already exists, use it.
+  when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
+  verifyWitness config wkd rule >>= \case
+    Just w -> pure w
+    Nothing -> do
+      -- If not, someone has to run the job...
+      when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
+      tryGainingLock debugLocking wkd $ \case
+        True -> do
+          -- We got the lock, check again for the trace...
+          verifyWitness config wkd rule >>= \case
+            Just w -> pure w
+            Nothing -> do
+              -- We have the lock and there is still no trace, so we run the job....
+              runActionSaveWitness config action wkd wdeps rule
+        False -> do
+          when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
+          -- Another process beat us to the lock; it's running the job.
+          awaitLockYielding config wkd
+          -- Now it will have finished.
+          verifyWitness config wkd rule >>= \case
+            Just w -> pure w
+            Nothing -> error "expected witness trace" --BResult (FAIL [])
 
-        let witKey = WitnessKey { commands, wdeps }
-        let wkd = digestWitnessKey witKey
-
-        -- If the witness trace already exists, use it.
-        when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
-        verifyWitness config sought wkd rule >>= \case
-          Just digest -> pure digest
-          Nothing -> do
-            -- If not, someone has to run the job...
-            when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
-            tryGainingLock debugLocking wkd $ \case
-              True -> do
-                -- We got the lock, check again for the trace...
-                verifyWitness config sought wkd rule >>= \case
-                  Just digest -> pure digest
-                  Nothing -> do
-                    -- We have the lock and there is still no trace, so we run the job....
-                    wtargets <- runActionSaveWitness config sought action wkd wdeps rule
-                    let digest = lookWitMap (locateKey sought) wtargets
-                    pure digest
-              False -> do
-                when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
-                -- Another process beat us to the lock; it's running the job.
-                awaitLockYielding config wkd
-                -- Now it will have finished.
-                verifyWitness config sought wkd rule >>= \case
-                  Just digest -> pure digest
-                  Nothing ->
-                    BResult (FAIL [])
+verifyWitness :: Config -> WitKeyDigest -> Rule -> B (Maybe WitMap)
+verifyWitness config wkd rule = do
+  lookupWitness wkd >>= \case
+    Nothing -> pure Nothing
+    Just wit -> do
+      case wit of
+        WitnessFAIL ares -> do
+          Execute (showActionRes "found-failure-witness" config ares)
+          actionFailed rule
+        WitnessSUCC{wtargets} -> do
+          let WitMap m = wtargets
+          ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
+          if not ok then pure Nothing else do
+            pure (Just wtargets)
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
 awaitLockYielding Config{debugLocking} wkd = loop 0
@@ -356,7 +371,7 @@ gatherDeps config how d = loop d [] k0
 
 readKey :: Config -> How -> Key -> B String
 readKey config how key = do
-  digest <- doBuild config how key
+  digest <- buildTarget config how key
   file <- cacheFile digest
   Execute (XReadFile file)
 
@@ -369,8 +384,8 @@ existsKey how key =
     Execute (XFileExists loc)
 
 
-runActionSaveWitness :: Config -> Key -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
-runActionSaveWitness config@Config{keepSandBoxes} sought action wkd depWit rule = do
+runActionSaveWitness :: Config -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
+runActionSaveWitness config@Config{keepSandBoxes} action wkd depWit rule = do
   sandbox <- BNewSandbox
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
@@ -382,7 +397,7 @@ runActionSaveWitness config@Config{keepSandBoxes} sought action wkd depWit rule 
     False -> do
       let wit = WitnessFAIL ares
       saveWitness wkd wit
-      actionFailed sought rule
+      actionFailed rule
     True -> do
       wtargets <- cacheOutputs sandbox rule
       when (not keepSandBoxes) $ Execute (XRemoveDirRecursive sandbox)
@@ -390,10 +405,10 @@ runActionSaveWitness config@Config{keepSandBoxes} sought action wkd depWit rule 
       saveWitness wkd wit
       pure wtargets
 
-actionFailed :: Key -> Rule -> B a
-actionFailed sought rule = do
-  let Rule{rulename} = rule
-  bfail (printf "'%s': action failed for rule '%s'" (show sought) rulename)
+actionFailed :: Rule -> B a
+actionFailed rule = do
+  let Rule{targets,rulename} = rule
+  bfail (printf "'%s': action failed for rule '%s'" (intercalate " " $ map show targets) rulename)
 
 setupInputs :: Loc -> WitMap -> B ()
 setupInputs sandbox (WitMap m1) = do
@@ -501,25 +516,6 @@ lookWitMap loc (WitMap m) = maybe err id $ Map.lookup loc m
 
 digestWitnessKey :: WitnessKey -> WitKeyDigest
 digestWitnessKey wk = WitKeyDigest (MD5.md5s (MD5.Str (show wk)))
-
-verifyWitness :: Config -> Key -> WitKeyDigest -> Rule -> B (Maybe Digest)
-verifyWitness config sought wkd rule = do
-  lookupWitness wkd >>= \case
-    Nothing -> pure Nothing
-    Just wit -> do
-      case wit of
-        WitnessFAIL ares -> do
-          Execute (showActionRes "found-failure-witness" config ares)
-          actionFailed sought rule
-
-        WitnessSUCC{wtargets} -> do
-          let WitMap m = wtargets
-          ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
-          if not ok then pure Nothing else do
-            -- The following lookup can fail if the sought-key was not recorded.
-            -- i.e. we have added a target; but the actions/deps are otherwise unchanged
-            -- the user action will have to be rerun.
-            pure $ Map.lookup (locateKey sought) m
 
 lookupWitness :: WitKeyDigest -> B (Maybe Witness)
 lookupWitness wkd = do

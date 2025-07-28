@@ -20,6 +20,6 @@ inotifywait -q -m -r . "$JENGA_HOME/rulelib" \
 while read e; do
   i=$((i+1))
   clear
-  echo $i -- $e # show the counter and triggering event. (feel free to comment out this line)
+  #echo $i -- $e # show the counter and triggering event. (feel free to comment out this line)
   jenga "$@"
 done

@@ -39,7 +39,7 @@ ghc.pkgdb :
   echo ~/.ghcup/ghc/9.8.4/lib/ghc-9.8.4/lib/package.conf.d > ghc.pkgdb
 
 ghc.compiler : ghc.exe pkgdb all.options
-  echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$@"' > ghc.compiler
+  echo exec unbuffer $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$@"' > ghc.compiler
   chmod +x ghc.compiler
 
 all.options : ?ghc-options ?default-extensions

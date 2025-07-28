@@ -270,37 +270,39 @@ buildTarget config@Config{debugDemand} how = do
         pure digest
 
 buildRule :: Config -> How -> Rule -> B WitMap
-buildRule config@Config{debugLocking} how rule@Rule{depcom} = do
-  (deps,action@Action{commands}) <- gatherDeps config how depcom
-  wdeps <- (WitMap . Map.fromList) <$>
-    parallel [ do digest <- buildTarget config how dep; pure (locateKey dep,digest)
-             | dep <- deps
-             ]
-  let witKey = WitnessKey { commands, wdeps }
-  let wkd = digestWitnessKey witKey
-  -- If the witness trace already exists, use it.
-  when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
-  verifyWitness config wkd rule >>= \case
-    Just w -> pure w
-    Nothing -> do
-      -- If not, someone has to run the job...
-      when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
-      tryGainingLock debugLocking wkd $ \case
-        True -> do
-          -- We got the lock, check again for the trace...
-          verifyWitness config wkd rule >>= \case
-            Just w -> pure w
-            Nothing -> do
-              -- We have the lock and there is still no trace, so we run the job....
-              runActionSaveWitness config action wkd wdeps rule
-        False -> do
-          when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
-          -- Another process beat us to the lock; it's running the job.
-          awaitLockYielding config wkd
-          -- Now it will have finished.
-          verifyWitness config wkd rule >>= \case
-            Just w -> pure w
-            Nothing -> error "expected witness trace" --BResult (FAIL [])
+buildRule config@Config{debugLocking} how =
+  BMemoRule $ \rule -> do
+    let Rule{depcom} = rule
+    (deps,action@Action{commands}) <- gatherDeps config how depcom
+    wdeps <- (WitMap . Map.fromList) <$>
+      parallel [ do digest <- buildTarget config how dep; pure (locateKey dep,digest)
+               | dep <- deps
+               ]
+    let witKey = WitnessKey { commands, wdeps }
+    let wkd = digestWitnessKey witKey
+    -- If the witness trace already exists, use it.
+    when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
+    verifyWitness config wkd rule >>= \case
+      Just w -> pure w
+      Nothing -> do
+        -- If not, someone has to run the job...
+        when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
+        tryGainingLock debugLocking wkd $ \case
+          True -> do
+            -- We got the lock, check again for the trace...
+            verifyWitness config wkd rule >>= \case
+              Just w -> pure w
+              Nothing -> do
+                -- We have the lock and there is still no trace, so we run the job....
+                runActionSaveWitness config action wkd wdeps rule
+          False -> do
+            when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
+            -- Another process beat us to the lock; it's running the job.
+            awaitLockYielding config wkd
+            -- Now it will have finished.
+            verifyWitness config wkd rule >>= \case
+              Just w -> pure w
+              Nothing -> error "expected witness trace" --BResult (FAIL [])
 
 verifyWitness :: Config -> WitKeyDigest -> Rule -> B (Maybe WitMap)
 verifyWitness config wkd rule = do
@@ -635,7 +637,7 @@ mergeBuildRes = \case
   (FAIL reasons, SUCC{}) -> FAIL reasons
   (SUCC{}, FAIL reasons) -> FAIL reasons
 
-removeReasons :: BuildRes a -> BuildRes a
+removeReasons :: BuildRes a -> BuildRes a -- TODO: think
 removeReasons = \case
   succ@SUCC{} -> succ
   FAIL{}  -> FAIL[]
@@ -663,6 +665,7 @@ data B a where
   BRunActionInDir :: Loc -> Action -> B ActionRes
   Execute :: X a -> B a
   BMemoKey :: (Key -> B Digest) -> Key -> B Digest
+  BMemoRule :: (Rule -> B WitMap) -> Rule -> B WitMap
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
 
@@ -718,12 +721,20 @@ runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
       Execute x -> do a <- x; k s (SUCC a)
 
       BMemoKey f key -> do
-        case Map.lookup key (memo s) of
+        case Map.lookup key (memoT s) of
           Just WIP -> yield s $ \s _ -> do loop m0 s k
           Just (Ready res) -> k s (removeReasons res)
           Nothing -> do
-            loop (f key) s { memo = Map.insert key WIP (memo s)} $ \s res -> do
-              k s { memo = Map.insert key (Ready res) (memo s) } res
+            loop (f key) s { memoT = Map.insert key WIP (memoT s)} $ \s res -> do
+              k s { memoT = Map.insert key (Ready res) (memoT s) } res
+
+      BMemoRule f rule@Rule{targets} -> do
+        case Map.lookup targets (memoR s) of
+          Just res -> k s (removeReasons res)
+          Nothing -> do
+            loop (f rule) s $ \s res -> do
+              k s { memoR = Map.insert targets res (memoR s) } res
+
 
       BPar a b -> do
         -- continutation k is called only when both sides have completed (succ or fail)
@@ -794,7 +805,8 @@ reportBuildRes Config{worker} res =
 data BState = BState
   { sandboxCounter :: Int
   , runCounter :: Int -- less that sandboxCounter because of hidden actions
-  , memo :: Map Key (OrWIP (BuildRes Digest))
+  , memoT :: Map Key (OrWIP (BuildRes Digest))
+  , memoR :: Map [Key] (BuildRes WitMap)
   -- active/blocked ar ejust the front/back of a Q -- TODO: name thus
   , active :: [BJob]
   , blocked :: [BJob]
@@ -806,7 +818,8 @@ bstate0 :: BState
 bstate0 = BState
   { sandboxCounter = 0
   , runCounter = 0
-  , memo = Map.empty
+  , memoT = Map.empty
+  , memoR = Map.empty
   , active = []
   , blocked = []
   }

@@ -138,7 +138,8 @@ Double build
 
 What are the targets?
 
-  $ jenga list-targets -c.
+  $ jenga build --list-targets -c.
+  elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
   example/hello.exe
@@ -146,7 +147,8 @@ What are the targets?
   copied/main.o
   copied/hello.exe
 
-  $ jenga list-targets -c.
+  $ jenga build --list-targets -c.
+  elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
   example/hello.exe
@@ -159,7 +161,8 @@ Controlling the scope of what to build
   $ jenga build copied -c.
   elaborated 3 rules and 3 targets
 
-  $ jenga list-targets copied -c.
+  $ jenga build --list-targets copied -c.
+  elaborated 3 rules and 3 targets
   copied/fib.o
   copied/main.o
   copied/hello.exe

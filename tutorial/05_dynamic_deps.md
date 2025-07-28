@@ -83,10 +83,10 @@ The `@` syntax marks dynamic dependencies, and tells Jenga that the dependencies
 Only dependencies on lines relevant for `main.o` are used. Specifically `main.c` and `fib.h` (but not `fib.c`).
 This is exactly what we want!
 
-If we run `jenga list-rules` or `jenga build -r`,
+If we run `jenga build --list-rules` or `jenga build -r`,
 Jenga will show us exactly what the build rules look like once all dynamic dependencies are resolved.
 ```
-$ jenga list-rules -a
+$ jenga build --list-rules
 elaborated 4 rules and 4 targets
 example/depends : example/main.c example/fib.c
   cd example ; gcc -MG -MM *.c > depends
@@ -103,7 +103,7 @@ example/hello.exe : example/main.o example/fib.o
 
 If we list the rules from within the `example` directory, they are somewhat more concise, but provide exactly the same information.
 ```
-$ (cd example; jenga list-rules -)
+$ (cd example; jenga build --list-rules)
 elaborated 4 rules and 4 targets
 depends : main.c fib.c
   gcc -MG -MM *.c > depends

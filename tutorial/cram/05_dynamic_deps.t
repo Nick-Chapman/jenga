@@ -62,7 +62,8 @@ See the depends
 
 See the targets and rules
 
-  $ jenga list-targets -c.
+  $ jenga build --list-targets -c.
+  elaborated 4 rules and 4 targets
   example/depends
   example/fib.o
   example/main.o

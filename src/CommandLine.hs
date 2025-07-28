@@ -39,16 +39,6 @@ exec = customExecParser
 subCommands :: Parser Config
 subCommands =
   hsubparser
-  (command "list-targets"
-    (info listTargets
-      (progDesc "List all targets")))
-  <|>
-  hsubparser
-  (command "list-rules"
-    (info listRules
-      (progDesc "List all build rules")))
-  <|>
-  hsubparser
   (command "build"
     (info buildCommand
       (progDesc "Bring a build up to date")))
@@ -57,21 +47,6 @@ subCommands =
   (command "run"
     (info runCommand
       (progDesc "Build and run a single executable target")))
-
-
-listTargets :: Parser Config
-listTargets = sharedOptions LogQuiet
-  <*> pure ModeListTargets
-  <*>
-  many (strArgument (metavar "DIRS"
-                      <> help "directories containing build rules"))
-
-listRules :: Parser Config
-listRules = sharedOptions LogQuiet
-  <*> pure ModeListRules
-  <*>
-  many (strArgument (metavar "DIRS"
-                      <> help "directories containing build rules"))
 
 buildCommand :: Parser Config
 buildCommand = sharedOptions LogActions
@@ -91,7 +66,7 @@ buildCommand = sharedOptions LogActions
   )
   <*>
   many (strArgument (metavar "DIRS"
-                      <> help "directories containing build rules"))
+                     <> help "directories containing build rules"))
 
 runCommand :: Parser Config
 runCommand = sharedOptions LogQuiet

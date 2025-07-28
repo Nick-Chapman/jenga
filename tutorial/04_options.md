@@ -51,17 +51,17 @@ ran 3 actions
 
 We can ask jenga to tell us exactly what targets it knows how to build, and the rules it would use to build them.
 
-Discover targets with `jenga list-targets` (or `jenga build -t`).
+Discover targets with `jenga build --list-targets` (or `jenga build -t`).
 ```
-$ jenga list-targets
+$ jenga build --list-targets
 example/fib.o
 example/main.o
 example/hello.exe
 ```
 
-Discover rules with `jenga list-rules` (or `jenga build -r`).
+Discover rules with `jenga build --list-rules` (or `jenga build -r`).
 ```
-$ jenga list-rules
+$ jenga build --list-rules
 example/fib.o : example/fib.c example/fib.h
   cd example ; gcc -Wall -c -o fib.o fib.c
 

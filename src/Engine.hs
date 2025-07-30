@@ -27,6 +27,7 @@ import System.Process (shell,callProcess,readCreateProcess,readCreateProcessWith
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 import System.IO.SafeWrite (syncFile)
+import WaitPid(waitpid)
 
 ----------------------------------------------------------------------
 -- Engine main
@@ -105,8 +106,9 @@ runBuild cacheDir config f = do
 nCopies :: Config -> (Config -> IO ()) -> IO ()
 nCopies config@Config{jnum} f =
   if jnum < 1 then error "nCopies<1" else do
-    sequence_ $ replicate (jnum-1) $ do _ <- forkProcess (f $ config { worker = True }); pure ()
-    f config
+    children <- sequence $ replicate (jnum-1) $ forkProcess (f $ config { worker = True })
+    f config -- parent
+    mapM_ waitpid children
 
 buildWithSystem :: Config -> System -> B ()
 buildWithSystem config system = do

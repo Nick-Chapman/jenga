@@ -274,13 +274,13 @@ buildTarget config@Config{debugDemand} how = do
 buildRule :: Config -> How -> Rule -> B WitMap
 buildRule config@Config{debugLocking} how =
   BMemoRule $ \rule -> do
-    let Rule{depcom} = rule
+    let Rule{targets,depcom} = rule
     (deps,action@Action{commands}) <- gatherDeps config how depcom
     wdeps <- (WitMap . Map.fromList) <$>
       parallel [ do digest <- buildTarget config how dep; pure (locateKey dep,digest)
                | dep <- deps
                ]
-    let witKey = WitnessKey { commands, wdeps }
+    let witKey = WitnessKey { targets = map locateKey targets, commands, wdeps }
     let wkd = digestWitnessKey witKey
     -- If the witness trace already exists, use it.
     when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
@@ -501,8 +501,7 @@ data WitnessValue
   = WitnessSUCC { wtargets :: WitMap, ares :: ActionRes }
   | WitnessFAIL ActionRes
 
--- TODO: target set in witness key? i.e. forcing rerun when add or remove targets
-data WitnessKey = WitnessKey { commands :: [String], wdeps :: WitMap } deriving Show
+data WitnessKey = WitnessKey { targets :: [Loc], commands :: [String], wdeps :: WitMap } deriving Show
 
 -- TODO: perhaps filemode should be included in the target WitMap
 data WitMap = WitMap (Map Loc Digest) deriving Show
@@ -514,7 +513,7 @@ instance Show WitKeyDigest where show (WitKeyDigest str) = str
 
 lookWitMap :: Loc -> WitMap -> Digest
 lookWitMap loc (WitMap m) = maybe err id $ Map.lookup loc m
-  where err = error "lookWitMap"
+  where err = error (show ("lookWitMap",loc,Map.keys m))
 
 digestWitnessKey :: WitnessKey -> WitKeyDigest
 digestWitnessKey wk = WitKeyDigest (MD5.md5s (MD5.Str (show wk)))

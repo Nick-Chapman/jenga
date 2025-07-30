@@ -122,11 +122,11 @@ $ find ,jenga -type f | xargs ls -l
 
   $ find tmp/.cache/jenga/traces
   tmp/.cache/jenga/traces
-  tmp/.cache/jenga/traces/ece1c74b8879dc65057455ea170dbdec
-  tmp/.cache/jenga/traces/0f37193ead87cc9c89f760e70b557752
-  tmp/.cache/jenga/traces/3b1752ae99a806ef91b76db4a8ad04ee
+  tmp/.cache/jenga/traces/a8eaac84a3846346e595f63a268ffc45
+  tmp/.cache/jenga/traces/51c3df6cc40e72832038021c981b78f4
+  tmp/.cache/jenga/traces/db6b016a94155599e02bf3102c2c5467
 
-  $ cat tmp/.cache/jenga/traces/ece1c74b8879dc65057455ea170dbdec
+  $ cat tmp/.cache/jenga/traces/a8eaac84a3846346e595f63a268ffc45
   TRACE [RUN {exitCode = ExitSuccess, stdout = "", stderr = ""}] (Just [("hello.exe","0fcce4811e995a71fe45c2826bb0868b")])
 
 

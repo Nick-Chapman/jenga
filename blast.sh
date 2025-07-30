@@ -1,11 +1,13 @@
 #!/bin/bash
 
 # blast parallel jenga builds, looking for odd behaviour
-JOBS=2
+JOBS=3
 
-scope=examples/01-two-files
+#scope=examples/01-two-files
 #scope=examples/02-discover-deps
 #scope=src
+#scope=examples/10-haskell-diamond-auto-deps
+scope=examples
 
 rm -rf /tmp/.cache/jenga
 rm -f /tmp/blast.log*
@@ -22,7 +24,13 @@ i=0
 while true; do
   i=$((i+1))
   echo -n "wrong=$w, $i:"
-  jenga build --debug-locking -fp $scope -j$JOBS > /tmp/blast.log
+  jenga build -fp $scope -j$JOBS > /tmp/blast.log 2>&1
+  bad=$(cat /tmp/blast.log | grep lookWitMap | wc -l)
+  if [ $bad != 0 ]; then
+      echo ' **BAD**';
+      cat /tmp/blast.log
+      exit
+  fi
   got=$(cat /tmp/blast.log | grep ran | cut -d' ' -f3 | paste -sd+ | bc)
   echo -n $got
   if [ $got != $expect ]; then
@@ -41,5 +49,6 @@ while true; do
   if [ $i = $max ]; then
       exit
   fi
+  #cat /tmp/blast.log | grep 'X: problem job'
 done
 

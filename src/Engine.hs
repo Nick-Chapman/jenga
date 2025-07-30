@@ -679,8 +679,8 @@ runB cacheDir config@Config{logMode} build0 = do
     sandboxParent pid = Loc (printf "/tmp/.jbox/%s" (show pid))
 
     kFinal :: BState -> BuildRes () -> X ()
-    kFinal BState{runCounter,active,blocked} res = do
-      when ((length active + length blocked) /= 0) $ error "runB: unexpected left over jobs"
+    kFinal BState{runCounter,jobs} res = do
+      when (length jobs /= 0) $ error "runB: unexpected left over jobs"
       myPid <- XIO getCurrentPid
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
@@ -746,27 +746,21 @@ runB cacheDir config@Config{logMode} build0 = do
               Just a -> do
                 k s (mergeBuildRes (a,b))
 
-        loop a s { active = BJob b kB : active s } kA
+        loop a s { jobs = BJob b kB : jobs s } kA
 
       BYield -> yield s k
 
     yield :: BState -> (BState -> BuildRes () -> X ()) -> X ()
     yield s k = do
-      let BState{blocked} = s
+      let BState{jobs} = s
       let me = BJob (pure ()) k
-      next s { blocked = me : blocked }
+      next s { jobs = jobs ++ [me] }
 
     next :: BState -> X ()
-    next s@BState{active,blocked} = do
-      case active of
-        j:active -> do
-          resume j s { active }
-        [] -> case blocked of
-          [] -> error "next: no more jobs"
-          [onlyJob] -> do -- TODO: special code to avoid spinning?
-            next s { active = [onlyJob], blocked = [] }
-          blocked -> do
-            next s { active = reverse blocked, blocked = [] }
+    next s@BState{jobs} = do
+      case jobs of
+        [] -> error "next: no more jobs"
+        j:jobs -> resume j s { jobs }
 
     resume :: BJob -> BState -> X ()
     resume (BJob p k) s = loop p s k
@@ -797,9 +791,7 @@ data BState = BState
   , runCounter :: Int -- less that sandboxCounter because of hidden actions
   , memoT :: Map Key (OrWIP (BuildRes Digest))
   , memoR :: Map [Key] (BuildRes WitMap)
-  -- active/blocked ar ejust the front/back of a Q -- TODO: name thus
-  , active :: [BJob]
-  , blocked :: [BJob]
+  , jobs :: [BJob]
   }
 
 data OrWIP a = WIP | Ready a
@@ -810,8 +802,7 @@ bstate0 = BState
   , runCounter = 0
   , memoT = Map.empty
   , memoR = Map.empty
-  , active = []
-  , blocked = []
+  , jobs = []
   }
 
 data BJob where

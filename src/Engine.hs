@@ -292,9 +292,11 @@ buildRule config@Config{debugLocking} how =
         tryGainingLock debugLocking wkd $ \case
           True -> do
             -- We got the lock, check again for the trace...
+            when debugLocking $ Execute $ XLog (printf "L: look again for witness: %s" (show wkd))
             verifyWitness config wkd rule >>= \case
               Just w -> pure w
               Nothing -> do
+                when debugLocking $ Execute $ XLog (printf "L: still no witness; running jobs NOW: %s" (show wkd))
                 -- We have the lock and there is still no trace, so we run the job....
                 runActionSaveWitness config action wkd wdeps rule
           False -> do

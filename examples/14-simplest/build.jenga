@@ -1,0 +1,9 @@
+
+a :
+ echo -n A > a
+
+b :
+ echo -n B > b
+
+ab : a b
+ cat a b > ab

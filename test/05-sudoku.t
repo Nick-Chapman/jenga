@@ -6,7 +6,6 @@
   $ cp -rp $TESTDIR/../examples/05-sudoku example
 
   $ jenga build -a
-  elaborated 7 rules and 8 targets
   A: find $HOME/.stack | grep lib/.*/bin/ghc$ | rev | cut -d/ -f3 | rev | cut -d- -f2 | sort -n | tail -1 > latest-version
   A: cp latest-version version
   A: find $HOME/.stack | grep lib/.*/bin/ghc$ | grep $(cat version) > ghc-path
@@ -14,6 +13,7 @@
   A: ./ghc.exe -c Sudoku.hs -XLambdaCase
   A: ./ghc.exe -c main.hs
   A: ./ghc.exe main.o Sudoku.o -package containers -o solver.exe
+  checked 8 targets
   ran 7 commands
 
   $ ,jenga/example/solver.exe example/puzzle

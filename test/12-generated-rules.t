@@ -10,13 +10,13 @@ Build:
   $ jenga build -a && ,jenga/example/hello.exe
   A: cat all.files | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
-  elaborated 8 rules and 8 targets
   A: cat all.files | grep '.h$' > h.files
   A: gcc -MG -MM $(cat c.files) > depends
   A: gcc -c -o main.o main.c
   A: gcc -c -o fib.o fib.c
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
   A: gcc -o hello.exe $(cat o.files)
+  checked 8 targets
   ran 8 commands
   Hello, 55 jenga. Discovered deps and generated rules.
 
@@ -24,10 +24,10 @@ Change & rebuild:
 
   $ sed -i 's/10/11/' example/defs.h
   $ jenga build -a && ,jenga/example/hello.exe
-  elaborated 8 rules and 8 targets
   A: gcc -MG -MM $(cat c.files) > depends
   A: gcc -c -o main.o main.c
   A: gcc -o hello.exe $(cat o.files)
+  checked 8 targets
   ran 3 commands
   Hello, 89 jenga. Discovered deps and generated rules.
 
@@ -48,7 +48,7 @@ Artifacts:
 Artifacts (materialize all)
 
   $ jenga build -a
-  elaborated 8 rules and 8 targets
+  checked 8 targets
   $ find ,jenga
   ,jenga
   ,jenga/example

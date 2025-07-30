@@ -20,10 +20,10 @@ Get the example.
 Initial build. Expect 3 actions to be run
 
   $ jenga build -a
-  elaborated 3 rules and 3 targets
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
+  checked 3 targets
   ran 3 commands
 
 Running executable returns exit code 17
@@ -46,12 +46,12 @@ Add -Wall to both compile rule. Two actions get rerun.
     gcc -Wall -c fib.c -o fib.o
 
   $ jenga build -a
-  elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
       3 | void main() { // Oops! main should be declared to return int.
         |      ^~~~
+  checked 3 targets
   ran 2 commands
 
 Fix code. Compile of main.c and link are rerun
@@ -64,9 +64,9 @@ Fix code. Compile of main.c and link are rerun
     printf("Hello, %d jenga!\n", fib(10));
   }
   $ jenga build -a && ,jenga/hello.exe
-  elaborated 3 rules and 3 targets
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
+  checked 3 targets
   ran 2 commands
   Hello, 55 jenga!
 
@@ -90,7 +90,6 @@ Define and use header file. Build fails because we failed to declare dependecy o
   }
 
   $ jenga build -a 2>&1 | grep -v 'called at'
-  elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   fib.c:1:10: fatal error: fib.h: No such file or directory
       1 | #include "fib.h"
@@ -122,7 +121,7 @@ Add missing dep to both compile rules
     gcc -Wall -c fib.c -o fib.o
 
   $ jenga build -a
-  elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  checked 3 targets
   ran 2 commands

@@ -7,12 +7,12 @@
 
 Initial build
   $ jenga build -a
-  elaborated 5 rules and 5 targets
   A: gcc -MG -MM fib.c > fib.d
   A: gcc -c fib.c -o fib.o
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
+  checked 5 targets
   ran 5 commands
 
 Run the executable
@@ -26,9 +26,9 @@ Inspect the generated deps
 
   $ echo '#define MY_CONST 11' > example/defs.h
   $ jenga build -a
-  elaborated 5 rules and 5 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
+  checked 5 targets
   ran 2 commands
   $ ,jenga/example/main.exe
   hello, 89 world with scanner deps

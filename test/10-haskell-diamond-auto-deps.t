@@ -6,7 +6,6 @@
   $ cp -rp $TESTDIR/../examples/10-haskell-diamond-auto-deps example
 
   $ jenga build -a
-  elaborated 10 rules and 15 targets
   A: find $HOME/.stack | grep -v lib | grep bin/ghc$ | sort -n | tail -1 > ghc-path
   A: echo exec $(cat ghc-path) '"$@"' > ghc.exe ; chmod +x ghc.exe
   A: echo 'import Top' > main.hs
@@ -17,13 +16,13 @@
   A: ./ghc.exe -c Top.hs
   A: ./ghc.exe -c main.hs
   A: ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
+  checked 15 targets
   ran 10 commands
 
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]
 
   $ jenga build -a --debug-demand
-  elaborated 10 rules and 15 targets
   B: Require: example/ghc-path
   B: Require: example/ghc.exe
   B: Require: example/depends
@@ -39,3 +38,4 @@
   B: Require: example/main.hi
   B: Require: example/main.o
   B: Require: example/diamond.exe
+  checked 15 targets

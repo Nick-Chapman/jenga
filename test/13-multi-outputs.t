@@ -7,7 +7,6 @@
 
 Build:
   $ jenga build -a
-  elaborated 3 rules and 4 targets
   A: echo 11 >> lots
   A: echo 22 >> lots
   A: echo 33 >> lots
@@ -18,16 +17,16 @@ Build:
   A: exit 0
   Here is a warning message!
   A: cat h t > final
+  checked 4 targets
   ran 9 commands
 
 And zero
   $ jenga build -a
-  elaborated 3 rules and 4 targets
+  checked 4 targets
 
 Change the example to error:
   $ sed -i 's|exit 0|exit 42|' example/build.jenga
   $ jenga build -a
-  elaborated 3 rules and 4 targets
   A: head -1 lots > h
   A: tail -1 lots > t
   A: touch x
@@ -41,7 +40,6 @@ Change the example to error:
 
 And zero
   $ jenga build -a
-  elaborated 3 rules and 4 targets
   Here is a warning message!
   ExitFailure 42
   Build failed for 1 reasons:

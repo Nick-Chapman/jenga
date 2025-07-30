@@ -34,11 +34,11 @@ Get the example.
 Build. Expect 4 actions to be run
 
   $ jenga build -a -c.
-  elaborated 4 rules and 4 targets
   A: gcc -MG -MM *.c > depends
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
+  checked 4 targets
   ran 4 commands
 
   $ find ,jenga

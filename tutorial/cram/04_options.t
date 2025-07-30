@@ -15,10 +15,10 @@ $ jenga --help
 $ jenga build -a --help
 
   $ jenga build -a -c.
-  elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
+  checked 3 targets
   ran 3 commands
 
 $ jenga build -a -f
@@ -49,7 +49,7 @@ Double build
 
   $ cp -rp example copied
   $ jenga build -a -c.
-  elaborated 6 rules and 6 targets
+  checked 6 targets
 
 What are the targets?
 
@@ -72,7 +72,7 @@ What are the targets?
 Controlling the scope of what to build
 
   $ jenga build -a copied -c.
-  elaborated 3 rules and 3 targets
+  checked 3 targets
 
   $ jenga build -a --list-targets copied -c.
   copied/fib.o
@@ -83,10 +83,10 @@ Temporary cache
 
   $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
-  elaborated 6 rules and 6 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
+  checked 6 targets
   ran 3 commands
 
 Non deterministic

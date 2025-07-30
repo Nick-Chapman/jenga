@@ -86,14 +86,14 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
     ModeBuild -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
-        reportSystem config system
         buildWithSystem config system
+        reportSystem config system
 
     ModeBuildAndRun target argsForTarget -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [FP.takeDirectory target])
-        reportSystem config system
         buildWithSystem config system
+        reportSystem config system
         Execute (XIO (callProcess (printf ",jenga/%s" target) argsForTarget))
 
 runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
@@ -138,13 +138,10 @@ pluralize :: Int -> String -> String
 pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
 
 reportSystem :: Config -> System -> B ()
-reportSystem Config{logMode,worker} system = do
+reportSystem Config{logMode,worker} System{rules} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
-  let System{rules} = system
-  let nRules = sum [ if hidden then 0 else 1 | Rule{hidden} <- rules ]
   let nTargets = sum [ length targets |  Rule{targets,hidden} <- rules, not hidden ]
-  when (not quiet && not worker) $
-    BLog $ printf "elaborated %s and %s" (pluralize nRules "rule") (pluralize nTargets "target")
+  when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
 buildAndMaterialize :: Config -> How -> Key -> B ()
 buildAndMaterialize config how key = do

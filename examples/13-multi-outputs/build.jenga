@@ -8,7 +8,6 @@ h t : lots
  head -1 lots > h
  tail -1 lots > t
  touch x
- echo Here is a warning message!
  exit 0
 
 final: h t

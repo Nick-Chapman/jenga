@@ -127,7 +127,7 @@ $ find ,jenga -type f | xargs ls -l
   tmp/.cache/jenga/traces/3b1752ae99a806ef91b76db4a8ad04ee
 
   $ cat tmp/.cache/jenga/traces/ece1c74b8879dc65057455ea170dbdec
-  Success [("hello.exe","0fcce4811e995a71fe45c2826bb0868b")]
+  TRACE [RUN {exitCode = ExitSuccess, stdout = "", stderr = ""}] (Just [("hello.exe","0fcce4811e995a71fe45c2826bb0868b")])
 
 
 Double build

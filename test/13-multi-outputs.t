@@ -6,6 +6,7 @@
   $ cp -rp $TESTDIR/../examples/13-multi-outputs example
 
 Build:
+
   $ jenga build -a
   A: echo 11 >> lots
   A: echo 22 >> lots
@@ -13,34 +14,51 @@ Build:
   A: head -1 lots > h
   A: tail -1 lots > t
   A: touch x
-  A: echo Here is a warning message!
   A: exit 0
-  Here is a warning message!
   A: cat h t > final
   checked 4 targets
-  ran 9 commands
+  ran 8 commands
 
 And zero
   $ jenga build -a
   checked 4 targets
 
-Change the example to error:
+Change the example to echo a warning before exiting
+
+  $ sed -i 's|exit 0|echo WARNING; exit 0|' example/build.jenga
+  $ jenga build -a
+  A: head -1 lots > h
+  A: tail -1 lots > t
+  A: touch x
+  A: echo WARNING; exit 0
+  WARNING
+  checked 4 targets
+  ran 4 commands
+
+And zero build (see warning even though no actions were run)
+
+  $ jenga build -a
+  WARNING
+  checked 4 targets
+
+Change the example to have a non-zero error code
+
   $ sed -i 's|exit 0|exit 42|' example/build.jenga
   $ jenga build -a
   A: head -1 lots > h
   A: tail -1 lots > t
   A: touch x
-  A: echo Here is a warning message!
-  A: exit 42
-  Here is a warning message!
+  A: echo WARNING; exit 42
+  WARNING
   ExitFailure 42
-  ran 5 commands
+  ran 4 commands
   Build failed for 1 reasons:
   (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'
 
-And zero
+And zero build (see warning and error, again even though no actions were run)
+
   $ jenga build -a
-  Here is a warning message!
+  WARNING
   ExitFailure 42
   Build failed for 1 reasons:
   (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'

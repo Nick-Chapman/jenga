@@ -313,12 +313,13 @@ verifyWitness config wkd rule = do
     Just wit -> do
       case wit of
         WitnessFAIL ares -> do
-          Execute (showActionRes "found-failure-witness" config ares)
+          Execute (showActionRes config ares)
           actionFailed rule
-        WitnessSUCC{wtargets} -> do
+        WitnessSUCC{wtargets,ares} -> do
           let WitMap m = wtargets
           ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
           if not ok then pure Nothing else do
+            Execute (showActionRes config ares)
             pure (Just wtargets)
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
@@ -393,7 +394,7 @@ runActionSaveWitness config action wkd depWit rule = do
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
   ares <- BRunActionInDir sandbox action
-  Execute (showActionRes "orignal-runner" config ares)
+  Execute (showActionRes config ares)
   let ok = actionResIsOk ares
   case ok of
     False -> do
@@ -401,8 +402,8 @@ runActionSaveWitness config action wkd depWit rule = do
       saveWitness wkd wit
       actionFailed rule
     True -> do
-      wtargets <- cacheOutputs sandbox rule
-      let wit = WitnessSUCC { wtargets }
+      wtargets <- cacheOutputs sandbox rule -- If this fails we dont write a witness. TODO: is that right?
+      let wit = WitnessSUCC { wtargets, ares }
       saveWitness wkd wit
       pure wtargets
 
@@ -497,7 +498,7 @@ instance Show Digest where show (Digest str) = str
 type Witness = WitnessValue
 
 data WitnessValue
-  = WitnessSUCC { wtargets :: WitMap }
+  = WitnessSUCC { wtargets :: WitMap, ares :: ActionRes }
   | WitnessFAIL ActionRes
 
 -- TODO: target set in witness key? i.e. forcing rerun when add or remove targets
@@ -559,9 +560,7 @@ importWitness s = fromQ <$> readMaybe s
 exportWitness :: Witness -> String
 exportWitness = show . toQ
 
-data QWitness
-  = Success QWitMap
-  | Failure [QCommandRes]
+data QWitness = TRACE [QCommandRes] (Maybe QWitMap) -- Nothing indicates failure
   deriving (Show,Read)
 
 data QCommandRes = RUN
@@ -577,20 +576,22 @@ type QDigest = String
 toQ :: Witness -> QWitness
 toQ = \case
   WitnessFAIL (ActionRes xs) -> do
-    let fromCommandRes CommandRes{exitCode,stdout,stderr} = RUN{exitCode,stdout,stderr}
-    Failure (map fromCommandRes xs)
-  WitnessSUCC{wtargets} -> do
-    let fromStore (WitMap m) = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
-    Success (fromStore wtargets)
+    let cs = [ RUN{exitCode,stdout,stderr} | CommandRes{exitCode,stdout,stderr} <- xs ]
+    TRACE cs Nothing
+  WitnessSUCC{wtargets=WitMap m,ares=ActionRes xs} -> do
+    let cs = [ RUN{exitCode,stdout,stderr} | CommandRes{exitCode,stdout,stderr} <- xs ]
+    let targets = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
+    TRACE cs (Just targets)
 
 fromQ :: QWitness -> Witness
 fromQ = \case
-  Success targets -> do
-    let toStore xs = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- xs ])
-    WitnessSUCC{wtargets = toStore targets}
-  Failure xs -> do
-    let toCommandRes RUN{exitCode,stdout,stderr} = CommandRes{exitCode,stdout,stderr}
-    WitnessFAIL (ActionRes (map toCommandRes xs))
+  TRACE cs topt -> do
+    let ares = ActionRes [ CommandRes{exitCode,stdout,stderr} | RUN{exitCode,stdout,stderr} <- cs ]
+    case topt of
+      Nothing -> WitnessFAIL ares
+      Just targets -> do
+        let wtargets = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- targets ])
+        WitnessSUCC{wtargets,ares}
 
 ----------------------------------------------------------------------
 -- Result from running actions
@@ -610,10 +611,9 @@ actionResIsOk (ActionRes xs) =
          , let ok = case exitCode of ExitSuccess -> True; ExitFailure{} -> False
          ]
 
-showActionRes :: String -> Config -> ActionRes -> X ()
-showActionRes _who Config{worker} (ActionRes xs) = do
+showActionRes :: Config -> ActionRes -> X ()
+showActionRes Config{worker} (ActionRes xs) = do
   when (not worker) $ do
-    --XLog (show ("showActionRes",_who))
     XIO $ do
       forM_ xs $ \CommandRes{exitCode,stdout,stderr} -> do
         -- TODO: distinuish stdout/stderr? link to rule?

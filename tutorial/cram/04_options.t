@@ -26,7 +26,6 @@ $ jenga build -a -f
 List targets
 
   $ jenga build -a --list-targets -c.
-  elaborated 3 rules and 3 targets
   example/fib.o
   example/main.o
   example/hello.exe
@@ -34,7 +33,6 @@ List targets
 List rules
 
   $ jenga build -a --list-rules -c.
-  elaborated 3 rules and 3 targets
   example/fib.o : example/fib.c example/fib.h
     cd example ; gcc -Wall -c fib.c -o fib.o
   
@@ -56,7 +54,6 @@ Double build
 What are the targets?
 
   $ jenga build -a --list-targets -c.
-  elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
   example/hello.exe
@@ -65,7 +62,6 @@ What are the targets?
   copied/hello.exe
 
   $ jenga build -a --list-targets -c.
-  elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
   example/hello.exe
@@ -79,7 +75,6 @@ Controlling the scope of what to build
   elaborated 3 rules and 3 targets
 
   $ jenga build -a --list-targets copied -c.
-  elaborated 3 rules and 3 targets
   copied/fib.o
   copied/main.o
   copied/hello.exe

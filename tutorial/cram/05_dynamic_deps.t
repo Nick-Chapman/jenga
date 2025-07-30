@@ -63,14 +63,12 @@ See the depends
 See the targets and rules
 
   $ jenga build -a --list-targets -c.
-  elaborated 4 rules and 4 targets
   example/depends
   example/fib.o
   example/main.o
   example/hello.exe
 
   $ jenga build -a -r -c.
-  elaborated 4 rules and 4 targets
   example/depends : example/main.c example/fib.c
     cd example ; gcc -MG -MM *.c > depends
   
@@ -84,7 +82,6 @@ See the targets and rules
     cd example ; gcc main.o fib.o -o hello.exe
 
   $ (cd example; ../jenga build -r -c..)
-  elaborated 4 rules and 4 targets
   depends : main.c fib.c
     gcc -MG -MM *.c > depends
   
@@ -99,7 +96,6 @@ See the targets and rules
 
   $ (cd example; ../jenga build -arf)  | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
-  elaborated 4 rules and 4 targets
   A: gcc -MG -MM *.c > depends
   depends : main.c fib.c
     gcc -MG -MM *.c > depends

@@ -387,7 +387,7 @@ existsKey how key =
 
 
 runActionSaveWitness :: Config -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
-runActionSaveWitness config@Config{keepSandBoxes} action wkd depWit rule = do
+runActionSaveWitness config action wkd depWit rule = do
   sandbox <- BNewSandbox
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
@@ -402,7 +402,7 @@ runActionSaveWitness config@Config{keepSandBoxes} action wkd depWit rule = do
       actionFailed rule
     True -> do
       wtargets <- cacheOutputs sandbox rule
-      when (not keepSandBoxes) $ Execute (XRemoveDirRecursive sandbox)
+      Execute (XRemoveDirRecursive sandbox)
       let wit = WitnessSUCC { wtargets }
       saveWitness wkd wit
       pure wtargets
@@ -670,15 +670,10 @@ data B a where
   BYield :: B ()
 
 runB :: Loc -> Config -> B () -> X ()
-runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
+runB cacheDir config@Config{logMode} build0 = do
   loop build bstate0 kFinal
   where
     build = do
-      let see = case logMode of LogQuiet -> False; _ -> True
-      Execute $ do
-        myPid <- XIO getCurrentPid
-        when (see && keepSandBoxes) $ do
-          XLog (printf "sandboxes created in: %s" (show (sandboxParent myPid)))
       initDirs
       build0
 
@@ -689,7 +684,7 @@ runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
       when ((length active + length blocked) /= 0) $ error "runB: unexpected left over jobs"
 
       myPid <- XIO getCurrentPid
-      when (not keepSandBoxes) $ XRemoveDirRecursive (sandboxParent myPid)
+      XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
       let i = runCounter
       when (see && i>0) $ XLog (printf "ran %s" (pluralize i "command"))

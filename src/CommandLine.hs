@@ -16,7 +16,6 @@ data Config = Config
   , jnum :: Int
   , seePid :: Bool
   , cacheDirSpec :: CacheDirSpec
-  , keepSandBoxes :: Bool -- TODO: what is the point of this?
   , logMode :: LogMode
   , debugDemand :: Bool
   , debugExternal :: Bool
@@ -109,10 +108,6 @@ sharedOptions defaultLogMode args buildMode = do
     (short 'f' <> long "temporary-cache"
      <> help "Build using temporary cache to force build actions")
     <|> pure CacheDirDefault
-
-  keepSandBoxes <-
-    switch (short 'k' <> long "keep-sandboxes"
-            <> help "Keep sandboxes when build completes")
 
   logMode <-
     flag' LogActions

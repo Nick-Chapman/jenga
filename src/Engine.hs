@@ -385,7 +385,6 @@ existsKey how key =
     let Key loc = key
     Execute (XFileExists loc)
 
-
 runActionSaveWitness :: Config -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
 runActionSaveWitness config action wkd depWit rule = do
   sandbox <- BNewSandbox
@@ -394,7 +393,6 @@ runActionSaveWitness config action wkd depWit rule = do
   ares <- BRunActionInDir sandbox action
   Execute (showActionRes "orignal-runner" config ares)
   let ok = actionResIsOk ares
-  -- TODO: always remove sandboxes?
   case ok of
     False -> do
       let wit = WitnessFAIL ares
@@ -402,7 +400,6 @@ runActionSaveWitness config action wkd depWit rule = do
       actionFailed rule
     True -> do
       wtargets <- cacheOutputs sandbox rule
-      Execute (XRemoveDirRecursive sandbox)
       let wit = WitnessSUCC { wtargets }
       saveWitness wkd wit
       pure wtargets
@@ -682,7 +679,6 @@ runB cacheDir config@Config{logMode} build0 = do
     kFinal :: BState -> BuildRes () -> X ()
     kFinal BState{runCounter,active,blocked} res = do
       when ((length active + length blocked) /= 0) $ error "runB: unexpected left over jobs"
-
       myPid <- XIO getCurrentPid
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True

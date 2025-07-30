@@ -11,7 +11,7 @@ Get me the source code for the first example...
   $ cp -rpL $TESTDIR/../examples/02-discover-deps example
 
 Build from clean:
-  $ jenga build
+  $ jenga build -a
   A: cat all.files | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
@@ -29,14 +29,14 @@ Build from clean:
   hello, 55 world with auto discovery
 
 Zero rebuild:
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   $ ,jenga/example/main.exe
   hello, 55 world with auto discovery
 
 Change main.c
   $ sed -i 's/world/UNIVERSE/g' example/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   A: gcc -MG -MM main.c -MF main.d
   A: gcc -c main.c -o main.o
@@ -47,7 +47,7 @@ Change main.c
 
 Whitespace change to fib.h
   $ sed -i 's/int fib/int      fib/g' example/fib.h
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
@@ -57,7 +57,7 @@ Whitespace change to fib.h
 
 Change const value in defs.h
   $ echo '#define MY_CONST 11' > example/defs.h
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
@@ -67,14 +67,14 @@ Change const value in defs.h
 
 Setup ALT defs file (causes no actions):
   $ echo '#define MY_CONST 12' > example/defsALT.h
-  $ jenga build
+  $ jenga build -a
   A: cat all.files | grep '.c$' > c.files
   elaborated 11 rules and 11 targets
   ran 1 action
 
 Switch main to use ALT defs:
   $ sed -i 's/defs/defsALT/g' example/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   A: gcc -MG -MM main.c -MF main.d
   A: gcc -c main.c -o main.o
@@ -85,14 +85,14 @@ Switch main to use ALT defs:
 
 Modify original defs file back to original value (causes no action):
   $ echo '#define MY_CONST 10' > example/defs.h
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   $ ,jenga/example/main.exe
   hello, 144 UNIVERSE with auto discovery
 
 Switch main back to origianl defs file (causes no action)::
   $ sed -i 's/defsALT/defs/g' example/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 11 rules and 11 targets
   $ ,jenga/example/main.exe
   hello, 55 UNIVERSE with auto discovery
@@ -102,7 +102,7 @@ Use feature of CC setup macro which is conditionally dependent on cflags key...
 
 Compile with -Wall:
   $ echo '-Wall' > example/cflags
-  $ jenga build
+  $ jenga build -a
   A: cat all.files | grep '.c$' > c.files
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
@@ -113,7 +113,7 @@ Compile with -Wall:
 
 Compile with -O2 causes relink:
   $ echo '-O2' > example/cflags
-  $ jenga build
+  $ jenga build -a
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   elaborated 11 rules and 11 targets

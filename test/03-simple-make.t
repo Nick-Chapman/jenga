@@ -5,7 +5,7 @@
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/03-simple-make example
 
-  $ jenga build
+  $ jenga build -a
   elaborated 4 rules and 4 targets
   A: grep -v '^$' defs.h.in > defs.h
   A: gcc -c fib.c -o fib.o

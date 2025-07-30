@@ -49,7 +49,7 @@ subCommands =
       (progDesc "Build and run a single executable target")))
 
 buildCommand :: Parser Config
-buildCommand = sharedOptions LogActions
+buildCommand = sharedOptions LogNormal
   <*>
   (
     flag' ModeListTargets

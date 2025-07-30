@@ -6,7 +6,7 @@
   $ cp -rp $TESTDIR/../examples/13-multi-outputs example
 
 Build:
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 4 targets
   A: echo 11 >> lots
   A: echo 22 >> lots
@@ -21,12 +21,12 @@ Build:
   ran 3 actions
 
 And zero
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 4 targets
 
 Change the example to error:
   $ sed -i 's|exit 0|exit 42|' example/build.jenga
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 4 targets
   A: head -1 lots > h
   A: tail -1 lots > t
@@ -40,7 +40,7 @@ Change the example to error:
   (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'
 
 And zero
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 4 targets
   Here is a warning message!
   ExitFailure 42

@@ -12,20 +12,20 @@ Get the example.
 copied from the markdown...
 
 $ jenga --help
-$ jenga build --help
+$ jenga build -a --help
 
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
   ran 3 actions
 
-$ jenga build -f
+$ jenga build -a -f
 
 List targets
 
-  $ jenga build --list-targets -c.
+  $ jenga build -a --list-targets -c.
   elaborated 3 rules and 3 targets
   example/fib.o
   example/main.o
@@ -33,7 +33,7 @@ List targets
 
 List rules
 
-  $ jenga build --list-rules -c.
+  $ jenga build -a --list-rules -c.
   elaborated 3 rules and 3 targets
   example/fib.o : example/fib.c example/fib.h
     cd example ; gcc -Wall -c fib.c -o fib.o
@@ -50,12 +50,12 @@ The following stuff is for section 04...
 Double build
 
   $ cp -rp example copied
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 6 rules and 6 targets
 
 What are the targets?
 
-  $ jenga build --list-targets -c.
+  $ jenga build -a --list-targets -c.
   elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
@@ -64,7 +64,7 @@ What are the targets?
   copied/main.o
   copied/hello.exe
 
-  $ jenga build --list-targets -c.
+  $ jenga build -a --list-targets -c.
   elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
@@ -75,10 +75,10 @@ What are the targets?
 
 Controlling the scope of what to build
 
-  $ jenga build copied -c.
+  $ jenga build -a copied -c.
   elaborated 3 rules and 3 targets
 
-  $ jenga build --list-targets copied -c.
+  $ jenga build -a --list-targets copied -c.
   elaborated 3 rules and 3 targets
   copied/fib.o
   copied/main.o
@@ -86,7 +86,7 @@ Controlling the scope of what to build
 
 Temporary cache
 
-  $ jenga build -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   elaborated 6 rules and 6 targets
   A: gcc -Wall -c fib.c -o fib.o
@@ -95,5 +95,5 @@ Temporary cache
   ran 3 actions
 
 Non deterministic
-$ jenga build -fj2 | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
-$ jenga build -fj2 --show-pid
+$ jenga build -a -fj2 | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+$ jenga build -a -fj2 --show-pid

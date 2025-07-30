@@ -6,7 +6,7 @@
   $ cp -rp $TESTDIR/../examples/07-scanner-deps example
 
 Initial build
-  $ jenga build
+  $ jenga build -a
   elaborated 5 rules and 5 targets
   A: gcc -MG -MM fib.c > fib.d
   A: gcc -c fib.c -o fib.o
@@ -25,7 +25,7 @@ Inspect the generated deps
   fib.o: fib.c fib.h
 
   $ echo '#define MY_CONST 11' > example/defs.h
-  $ jenga build
+  $ jenga build -a
   elaborated 5 rules and 5 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe

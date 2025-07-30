@@ -23,7 +23,7 @@ What have I got?
 
 Build from clean:
 
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
@@ -46,13 +46,13 @@ Run the built artifact:
 
 Rebuild after no changes:
 
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
 
 Update main.c "world->UNIVERSE" and rerun:
 
   $ sed -i 's/world/UNIVERSE/g' example/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
@@ -63,7 +63,7 @@ Update main.c "world->UNIVERSE" and rerun:
 Reverting to previous state of main.c causes no rebuilding:
 
   $ sed -i 's/UNIVERSE/world/g' example/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   $ ,jenga/example/main.exe
   hello, 55 world
@@ -71,7 +71,7 @@ Reverting to previous state of main.c causes no rebuilding:
 Whitespace only change to main.c cause no link step (early cutoff):
 
   $ sed -i 's/int main/int      main/g' example/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -c main.c -o main.o
   ran 1 action
@@ -79,7 +79,7 @@ Whitespace only change to main.c cause no link step (early cutoff):
 Update build rules to link executable under a different name:
 
   $ sed -i 's/main.exe/RENAMED.exe/' example/build.jenga
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc fib.o main.o -o RENAMED.exe
   ran 1 action
@@ -97,7 +97,7 @@ Update build rules to link executable under a different name:
 Relocate the example to a new directory; no rebuilds:
 
   $ mv example RELOCATED
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
 
   $ find ,jenga
@@ -110,7 +110,7 @@ Relocate the example to a new directory; no rebuilds:
 Duplicate the example directory; double elaborated rules; still no rebuilds:
 
   $ cp -rp RELOCATED ANOTHER
-  $ jenga build
+  $ jenga build -a
   elaborated 6 rules and 6 targets
 
   $ find ,jenga
@@ -127,7 +127,7 @@ Duplicate the example directory; double elaborated rules; still no rebuilds:
 Modify code in one of the example directories; minimal rebuild as required:
 
   $ sed -i 's/fib(10)/fib(20)/g' RELOCATED/main.c
-  $ jenga build
+  $ jenga build -a
   elaborated 6 rules and 6 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o RENAMED.exe
@@ -142,7 +142,7 @@ Run the two versions:
 
 Materalize all targets:
 
-  $ jenga build
+  $ jenga build -a
   elaborated 6 rules and 6 targets
 
   $ find ,jenga
@@ -158,7 +158,7 @@ Materalize all targets:
 
 Materalize just artifacts:
 
-  $ jenga build
+  $ jenga build -a
   elaborated 6 rules and 6 targets
 
   $ find ,jenga
@@ -175,7 +175,7 @@ Materalize just artifacts:
 Remove one directory copy
 
   $ rm -rf RELOCATED
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   $ find ,jenga
   ,jenga

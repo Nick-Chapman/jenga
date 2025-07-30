@@ -51,7 +51,7 @@ Get an up-to-date jenga executable in path, which runs with a local cachee
 
 Initial build. Expect 3 actions to be run
 
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
@@ -60,7 +60,7 @@ Initial build. Expect 3 actions to be run
 
 Zero build
 
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 3 rules and 3 targets
 
   $ find ,jenga
@@ -71,7 +71,7 @@ Zero build
   ,jenga/example/main.o
 
   $ cd example
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   $ find ,jenga
   ,jenga
@@ -82,14 +82,14 @@ Zero build
 
 Specifying a build cache
 
-  $ jenga build --cache=tmp
+  $ jenga build -a --cache=tmp
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
   ran 3 actions
 
-  $ jenga build --cache=tmp
+  $ jenga build -a --cache=tmp
   elaborated 3 rules and 3 targets
 
   $ find tmp/.cache/jenga/files
@@ -133,12 +133,12 @@ $ find ,jenga -type f | xargs ls -l
 Double build
 
   $ cp -rp example copied
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 6 rules and 6 targets
 
 What are the targets?
 
-  $ jenga build --list-targets -c.
+  $ jenga build -a --list-targets -c.
   elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
@@ -147,7 +147,7 @@ What are the targets?
   copied/main.o
   copied/hello.exe
 
-  $ jenga build --list-targets -c.
+  $ jenga build -a --list-targets -c.
   elaborated 6 rules and 6 targets
   example/fib.o
   example/main.o
@@ -158,10 +158,10 @@ What are the targets?
 
 Controlling the scope of what to build
 
-  $ jenga build copied -c.
+  $ jenga build -a copied -c.
   elaborated 3 rules and 3 targets
 
-  $ jenga build --list-targets copied -c.
+  $ jenga build -a --list-targets copied -c.
   elaborated 3 rules and 3 targets
   copied/fib.o
   copied/main.o
@@ -169,13 +169,13 @@ Controlling the scope of what to build
 
 Builds are relative
   $ cd copied
-  $ jenga build -c..
+  $ jenga build -a -c..
   elaborated 3 rules and 3 targets
   $ cd ..
 
 Using a non-default cache:
 
-  $ jenga build --cache=my-cache
+  $ jenga build -a --cache=my-cache
   elaborated 6 rules and 6 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
@@ -184,12 +184,12 @@ Using a non-default cache:
 
 Using a non-default cache (still get minimal builds)
 
-  $ jenga build --cache=my-cache
+  $ jenga build -a --cache=my-cache
   elaborated 6 rules and 6 targets
 
 Using a temporary cache with -f. Forces run of all the actions
 
-  $ jenga build -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   elaborated 6 rules and 6 targets
   A: gcc -Wall -c fib.c -o fib.o
@@ -197,7 +197,7 @@ Using a temporary cache with -f. Forces run of all the actions
   A: gcc main.o fib.o -o hello.exe
   ran 3 actions
 
-  $ jenga build -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   elaborated 6 rules and 6 targets
   A: gcc -Wall -c fib.c -o fib.o
@@ -207,7 +207,7 @@ Using a temporary cache with -f. Forces run of all the actions
 
 Where are the targets? ,jenga dir is created relative to where the build started
 
-  $ jenga build
+  $ jenga build -a
   elaborated 6 rules and 6 targets
   $ find ,jenga
   ,jenga
@@ -220,7 +220,7 @@ Where are the targets? ,jenga dir is created relative to where the build started
   ,jenga/copied/hello.exe
   ,jenga/copied/main.o
 
-  $ jenga build copied
+  $ jenga build -a copied
   elaborated 3 rules and 3 targets
   $ find ,jenga
   ,jenga
@@ -239,7 +239,7 @@ Where are the targets? ,jenga dir is created relative to where the build started
 
 Artifacts are hardlinked to files in the cache (and each other)
 
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 6 rules and 6 targets
 
 Hardlink counts of 3 -- example,copied,.cache
@@ -255,7 +255,7 @@ Hardlink counts of 3 -- example,copied,.cache
 Hardlink counts of 2 -- example,.cache
 
   $ rm -rf copied
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 3 rules and 3 targets
 
   $ find ,jenga -type f | xargs stat -c "%h %n"
@@ -273,7 +273,7 @@ Hardlink counts of 1 -- example
 
 Rebuild, hardlink counts back to 2
 
-  $ jenga build -c.
+  $ jenga build -a -c.
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o

@@ -19,7 +19,7 @@ Get the example.
 
 Initial build. Expect 3 actions to be run
 
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
@@ -45,7 +45,7 @@ Add -Wall to both compile rule. Two actions get rerun.
   fib.o : fib.c
     gcc -Wall -c fib.c -o fib.o
 
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
@@ -63,7 +63,7 @@ Fix code. Compile of main.c and link are rerun
   int main() { // Oops! main should be declared to return int.
     printf("Hello, %d jenga!\n", fib(10));
   }
-  $ jenga build && ,jenga/hello.exe
+  $ jenga build -a && ,jenga/hello.exe
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
@@ -89,7 +89,7 @@ Define and use header file. Build fails because we failed to declare dependecy o
     return fib(x-1) + fib(x-2);
   }
 
-  $ jenga build 2>&1 | grep -v 'called at'
+  $ jenga build -a 2>&1 | grep -v 'called at'
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   fib.c:1:10: fatal error: fib.h: No such file or directory
@@ -121,7 +121,7 @@ Add missing dep to both compile rules
   fib.o : fib.c fib.h
     gcc -Wall -c fib.c -o fib.o
 
-  $ jenga build
+  $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o

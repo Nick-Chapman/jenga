@@ -7,7 +7,7 @@
 
 Build:
 
-  $ jenga build
+  $ jenga build -a
   elaborated 2 rules and 2 targets
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   A: gcc -o main.exe main.o
@@ -15,13 +15,13 @@ Build:
 
 Zero build:
 
-  $ jenga build
+  $ jenga build -a
   elaborated 2 rules and 2 targets
 
 Define CFLAGS; rebuilds:
 
   $ echo '-O2' > example/CFLAGS
-  $ jenga build
+  $ jenga build -a
   elaborated 2 rules and 2 targets
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   A: gcc -o main.exe main.o
@@ -30,7 +30,7 @@ Define CFLAGS; rebuilds:
 Change CFLAGS; rebuilds:
 
   $ echo '-Wall' > example/CFLAGS
-  $ jenga build
+  $ jenga build -a
   elaborated 2 rules and 2 targets
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
@@ -41,5 +41,5 @@ Change CFLAGS; rebuilds:
 Remove CFLAGS; reuse original build:
 
   $ rm example/CFLAGS
-  $ jenga build
+  $ jenga build -a
   elaborated 2 rules and 2 targets

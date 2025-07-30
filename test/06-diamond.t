@@ -5,7 +5,7 @@
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/06-diamond example
 
-  $ jenga build
+  $ jenga build -a
   elaborated 6 rules and 6 targets
   A: echo -n A > a
   A: echo -n B  > b
@@ -21,7 +21,7 @@
 The example has a diamond dependency on target 'b', reached via 'ab' and 'bc'.
 During any build (incuding a zero-rebuild) we should require 'b' more than once.
 
-  $ jenga build --debug-demand
+  $ jenga build -a --debug-demand
   elaborated 6 rules and 6 targets
   B: Require: example/top
   B: Require: example/ab

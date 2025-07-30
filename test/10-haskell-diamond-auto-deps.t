@@ -5,7 +5,7 @@
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/10-haskell-diamond-auto-deps example
 
-  $ jenga build
+  $ jenga build -a
   elaborated 10 rules and 15 targets
   A: find $HOME/.stack | grep -v lib | grep bin/ghc$ | sort -n | tail -1 > ghc-path
   A: echo exec $(cat ghc-path) '"$@"' > ghc.exe ; chmod +x ghc.exe
@@ -22,7 +22,7 @@
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]
 
-  $ jenga build --debug-demand
+  $ jenga build -a --debug-demand
   elaborated 10 rules and 15 targets
   B: Require: example/ghc-path
   B: Require: example/ghc.exe

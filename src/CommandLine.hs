@@ -5,7 +5,7 @@ module CommandLine
 
 import Options.Applicative
 
-data LogMode = LogQuiet | LogActions
+data LogMode = LogQuiet | LogNormal | LogActions
 
 data Config = Config
   { worker :: Bool -- can't set on command line; but convenient to have in config

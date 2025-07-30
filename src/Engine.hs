@@ -883,8 +883,8 @@ runX config@Config{logMode,debugExternal,debugInternal,debugLocking} = loop
       -- sandboxed execution of user's action; for now always a list of bash commands
       XRunActionInDir (Loc dir) Action{hidden,commands} -> ActionRes <$> do
         forM commands $ \command -> do
-          let quiet = case logMode of LogQuiet -> True; _ -> False
-          when (not hidden && not quiet) $ log $ printf "A: %s" command
+          let logAction = case logMode of LogActions -> True; _ -> False
+          when (not hidden && logAction) $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-
             withCurrentDirectory dir (readCreateProcessWithExitCode (shell command) "")
           pure $ CommandRes { exitCode, stdout, stderr }

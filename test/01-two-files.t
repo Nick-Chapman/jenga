@@ -28,7 +28,7 @@ Build from clean:
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 3 actions
+  ran 3 commands
 
 See the artifacts:
 
@@ -56,7 +56,7 @@ Update main.c "world->UNIVERSE" and rerun:
   elaborated 3 rules and 3 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 2 actions
+  ran 2 commands
   $ ,jenga/example/main.exe
   hello, 55 UNIVERSE
 
@@ -74,7 +74,7 @@ Whitespace only change to main.c cause no link step (early cutoff):
   $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc -c main.c -o main.o
-  ran 1 action
+  ran 1 command
 
 Update build rules to link executable under a different name:
 
@@ -82,7 +82,7 @@ Update build rules to link executable under a different name:
   $ jenga build -a
   elaborated 3 rules and 3 targets
   A: gcc fib.o main.o -o RENAMED.exe
-  ran 1 action
+  ran 1 command
 
   $ ,jenga/example/RENAMED.exe
   hello, 55 world
@@ -131,7 +131,7 @@ Modify code in one of the example directories; minimal rebuild as required:
   elaborated 6 rules and 6 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o RENAMED.exe
-  ran 2 actions
+  ran 2 commands
 
 Run the two versions:
 

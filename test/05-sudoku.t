@@ -14,7 +14,7 @@
   A: ./ghc.exe -c Sudoku.hs -XLambdaCase
   A: ./ghc.exe -c main.hs
   A: ./ghc.exe main.o Sudoku.o -package containers -o solver.exe
-  ran 7 actions
+  ran 7 commands
 
   $ ,jenga/example/solver.exe example/puzzle
   ...3.9..5

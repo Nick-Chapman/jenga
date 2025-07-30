@@ -19,7 +19,7 @@
   A: gcc -MG -MM main.c -MF main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 12 actions
+  ran 12 commands
 
   $ find ,jenga
   ,jenga

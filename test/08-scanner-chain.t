@@ -14,7 +14,7 @@ Initial build
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 6 actions
+  ran 6 commands
 
 Run the executable
   $ ,jenga/example/main.exe
@@ -32,7 +32,7 @@ Mod-A (change const value)
   elaborated 6 rules and 6 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 2 actions
+  ran 2 commands
   $ ,jenga/example/main.exe
   hello, 89 world with #include chain
   $ find ,jenga -name '*.d*' | xargs grep .
@@ -47,7 +47,7 @@ Mod-B (shorten the chain)
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 3 actions
+  ran 3 commands
   $ ,jenga/example/main.exe
   hello, 144 world with #include chain
   $ find ,jenga -name '*.d*' | xargs grep .
@@ -63,7 +63,7 @@ Mod-C (repoint the chain)
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 3 actions
+  ran 3 commands
   $ ,jenga/example/main.exe
   hello, 233 world with #include chain
   $ find ,jenga -name '*.d*' | xargs grep .

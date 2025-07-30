@@ -17,7 +17,7 @@ Build:
   A: gcc -c -o fib.o fib.c
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
   A: gcc -o hello.exe $(cat o.files)
-  ran 8 actions
+  ran 8 commands
   Hello, 55 jenga. Discovered deps and generated rules.
 
 Change & rebuild:
@@ -28,7 +28,7 @@ Change & rebuild:
   A: gcc -MG -MM $(cat c.files) > depends
   A: gcc -c -o main.o main.c
   A: gcc -o hello.exe $(cat o.files)
-  ran 3 actions
+  ran 3 commands
   Hello, 89 jenga. Discovered deps and generated rules.
 
 Artifacts:

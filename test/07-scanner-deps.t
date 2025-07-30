@@ -13,7 +13,7 @@ Initial build
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 5 actions
+  ran 5 commands
 
 Run the executable
   $ ,jenga/example/main.exe
@@ -29,6 +29,6 @@ Inspect the generated deps
   elaborated 5 rules and 5 targets
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 2 actions
+  ran 2 commands
   $ ,jenga/example/main.exe
   hello, 89 world with scanner deps

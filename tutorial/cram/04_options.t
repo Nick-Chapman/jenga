@@ -19,7 +19,7 @@ $ jenga build -a --help
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
 $ jenga build -a -f
 
@@ -92,7 +92,7 @@ Temporary cache
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
 Non deterministic
 $ jenga build -a -fj2 | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'

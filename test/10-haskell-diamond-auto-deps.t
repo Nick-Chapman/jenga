@@ -17,7 +17,7 @@
   A: ./ghc.exe -c Top.hs
   A: ./ghc.exe -c main.hs
   A: ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
-  ran 10 actions
+  ran 10 commands
 
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]

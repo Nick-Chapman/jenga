@@ -11,7 +11,7 @@ Build:
   elaborated 2 rules and 2 targets
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   A: gcc -o main.exe main.o
-  ran 2 actions
+  ran 2 commands
 
 Zero build:
 
@@ -25,7 +25,7 @@ Define CFLAGS; rebuilds:
   elaborated 2 rules and 2 targets
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   A: gcc -o main.exe main.o
-  ran 2 actions
+  ran 2 commands
 
 Change CFLAGS; rebuilds:
 
@@ -36,7 +36,7 @@ Change CFLAGS; rebuilds:
   main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
       2 | void main() { //m ain ought to be declared as int. -Wall will detect this.
         |      ^~~~
-  ran 1 action
+  ran 1 command
 
 Remove CFLAGS; reuse original build:
 

@@ -13,7 +13,7 @@
   A: echo -n C > c
   A: cat b c > bc
   A: cat ab bc > top
-  ran 6 actions
+  ran 6 commands
 
   $ cat ,jenga/example/top
   ABBC (no-eol)

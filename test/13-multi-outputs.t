@@ -18,7 +18,7 @@ Build:
   A: exit 0
   Here is a warning message!
   A: cat h t > final
-  ran 3 actions
+  ran 9 commands
 
 And zero
   $ jenga build -a
@@ -35,7 +35,7 @@ Change the example to error:
   A: exit 42
   Here is a warning message!
   ExitFailure 42
-  ran 1 action
+  ran 5 commands
   Build failed for 1 reasons:
   (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'
 

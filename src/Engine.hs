@@ -697,9 +697,7 @@ runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
       when (not keepSandBoxes) $ XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
       let i = runCounter
-      when (see && i>0) $ do
-        XLog (printf "ran %s" (pluralize i "action"))
-
+      when (see && i>0) $ XLog (printf "ran %s" (pluralize i "command"))
       reportBuildRes config res
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X ()) -> X ()
@@ -719,9 +717,9 @@ runB cacheDir config@Config{keepSandBoxes,logMode} build0 = do
         let BState{sandboxCounter=i} = s
         k s { sandboxCounter = 1 + i } (SUCC (sandboxParent myPid </> show i))
 
-      BRunActionInDir sandbox action@Action{hidden} -> do
+      BRunActionInDir sandbox action@Action{hidden,commands} -> do
         res <- XRunActionInDir sandbox action
-        k s { runCounter = runCounter s + (if hidden then 0 else 1)} (SUCC res)
+        k s { runCounter = runCounter s + (if hidden then 0 else length commands)} (SUCC res)
 
       Execute x -> do a <- x; k s (SUCC a)
 

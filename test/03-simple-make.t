@@ -11,7 +11,7 @@
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  ran 4 actions
+  ran 4 commands
 
   $ find ,jenga
   ,jenga

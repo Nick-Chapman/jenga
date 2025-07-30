@@ -18,7 +18,7 @@
   A: echo 'import Top' > main.hs
   A: ./ghc.exe -c main.hs
   A: ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
-  ran 9 actions
+  ran 11 commands
 
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]

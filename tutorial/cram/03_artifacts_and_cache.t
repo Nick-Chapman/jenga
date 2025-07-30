@@ -56,7 +56,7 @@ Initial build. Expect 3 actions to be run
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
 Zero build
 
@@ -87,7 +87,7 @@ Specifying a build cache
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
   $ jenga build -a --cache=tmp
   elaborated 3 rules and 3 targets
@@ -180,7 +180,7 @@ Using a non-default cache:
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
 Using a non-default cache (still get minimal builds)
 
@@ -195,7 +195,7 @@ Using a temporary cache with -f. Forces run of all the actions
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
   $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
@@ -203,7 +203,7 @@ Using a temporary cache with -f. Forces run of all the actions
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
 Where are the targets? ,jenga dir is created relative to where the build started
 
@@ -278,7 +278,7 @@ Rebuild, hardlink counts back to 2
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
   $ find ,jenga -type f | xargs stat -c "%h %n"
   2 ,jenga/example/fib.o

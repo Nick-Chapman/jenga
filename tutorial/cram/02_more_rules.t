@@ -24,7 +24,7 @@ Initial build. Expect 3 actions to be run
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 3 actions
+  ran 3 commands
 
 Running executable returns exit code 17
 
@@ -52,7 +52,7 @@ Add -Wall to both compile rule. Two actions get rerun.
   main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
       3 | void main() { // Oops! main should be declared to return int.
         |      ^~~~
-  ran 2 actions
+  ran 2 commands
 
 Fix code. Compile of main.c and link are rerun
 
@@ -67,7 +67,7 @@ Fix code. Compile of main.c and link are rerun
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 2 actions
+  ran 2 commands
   Hello, 55 jenga!
 
 Define and use header file. Build fails because we failed to declare dependecy on fib.h
@@ -103,7 +103,7 @@ Define and use header file. Build fails because we failed to declare dependecy o
         |          ^~~~~~~
   compilation terminated.
   ExitFailure 1
-  ran 2 actions
+  ran 2 commands
   Build failed for 2 reasons:
   (1) 'fib.o': action failed for rule 'build.jenga:7'
   (2) 'main.o': action failed for rule 'build.jenga:4'
@@ -125,4 +125,4 @@ Add missing dep to both compile rules
   elaborated 3 rules and 3 targets
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
-  ran 2 actions
+  ran 2 commands

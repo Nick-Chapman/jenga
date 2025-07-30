@@ -39,7 +39,7 @@ Build. Expect 4 actions to be run
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  ran 4 actions
+  ran 4 commands
 
   $ find ,jenga
   ,jenga
@@ -112,4 +112,4 @@ See the targets and rules
   
   hello.exe : main.o fib.o
     gcc main.o fib.o -o hello.exe
-  ran 1 action
+  ran 1 command

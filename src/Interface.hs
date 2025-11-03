@@ -3,6 +3,7 @@ module Interface
   , Rule(..)    -- A Rule with dynamic dependencies.
   , Action(..)  -- A user action which is run when a rule triggers.
   , D(..)       -- The Dependency monad.
+  , Target(..)  -- targets + materialization control
   , Key(..)     -- An identifier for targets and dependencies.
   , Loc(..)     -- A file-path location.
   , What(..)    -- what kind of file-system object is at a given location
@@ -30,8 +31,13 @@ data Rule = Rule
   { rulename :: String
   , dir :: Loc
   , hidden :: Bool
-  , targets :: [Key]
+  , targets :: [Target]
   , depcom :: D Action
+  }
+
+data Target = Target
+  { materialize :: Bool
+  , key :: Key
   }
 
 data Action = Action

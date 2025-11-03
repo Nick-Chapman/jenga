@@ -12,7 +12,7 @@ import Data.List qualified as List (foldl')
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Interface (G(..),D(..),Rule(..),Action(..),Key(..),Loc(..),What(..))
+import Interface (G(..),D(..),Rule(..),Action(..),Target(..), Key(..),Loc(..),What(..))
 import StdBuildUtils ((</>),dirLoc)
 import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile,getHomeDirectory)
 import System.Environment (lookupEnv)
@@ -67,7 +67,7 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{rules} = system
-        let allTargets = [ target | Rule{hidden,targets} <- rules, target <- targets, not hidden ]
+        let allTargets = [ target | Rule{hidden,targets} <- rules, Target {key = target} <- targets, not hidden ]
         sequence_ [ BLog (show key) | key <- allTargets ]
 
     ModeListRules -> do
@@ -79,7 +79,8 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
                         pure [ StaticRule { rulename, dir, targets, deps, action }
                              | not actionHidden
                              ]
-                   | Rule{rulename,dir,hidden=ruleHidden,targets,depcom} <- rules
+                   | Rule{rulename,dir,hidden=ruleHidden,targets=tars,depcom} <- rules
+                   , let targets = [ key | Target{key} <- tars ]
                    , not ruleHidden
                    ]
         BLog (intercalate "\n\n" (map show staticRules))
@@ -114,8 +115,8 @@ buildWithSystem :: Config -> System -> B ()
 buildWithSystem config system = do
   let System{rules,how} = system
   let allTargets = [ target | Rule{hidden,targets} <- rules, target <- targets, not hidden ]
-  _ :: [()] <- parallel [ buildAndMaterialize config how key
-                        | key <- allTargets
+  _ :: [()] <- parallel [ buildAndMaterialize config how target
+                        | target <- allTargets
                         ]
   pure ()
 
@@ -145,14 +146,28 @@ reportSystem Config{logMode,worker} System{rules} = do
   let nTargets = sum [ length targets |  Rule{targets,hidden} <- rules, not hidden ]
   when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
-buildAndMaterialize :: Config -> How -> Key -> B ()
-buildAndMaterialize config how key = do
+buildAndMaterialize :: Config -> How -> Target -> B ()
+buildAndMaterialize config how target = do
+  let Target { materialize, key } = target
   digest <- buildTarget config how key
-  materialize digest key
+  materializeInCommaJenga digest key
+  when materialize $ materializeInUserDir digest key
   pure ()
 
-materialize :: Digest -> Key -> B ()
-materialize digest key = do
+materializeInUserDir :: Digest -> Key -> B ()
+materializeInUserDir digest key = do
+  cacheFile <- cacheFile digest
+  let materializedFile = Loc (show key)
+  Execute $ do
+    XUnLink materializedFile -- old version
+    XTryHardLink cacheFile materializedFile >>= \case
+      Nothing -> pure ()
+      Just{} -> do
+        XLog (printf "materializeInUserDir: nope! %s -> %s" (show cacheFile) (show materializedFile))
+        pure ()
+
+materializeInCommaJenga :: Digest -> Key -> B ()
+materializeInCommaJenga digest key = do
   cacheFile <- cacheFile digest
   let materializedFile = artifactsDir </> show key
   Execute $ do
@@ -206,17 +221,19 @@ runElaboration config m =
       GRule rule -> do
         let Rule{targets} = rule
         xs <- sequence [ do b <- Execute (XFileExists loc); pure (key,b)
-                        | key@(Key loc) <- targets ]
+                       | Target { materialize = False, key = key@(Key loc) } <- targets ]
+        -- we only report a clash for non-materializing targets
         case [ key | (key,isSource) <- xs, isSource ] of
           clashS@(_:_) -> do
             bfail $ printf "rule targets clash with source :%s" (show clashS)
           [] -> do
+            let targetKeys = [ key | Target { key } <- targets ]
             let System{rules,how} = system
-            case filter (flip Map.member how) targets of
+            case filter (flip Map.member how) targetKeys of
               clashR@(_:_) -> do
                 bfail $ printf "rule targets defined by earlier rule :%s" (show clashR)
               [] -> do
-                how <- pure $ List.foldl' (flip (flip Map.insert rule)) how targets
+                how <- pure $ List.foldl' (flip (flip Map.insert rule)) how targetKeys
                 k system { rules = rule : rules, how } ()
 
       GWhat loc -> do
@@ -274,7 +291,8 @@ buildTarget config@Config{debugDemand} how = do
 buildRule :: Config -> How -> Rule -> B WitMap
 buildRule config@Config{debugLocking} how =
   BMemoRule $ \rule -> do
-    let Rule{targets,depcom} = rule
+    let Rule{targets=tars,depcom} = rule
+    let targets = [ key | Target { key } <- tars ]
     (deps,action@Action{commands}) <- gatherDeps config how depcom
     wdeps <- (WitMap . Map.fromList) <$>
       parallel [ do digest <- buildTarget config how dep; pure (locateKey dep,digest)
@@ -411,7 +429,8 @@ runActionSaveWitness config action wkd depWit rule = do
 
 actionFailed :: Rule -> B a
 actionFailed rule = do
-  let Rule{targets,rulename} = rule
+  let Rule{targets=tars,rulename} = rule
+  let targets = [ key | Target { key } <- tars ]
   bfail (printf "'%s': action failed for rule '%s'" (intercalate " " $ map show targets) rulename)
 
 setupInputs :: Loc -> WitMap -> B ()
@@ -438,7 +457,8 @@ hardLinkRetry1 src dest =  do
           error e2 -- hard error for error on 2nd attempt
 
 cacheOutputs :: Loc -> Rule -> B WitMap
-cacheOutputs sandbox Rule{rulename,targets} = do
+cacheOutputs sandbox Rule{rulename,targets=tars} = do
+  let targets = [ key | Target { key } <- tars ]
   WitMap . Map.fromList <$> sequence
     [ do
         let tag = locateKey target
@@ -720,7 +740,8 @@ runB cacheDir config@Config{logMode} build0 = do
             loop (f key) s { memoT = Map.insert key WIP (memoT s)} $ \s res -> do
               k s { memoT = Map.insert key (Ready res) (memoT s) } res
 
-      BMemoRule f rule@Rule{targets} -> do
+      BMemoRule f rule@Rule{targets=tars} -> do
+        let targets = [ key | Target { key } <- tars ]
         case Map.lookup targets (memoR s) of
           Just res -> k s (removeReasons res)
           Nothing -> do

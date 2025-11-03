@@ -1,7 +1,7 @@
 module MakeStyle (elaborate) where
 
 import Data.List.Split (splitOn)
-import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Loc,What(..))
+import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Loc,What(..))
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 import StdBuildUtils ((</>),dirKey,baseKey)
 import Text.Printf (printf)
@@ -29,13 +29,14 @@ elaborate config0  = do
         elabTrip :: Trip -> G ()
         elabTrip Trip{pos=Position{line},targets,deps,commands} = do
           let rulename = printf "%s:%d" (show config) line
+          let targetNames = [ name | MTarget _ name <- targets ]
           GRule $ Rule
             { rulename
             , dir
             , hidden = False
-            , targets = map makeKey targets
+            , targets = [ Target { materialize = mat, key = makeKey name } | MTarget mat name <- targets ]
             , depcom = do
-                sequence_ [ makeDep targets dep | dep <- deps ]
+                sequence_ [ makeDep targetNames dep | dep <- deps ]
                 pure (bash commands)
             }
 
@@ -64,7 +65,7 @@ elaborate config0  = do
       GRule (Rule { rulename = printf "glob-%s" (show dir)
                   , dir
                   , hidden = True
-                  , targets = [ makeKey allFilesName ]
+                  , targets = [ Target { materialize = False, key = makeKey allFilesName } ]
                   , depcom = pure (Action
                                     { hidden = True
                                     , commands = [printf "echo -n '%s' > %s"
@@ -100,10 +101,12 @@ data Clause = ClauseTrip Trip | ClauseInclude String
 
 data Trip = Trip
   { pos :: Position
-  , targets :: [String]
+  , targets :: [MTarget]
   , deps :: [Dep]
   , commands :: [String]
   }
+
+data MTarget = MTarget Bool String
 
 data Dep
   = DepPlain String     -- key
@@ -124,7 +127,7 @@ gram = start
       alts [includeClause,ruleClause]
 
     includeClause = do
-      key "include"
+      Par4.key "include"
       space
       skip space
       fileName <- identifier
@@ -135,12 +138,17 @@ gram = start
 
     ruleClause = do
       pos <- position
-      targets <- some identifier
+      targets <- some target
       colon
       deps <- many dep
       commands <- alts [tradRule,onelineRule]
       skip $ alts [nl,commentToEol]
       pure (ClauseTrip (Trip {pos,targets,deps,commands}))
+
+    target = do
+      mat <- alts [ do lit '!'; pure True, pure False ]
+      name <- identifier
+      pure (MTarget mat name)
 
     -- traditional make syntax
     tradRule = do
@@ -177,7 +185,7 @@ gram = start
 
     identifierChar = sat (not . specialChar)
 
-    specialChar = (`elem` " :#()\n")
+    specialChar = (`elem` " :#()\n!")
 
     singleCommandLine = do
       trimTrailingSpace <$> many actionChar

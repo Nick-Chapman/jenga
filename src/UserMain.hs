@@ -45,4 +45,5 @@ blockName = \case
   ".stack-work" -> True
   ".cache" -> True
   ",jenga" -> True
+  "_build" -> True -- dune
   _ -> False

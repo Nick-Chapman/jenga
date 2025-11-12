@@ -23,13 +23,11 @@ dirLoc :: Loc -> Loc
 dirLoc (Loc fp) = Loc (FP.takeDirectory fp)
 
 (</>) :: Loc -> String -> Loc
-(</>) (Loc dir) filename0 =
-  Loc (FP.normalise $ removeDotdotIsPossible (dir FP.</> filename))
-  where
-    filename =
-      case filename0 of
-        '/':afterLeadingSlash -> afterLeadingSlash
-        rel -> rel
+(</>) (Loc dir) path = -- TODO: support tilda (~) expansion
+  case path of
+    '/':_ -> Loc path
+    rel ->
+      Loc (FP.normalise $ removeDotdotIsPossible (dir FP.</> rel))
 
 removeDotdotIsPossible :: String -> String
 removeDotdotIsPossible s = case guess_dotdot s of Just s -> s; Nothing -> s

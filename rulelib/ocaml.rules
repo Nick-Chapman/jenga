@@ -1,0 +1,25 @@
+
+ocaml.rules.gen: ocaml.modules
+  cat ocaml.modules | sed 's|\(.*\)|\1.cmx \1.o : ocamlopt.sh \1.ml \1.cmi : ./ocamlopt.sh -c -impl \1.ml -o \1.cmx|' >>ocaml.rules.gen
+  cat ocaml.modules | sed 's|\(.*\)|\1.cmi : ocamlopt.sh \1.mli : ./ocamlopt.sh -c -intf \1.mli -o \1.cmi|' >>ocaml.rules.gen
+  cat ocaml.modules | sed 's|\(.*\)|\1.exe: ocamlopt-link.sh \1.cmx \1.o : ./ocamlopt-link.sh \1.cmx -o \1.exe|' >>ocaml.rules.gen
+  cat ocaml.modules | sed 's|\(.*\)|\1.mli : : touch \1.mli|' >>ocaml.rules.gen
+
+include ocaml.rules.gen
+
+ocamlopt.sh: ocaml.flags
+  echo /home/nic/.opam/5.1.1/bin/ocamlopt.opt $(cat ocaml.flags) '"$@"' >> ocamlopt.sh
+  chmod +x ocamlopt.sh
+
+ocaml.packages:
+  touch ocaml.packages
+  echo /home/nic/.opam/5.1.1/lib/ocaml/unix/unix.cmxa >> ocaml.packages
+
+ocamlopt-link.sh: ocaml.flags ocaml.packages
+  echo /home/nic/.opam/5.1.1/bin/ocamlopt.opt $(cat ocaml.flags) $(cat ocaml.packages) '"$@"' >> ocamlopt-link.sh
+  chmod +x ocamlopt-link.sh
+
+ocaml.flags: ?ocaml.xflags
+  echo '-w @1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -no-alias-deps -opaque -bin-annot -intf-suffix .ml' >> ocaml.flags
+  touch ocaml.xflags
+  cat ocaml.xflags >> ocaml.flags

@@ -76,12 +76,12 @@ ran 1 action
 ```
 
 The executable been placed in the `,jenga/` artifacts directory, which we can run directly, or
-we can use `jenga run -a <TARGET>` to combine the build and execution of a target.
+we can use `jenga exec -a <TARGET>` to combine the build and execution of a target.
 
 This has the same behaviour as `jenga build && ,jenga/<TARGET>`
-(The `-a` flags shows the build info messages, which would otherwise be hidden by plain `jenga run`).
+(The `-a` flags shows the build info messages, which would otherwise be hidden by plain `jenga exec`).
 ```
-$ jenga run -a hello.exe
+$ jenga exec -a hello.exe
 elaborated 1 rule and 1 target
 Hello, jenga world!
 ```
@@ -92,7 +92,7 @@ Rebuild and rerun.
 
 Jenga will rerun the `gcc` action because the input file `main.c` has changed.
 ```
-$ jenga run -a hello.exe
+$ jenga exec -a hello.exe
 elaborated 1 rule and 1 target
 A: gcc -o hello.exe main.c
 ran 1 action
@@ -106,7 +106,7 @@ This time, no build actions are run.
 Yet the executable correctly reverts to printing the original message.
 This desirable behaviour is an effect of _full caching_.
 ```
-$ jenga run -a hello.exe
+$ jenga exec -a hello.exe
 elaborated 1 rule and 1 target
 Hello, jenga world!
 ```

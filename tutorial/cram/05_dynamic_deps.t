@@ -51,7 +51,7 @@ Build. Expect 4 actions to be run
 
 Run the executable
 
-  $ jenga run -m example/hello.exe -c.
+  $ jenga exec -m example/hello.exe -c.
   Hello, 55 jenga!
 
 See the depends

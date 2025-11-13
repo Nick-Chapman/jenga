@@ -191,8 +191,8 @@ Mod some more, try -q
   $ ,jenga/ANOTHER/RENAMED.exe
   hello, 89 world
 
-Mod again, use "jenga run"
+Mod again, use "jenga exec"
 
   $ sed -i 's/fib(11)/fib(12)/g' ANOTHER/main.c
-  $ jenga run -m ANOTHER/RENAMED.exe
+  $ jenga exec -m ANOTHER/RENAMED.exe
   hello, 144 world

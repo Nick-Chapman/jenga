@@ -103,7 +103,7 @@ int main() {
 
 Rebuild. Jenga will rerun the compile step for the changed `main.c` (source has changed) and the link step (`main.o` has changed):
 ```
-$ jenga run -a hello.exe
+$ jenga exec -a hello.exe
 elaborated 3 rules and 3 targets
 A: gcc -Wall -c main.c -o main.o
 A: gcc main.o fib.o -o hello.exe

@@ -57,7 +57,7 @@ A: gcc -Wall -c main.c -o main.o
 A: gcc main.o fib.o -o hello.exe
 ran 4 actions
 
-$ jenga run example/hello.exe
+$ jenga exec example/hello.exe
 Hello, 55 jenga!
 ```
 

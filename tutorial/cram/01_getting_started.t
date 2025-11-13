@@ -26,7 +26,7 @@ Zero rebuild. See no build actions.
   checked 1 target
 
 Run built executable. See no actions, then the hello program output.
-  $ jenga run -m hello.exe
+  $ jenga exec -m hello.exe
   Hello, jenga world!
 
 Modify file and rebuild. See the rebuild action, and the changed output.

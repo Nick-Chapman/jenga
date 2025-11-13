@@ -46,7 +46,7 @@ subCommands =
       (progDesc "Bring a build up to date")))
   <|>
   hsubparser
-  (command "run"
+  (command "exec"
     (info runCommand
       (progDesc "Build and run a single executable target")))
 

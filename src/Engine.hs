@@ -97,7 +97,7 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         buildWithSystem config system
         reportSystem config system
         -- TODO: better to run the executable from the cache rather than in ,jenga
-        -- TODO: currently jenga run is broken without the --materialize flag
+        -- TODO: currently jenga exec is broken without the --materialize flag
         Execute (XIO (callProcess (printf ",jenga/%s" target) argsForTarget))
 
 runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()

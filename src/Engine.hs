@@ -161,12 +161,19 @@ materializeInUserDir digest key = do
   cacheFile <- cacheFile digest
   let materializedFile = Loc (show key)
   Execute $ do
-    XUnLink materializedFile -- old version
-    XTryHardLink cacheFile materializedFile >>= \case
-      Nothing -> pure ()
-      Just{} -> do
-        XLog (printf "materializeInUserDir: nope! %s -> %s" (show cacheFile) (show materializedFile))
-        pure ()
+    needToLink <-
+      XFileExists materializedFile >>= \case
+        False -> pure True
+        True -> do
+          oldDigest <- XDigest materializedFile
+          pure $ (digest /= oldDigest)
+    when needToLink $ do
+      XUnLink materializedFile
+      XTryHardLink cacheFile materializedFile >>= \case
+        Nothing -> pure ()
+        Just{} -> do
+          XLog (printf "materializeInUserDir: nope! %s -> %s" (show cacheFile) (show materializedFile))
+          pure ()
 
 materializeInCommaJenga :: Digest -> Key -> B ()
 materializeInCommaJenga digest key = do
@@ -512,7 +519,7 @@ cacheFile (Digest str) = do
   pure (cachedFilesDir </> str)
 
 -- message digest of a file; computed by call to external md5sum
-data Digest = Digest String
+data Digest = Digest String deriving (Eq)
 
 instance Show Digest where show (Digest str) = str
 

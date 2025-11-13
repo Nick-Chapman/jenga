@@ -2,7 +2,7 @@
 This cram file accompanies the jenga tutorial.
 
 Get a jenga executable
-  $ (cd $TESTDIR/../..; jenga build src -q) && ln $TESTDIR/../../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/../..; jenga build -m src -q) && ln $TESTDIR/../../,jenga/src/jenga jenga.exe
 
 Make a small script to run jenga with a local cache.
 Avoiding interference from the global cache, which will make this test non-deterministic.
@@ -19,7 +19,7 @@ Get the example.
 
 Initial build. Expect 3 actions to be run
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
@@ -45,7 +45,7 @@ Add -Wall to both compile rule. Two actions get rerun.
   fib.o : fib.c
     gcc -Wall -c fib.c -o fib.o
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
@@ -63,7 +63,7 @@ Fix code. Compile of main.c and link are rerun
   int main() { // Oops! main should be declared to return int.
     printf("Hello, %d jenga!\n", fib(10));
   }
-  $ jenga build -a && ,jenga/hello.exe
+  $ jenga build -m -a && ,jenga/hello.exe
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
   checked 3 targets
@@ -89,7 +89,7 @@ Define and use header file. Build fails because we failed to declare dependecy o
     return fib(x-1) + fib(x-2);
   }
 
-  $ jenga build -a 2>&1 | grep -v 'called at'
+  $ jenga build -m -a 2>&1 | grep -v 'called at'
   A: gcc -Wall -c fib.c -o fib.o
   fib.c:1:10: fatal error: fib.h: No such file or directory
       1 | #include "fib.h"
@@ -120,7 +120,7 @@ Add missing dep to both compile rules
   fib.o : fib.c fib.h
     gcc -Wall -c fib.c -o fib.o
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   checked 3 targets

@@ -1,5 +1,5 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
@@ -7,7 +7,7 @@
 
 Build:
 
-  $ jenga build -a && ,jenga/example/hello.exe
+  $ jenga build -m -a && ,jenga/example/hello.exe
   A: cat all.files | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
   A: cat all.files | grep '.h$' > h.files
@@ -23,7 +23,7 @@ Build:
 Change & rebuild:
 
   $ sed -i 's/10/11/' example/defs.h
-  $ jenga build -a && ,jenga/example/hello.exe
+  $ jenga build -m -a && ,jenga/example/hello.exe
   A: gcc -MG -MM $(cat c.files) > depends
   A: gcc -c -o main.o main.c
   A: gcc -o hello.exe $(cat o.files)
@@ -47,7 +47,7 @@ Artifacts:
 
 Artifacts (materialize all)
 
-  $ jenga build -a
+  $ jenga build -m -a
   checked 8 targets
   $ find ,jenga
   ,jenga
@@ -63,7 +63,7 @@ Artifacts (materialize all)
 
 Targets:
 
-  $ jenga build -a --list-targets
+  $ jenga build -m -a --list-targets
   example/main.o
   example/fib.o
   example/c.rules
@@ -75,7 +75,7 @@ Targets:
 
 Rules:
 
-  $ jenga build -a --list-rules
+  $ jenga build -m -a --list-rules
   example/main.o : example/main.c example/fib.h example/defs.h
     cd example ; gcc -c -o main.o main.c
   

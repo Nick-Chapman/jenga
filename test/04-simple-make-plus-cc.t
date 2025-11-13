@@ -1,11 +1,11 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rpL $TESTDIR/../examples/04-simple-make-plus-cc example
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: cat all.files | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner

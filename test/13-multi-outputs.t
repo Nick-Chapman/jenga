@@ -1,5 +1,5 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
@@ -7,7 +7,7 @@
 
 Build:
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: echo 11 >> lots
   A: echo 22 >> lots
   A: echo 33 >> lots
@@ -20,13 +20,13 @@ Build:
   ran 8 commands
 
 And zero
-  $ jenga build -a
+  $ jenga build -m -a
   checked 4 targets
 
 Change the example to echo a warning before exiting
 
   $ sed -i 's|exit 0|echo WARNING; exit 0|' example/build.jenga
-  $ jenga build -a
+  $ jenga build -m -a
   A: head -1 lots > h
   A: tail -1 lots > t
   A: touch x
@@ -37,14 +37,14 @@ Change the example to echo a warning before exiting
 
 And zero build (see warning even though no actions were run)
 
-  $ jenga build -a
+  $ jenga build -m -a
   WARNING
   checked 4 targets
 
 Change the example to have a non-zero error code
 
   $ sed -i 's|exit 0|exit 42|' example/build.jenga
-  $ jenga build -a
+  $ jenga build -m -a
   A: head -1 lots > h
   A: tail -1 lots > t
   A: touch x
@@ -57,7 +57,7 @@ Change the example to have a non-zero error code
 
 And zero build (see warning and error, again even though no actions were run)
 
-  $ jenga build -a
+  $ jenga build -m -a
   WARNING
   ExitFailure 42
   Build failed for 1 reasons:

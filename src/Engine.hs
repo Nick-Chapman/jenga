@@ -96,6 +96,8 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         system <- runElaboration config (userProg [FP.takeDirectory target])
         buildWithSystem config system
         reportSystem config system
+        -- TODO: better to run the executable from the cache rather than in ,jenga
+        -- TODO: currently jenga run is broken without the --materialize flag
         Execute (XIO (callProcess (printf ",jenga/%s" target) argsForTarget))
 
 runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
@@ -147,10 +149,10 @@ reportSystem Config{logMode,worker} System{rules} = do
   when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
 buildAndMaterialize :: Config -> How -> Target -> B ()
-buildAndMaterialize config how target = do
+buildAndMaterialize config@Config{materializeCommaJenga} how target = do
   let Target { materialize, key } = target
   digest <- buildTarget config how key
-  materializeInCommaJenga digest key
+  when materializeCommaJenga $ materializeInCommaJenga digest key
   when materialize $ materializeInUserDir digest key
   pure ()
 
@@ -169,7 +171,7 @@ materializeInUserDir digest key = do
 materializeInCommaJenga :: Digest -> Key -> B ()
 materializeInCommaJenga digest key = do
   cacheFile <- cacheFile digest
-  let materializedFile = artifactsDir </> show key
+  let materializedFile = commaJengaDir </> show key
   Execute $ do
     XMakeDir (dirLoc materializedFile)
     XTryHardLink cacheFile materializedFile >>= \case
@@ -187,8 +189,8 @@ cachedFilesDir,tracesDir :: B Loc
 cachedFilesDir = do cacheDir <- BCacheDir; pure (cacheDir </> "files")
 tracesDir = do cacheDir <- BCacheDir; pure (cacheDir </> "traces")
 
-artifactsDir :: Loc
-artifactsDir = Loc ",jenga"
+commaJengaDir :: Loc
+commaJengaDir = Loc ",jenga"
 
 ----------------------------------------------------------------------
 -- Elaborate
@@ -694,7 +696,7 @@ runB cacheDir config@Config{logMode} build0 = do
   loop build bstate0 kFinal
   where
     build = do
-      initDirs
+      initDirs config
       build0
 
     sandboxParent pid = Loc (printf "/tmp/.jbox/%s" (show pid))
@@ -787,15 +789,15 @@ runB cacheDir config@Config{logMode} build0 = do
     resume :: BJob -> BState -> X ()
     resume (BJob p k) s = loop p s k
 
-initDirs :: B ()
-initDirs = do
+initDirs :: Config -> B ()
+initDirs Config{materializeCommaJenga} = do
   tracesDir <- tracesDir
   cachedFilesDir <- cachedFilesDir
   Execute $ do
-    XRemoveDirRecursive artifactsDir
     XMakeDir cachedFilesDir
     XMakeDir tracesDir
-    XMakeDir artifactsDir
+    XRemoveDirRecursive commaJengaDir
+    when materializeCommaJenga $ XMakeDir commaJengaDir
 
 reportBuildRes :: Config -> BuildRes () -> X ()
 reportBuildRes Config{worker} res =

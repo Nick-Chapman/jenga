@@ -1,11 +1,11 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/03-simple-make example
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: grep -v '^$' defs.h.in > defs.h
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o

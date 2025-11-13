@@ -1,7 +1,7 @@
 
 Get me a jenga executable and make a script to run it with a local cache
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
@@ -23,7 +23,7 @@ What have I got?
 
 Build from clean:
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
@@ -46,13 +46,13 @@ Run the built artifact:
 
 Rebuild after no changes:
 
-  $ jenga build -a
+  $ jenga build -m -a
   checked 3 targets
 
 Update main.c "world->UNIVERSE" and rerun:
 
   $ sed -i 's/world/UNIVERSE/g' example/main.c
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 3 targets
@@ -63,7 +63,7 @@ Update main.c "world->UNIVERSE" and rerun:
 Reverting to previous state of main.c causes no rebuilding:
 
   $ sed -i 's/UNIVERSE/world/g' example/main.c
-  $ jenga build -a
+  $ jenga build -m -a
   checked 3 targets
   $ ,jenga/example/main.exe
   hello, 55 world
@@ -71,7 +71,7 @@ Reverting to previous state of main.c causes no rebuilding:
 Whitespace only change to main.c cause no link step (early cutoff):
 
   $ sed -i 's/int main/int      main/g' example/main.c
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -c main.c -o main.o
   checked 3 targets
   ran 1 command
@@ -79,7 +79,7 @@ Whitespace only change to main.c cause no link step (early cutoff):
 Update build rules to link executable under a different name:
 
   $ sed -i 's/main.exe/RENAMED.exe/' example/build.jenga
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc fib.o main.o -o RENAMED.exe
   checked 3 targets
   ran 1 command
@@ -97,7 +97,7 @@ Update build rules to link executable under a different name:
 Relocate the example to a new directory; no rebuilds:
 
   $ mv example RELOCATED
-  $ jenga build -a
+  $ jenga build -m -a
   checked 3 targets
 
   $ find ,jenga
@@ -110,7 +110,7 @@ Relocate the example to a new directory; no rebuilds:
 Duplicate the example directory; double elaborated rules; still no rebuilds:
 
   $ cp -rp RELOCATED ANOTHER
-  $ jenga build -a
+  $ jenga build -m -a
   checked 6 targets
 
   $ find ,jenga
@@ -127,7 +127,7 @@ Duplicate the example directory; double elaborated rules; still no rebuilds:
 Modify code in one of the example directories; minimal rebuild as required:
 
   $ sed -i 's/fib(10)/fib(20)/g' RELOCATED/main.c
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o RENAMED.exe
   checked 6 targets
@@ -142,7 +142,7 @@ Run the two versions:
 
 Materalize all targets:
 
-  $ jenga build -a
+  $ jenga build -m -a
   checked 6 targets
 
   $ find ,jenga
@@ -158,7 +158,7 @@ Materalize all targets:
 
 Materalize just artifacts:
 
-  $ jenga build -a
+  $ jenga build -m -a
   checked 6 targets
 
   $ find ,jenga
@@ -175,7 +175,7 @@ Materalize just artifacts:
 Remove one directory copy
 
   $ rm -rf RELOCATED
-  $ jenga build -a
+  $ jenga build -m -a
   checked 3 targets
   $ find ,jenga
   ,jenga
@@ -187,12 +187,12 @@ Remove one directory copy
 Mod some more, try -q
 
   $ sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c
-  $ jenga build -q
+  $ jenga build -m -q
   $ ,jenga/ANOTHER/RENAMED.exe
   hello, 89 world
 
 Mod again, use "jenga run"
 
   $ sed -i 's/fib(11)/fib(12)/g' ANOTHER/main.c
-  $ jenga run ANOTHER/RENAMED.exe
+  $ jenga run -m ANOTHER/RENAMED.exe
   hello, 144 world

@@ -21,6 +21,7 @@ data Config = Config
   , debugExternal :: Bool
   , debugInternal :: Bool
   , debugLocking :: Bool
+  , materializeCommaJenga :: Bool
   }
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
@@ -126,5 +127,9 @@ sharedOptions defaultLogMode args buildMode = do
   debugExternal <- switch (long "debug-external" <> help "Debug calls to md5sum")
   debugInternal <- switch (long "debug-internal" <> help "Debug file system access")
   debugLocking <- switch (long "debug-locking" <> help "Debug locking behaviour")
+
+  materializeCommaJenga <-
+    switch (short 'm' <> long "materialize"
+            <> help "Materialize all build artifacts in ,jenga directory")
 
   pure $ Config { .. }

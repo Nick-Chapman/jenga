@@ -1,11 +1,11 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/09-haskell-diamond example
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: find $HOME/.stack | grep -v lib | grep bin/ghc$ | sort -n | tail -1 > ghc-path
   A: # Make use of multi-line actions and comments in actions...
   A: echo exec $(cat ghc-path) '"$@"' > ghc.exe
@@ -23,7 +23,7 @@
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]
 
-  $ jenga build -a --debug-demand
+  $ jenga build -m -a --debug-demand
   B: Require: example/ghc-path
   B: Require: example/ghc.exe
   B: Require: example/Top.hi

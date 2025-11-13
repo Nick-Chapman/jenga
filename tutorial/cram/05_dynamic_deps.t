@@ -1,7 +1,7 @@
 
 Get an up-to-date jenga executable in path, which runs with a local cachee
 
-  $ (cd $TESTDIR/../..; jenga build src -q)
+  $ (cd $TESTDIR/../..; jenga build -m src -q)
   $ echo exec $TESTDIR/../../,jenga/src/jenga '"$@"' > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
@@ -33,7 +33,7 @@ Get the example.
 
 Build. Expect 4 actions to be run
 
-  $ jenga build -a -c.
+  $ jenga build -m -a -c.
   A: gcc -MG -MM *.c > depends
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
@@ -51,7 +51,7 @@ Build. Expect 4 actions to be run
 
 Run the executable
 
-  $ jenga run example/hello.exe -c.
+  $ jenga run -m example/hello.exe -c.
   Hello, 55 jenga!
 
 See the depends
@@ -62,13 +62,13 @@ See the depends
 
 See the targets and rules
 
-  $ jenga build -a --list-targets -c.
+  $ jenga build -m -a --list-targets -c.
   example/depends
   example/fib.o
   example/main.o
   example/hello.exe
 
-  $ jenga build -a -r -c.
+  $ jenga build -m -a -r -c.
   example/depends : example/main.c example/fib.c
     cd example ; gcc -MG -MM *.c > depends
   
@@ -81,7 +81,7 @@ See the targets and rules
   example/hello.exe : example/main.o example/fib.o
     cd example ; gcc main.o fib.o -o hello.exe
 
-  $ (cd example; ../jenga build -r -c..)
+  $ (cd example; ../jenga build -m -r -c..)
   depends : main.c fib.c
     gcc -MG -MM *.c > depends
   
@@ -94,7 +94,7 @@ See the targets and rules
   hello.exe : main.o fib.o
     gcc main.o fib.o -o hello.exe
 
-  $ (cd example; ../jenga build -arf)  | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ (cd example; ../jenga build -m -arf)  | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   A: gcc -MG -MM *.c > depends
   depends : main.c fib.c

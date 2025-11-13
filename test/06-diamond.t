@@ -1,11 +1,11 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/06-diamond example
 
-  $ jenga build -a
+  $ jenga build -m -a
   A: echo -n A > a
   A: echo -n B  > b
   A: cat a b > ab
@@ -21,7 +21,7 @@
 The example has a diamond dependency on target 'b', reached via 'ab' and 'bc'.
 During any build (incuding a zero-rebuild) we should require 'b' more than once.
 
-  $ jenga build -a --debug-demand
+  $ jenga build -m -a --debug-demand
   B: Require: example/top
   B: Require: example/ab
   B: Require: example/a

@@ -1,12 +1,12 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/..; jenga build -m src -q) && ln $TESTDIR/../,jenga/src/jenga jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/08-scanner-chain example
 
 Initial build
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -MG -MM fib.c > fib.d
   A: gcc -c fib.c -o fib.o
   A: (echo -n 'main.d '; gcc -MG -MM main.c) > main.d2
@@ -28,7 +28,7 @@ Inspect the generated deps
 
 Mod-A (change const value)
   $ echo '#define MY_CONST 11' > example/defs2.h
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 6 targets
@@ -42,7 +42,7 @@ Mod-A (change const value)
 
 Mod-B (shorten the chain)
   $ echo '#define MY_CONST 12' > example/defs.h
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
@@ -58,7 +58,7 @@ Mod-B (shorten the chain)
 Mod-C (repoint the chain)
   $ echo '#define MY_CONST 13' > example/defs3.h
   $ echo '#include "defs3.h"' > example/defs.h
-  $ jenga build -a
+  $ jenga build -m -a
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe

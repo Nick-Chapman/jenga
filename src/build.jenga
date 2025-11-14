@@ -1,4 +1,7 @@
 
+!jenga.exe: jenga
+  ln jenga jenga.exe
+
 executable-name:
   echo jenga > executable-name
 

@@ -2,7 +2,7 @@
 This cram file accompanies the jenga tutorial document.
 
 Get a jenga executable
-  $ (cd $TESTDIR/../..; jenga build -m src -q) && ln $TESTDIR/../../,jenga/src/jenga jenga.exe
+  $ (cd $TESTDIR/../..; jenga build src -q) && ln $TESTDIR/../../src/jenga.exe jenga.exe
 
 Make a small script to run jenga with a local cache.
 Avoiding interference from the global cache, which will make this test non-deterministic.

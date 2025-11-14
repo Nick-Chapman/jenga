@@ -44,8 +44,8 @@ See files
 
 Get an up-to-date jenga executable in path, which runs with a local cachee
 
-  $ (cd $TESTDIR/../..; jenga build -m src -q)
-  $ echo exec $TESTDIR/../../,jenga/src/jenga '"$@"' > jenga
+  $ (cd $TESTDIR/../..; jenga build src -q)
+  $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
 

@@ -9,7 +9,7 @@ c.files : all.files
   cat all.files | grep '.c$' > c.files
 
 link.rule : o.files
-  echo !main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
+  echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
 
 o.files : c.files
   cat c.files | sed 's|\(.*\).c|\1.o|' > o.files

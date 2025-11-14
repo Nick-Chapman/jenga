@@ -1,4 +1,0 @@
-
-# Materialize the jenga.exe. Use by cramm tests.
-
-!jenga.exe : src/jenga.exe

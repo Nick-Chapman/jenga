@@ -1,7 +1,7 @@
 
 Get me a jenga executable and make a script to run it with a local cache
 
-  $ (cd $TESTDIR/..; jenga build -q) && ln $TESTDIR/../jenga.exe jenga.exe
+  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
@@ -17,7 +17,7 @@ Build from clean:
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
-  A: echo !main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
+  A: echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
   A: gcc -MG -MM fib.c -MF fib.d
   A: gcc -c fib.c -o fib.o
   A: gcc -MG -MM main.c -MF main.d
@@ -25,13 +25,13 @@ Build from clean:
   A: gcc fib.o main.o -o main.exe
   checked 11 targets
   ran 11 commands
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 world with auto discovery
 
 Zero rebuild:
   $ jenga build -a
   checked 11 targets
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 world with auto discovery
 
 Change main.c
@@ -42,7 +42,7 @@ Change main.c
   A: gcc fib.o main.o -o main.exe
   checked 11 targets
   ran 3 commands
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 UNIVERSE with auto discovery
 
 Whitespace change to fib.h
@@ -52,7 +52,7 @@ Whitespace change to fib.h
   A: gcc -c main.c -o main.o
   checked 11 targets
   ran 2 commands
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 UNIVERSE with auto discovery
 
 Change const value in defs.h
@@ -62,7 +62,7 @@ Change const value in defs.h
   A: gcc fib.o main.o -o main.exe
   checked 11 targets
   ran 2 commands
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 89 UNIVERSE with auto discovery
 
 Setup ALT defs file (causes no actions):
@@ -80,21 +80,21 @@ Switch main to use ALT defs:
   A: gcc fib.o main.o -o main.exe
   checked 11 targets
   ran 3 commands
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 144 UNIVERSE with auto discovery
 
 Modify original defs file back to original value (causes no action):
   $ echo '#define MY_CONST 10' > example/defs.h
   $ jenga build -a
   checked 11 targets
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 144 UNIVERSE with auto discovery
 
 Switch main back to origianl defs file (causes no action)::
   $ sed -i 's/defsALT/defs/g' example/main.c
   $ jenga build -a
   checked 11 targets
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 UNIVERSE with auto discovery
 
 

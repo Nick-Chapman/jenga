@@ -1,5 +1,5 @@
 
-  $ (cd $TESTDIR/..; jenga build -q) && ln $TESTDIR/../jenga.exe jenga.exe
+  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
@@ -11,7 +11,7 @@
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
-  A: echo !main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
+  A: echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
   A: grep -v '^$' defs.h.in > defs.h
   A: gcc -MG -MM fib.c -MF fib.d
   A: gcc -c fib.c -o fib.o
@@ -21,6 +21,6 @@
   checked 12 targets
   ran 12 commands
 
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 world with combined cc and make configs
 

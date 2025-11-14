@@ -1,6 +1,11 @@
 
+# Materialize the jenga.exe. Use by cram tests.
+
+!jenga.exe : jenga
+  ln jenga jenga.exe
+
 executable-name:
-  echo jenga.exe > executable-name
+  echo jenga > executable-name
 
 include ../rulelib/haskell.jenga
 

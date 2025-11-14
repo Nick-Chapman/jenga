@@ -63,11 +63,12 @@ Fix code. Compile of main.c and link are rerun
   int main() { // Oops! main should be declared to return int.
     printf("Hello, %d jenga!\n", fib(10));
   }
-  $ jenga build -m -a && ,jenga/hello.exe
+  $ jenga build -a
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
   checked 3 targets
   ran 2 commands
+  $ jenga exec hello.exe
   Hello, 55 jenga!
 
 Define and use header file. Build fails because we failed to declare dependecy on fib.h

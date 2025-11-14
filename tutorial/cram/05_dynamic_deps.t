@@ -43,12 +43,12 @@ Build. Expect 4 actions to be run
 
 Run the executable
 
-  $ jenga exec -m example/hello.exe -c.
+  $ jenga exec example/hello.exe -c.
   Hello, 55 jenga!
 
 See the depends
 
-  $ cat ,jenga/example/depends
+  $ jenga build -mq && cat ,jenga/example/depends
   fib.o: fib.c fib.h
   main.o: main.c fib.h
 

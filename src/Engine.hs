@@ -94,11 +94,10 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
     ModeBuildAndRun target argsForTarget -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [FP.takeDirectory target])
-        buildWithSystem config system
-        reportSystem config system
-        -- TODO: better to run the executable from the cache rather than in ,jenga
-        -- TODO: currently jenga exec is broken without the --materialize flag
-        Execute (XIO (callProcess (printf ",jenga/%s" target) argsForTarget))
+        let System{how} = system
+        digest <- buildTarget config how (Key (Loc target))
+        cacheFile <- cacheFile digest
+        Execute (XIO (callProcess (show cacheFile) argsForTarget))
 
 runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
 runBuild cacheDir config f = do

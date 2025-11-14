@@ -1,12 +1,12 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
+  $ (cd $TESTDIR/..; jenga build -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/07-scanner-deps example
 
 Initial build
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -MG -MM fib.c > fib.d
   A: gcc -c fib.c -o fib.o
   A: gcc -MG -MM main.c > main.d
@@ -16,19 +16,19 @@ Initial build
   ran 5 commands
 
 Run the executable
-  $ ,jenga/example/main.exe
+  $ example/main.exe
   hello, 55 world with scanner deps
 
 Inspect the generated deps
-  $ find ,jenga -name '*.d' | xargs cat
+  $ jenga build -mq && find ,jenga -name '*.d' | xargs cat
   main.o: main.c fib.h defs.h
   fib.o: fib.c fib.h
 
   $ echo '#define MY_CONST 11' > example/defs.h
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 5 targets
   ran 2 commands
-  $ ,jenga/example/main.exe
+  $ example/main.exe
   hello, 89 world with scanner deps

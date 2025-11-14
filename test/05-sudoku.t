@@ -1,11 +1,11 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
+  $ (cd $TESTDIR/..; jenga build -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/05-sudoku example
 
-  $ jenga build -m -a
+  $ jenga build -a
   A: find $HOME/.stack | grep lib/.*/bin/ghc$ | rev | cut -d/ -f3 | rev | cut -d- -f2 | sort -n | tail -1 > latest-version
   A: cp latest-version version
   A: find $HOME/.stack | grep lib/.*/bin/ghc$ | grep $(cat version) > ghc-path
@@ -16,7 +16,7 @@
   checked 8 targets
   ran 7 commands
 
-  $ ,jenga/example/solver.exe example/puzzle
+  $ example/solver.exe example/puzzle
   ...3.9..5
   ...475...
   ......4..

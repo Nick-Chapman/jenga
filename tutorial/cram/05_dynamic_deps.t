@@ -1,7 +1,7 @@
 
 Get an up-to-date jenga executable in path, which runs with a local cachee
 
-  $ (cd $TESTDIR/../..; jenga build src -q)
+  $ (cd $TESTDIR/../..; jenga build -q)
   $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
@@ -33,21 +33,13 @@ Get the example.
 
 Build. Expect 4 actions to be run
 
-  $ jenga build -m -a -c.
+  $ jenga build -a -c.
   A: gcc -MG -MM *.c > depends
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
   checked 4 targets
   ran 4 commands
-
-  $ find ,jenga
-  ,jenga
-  ,jenga/example
-  ,jenga/example/fib.o
-  ,jenga/example/depends
-  ,jenga/example/hello.exe
-  ,jenga/example/main.o
 
 Run the executable
 

@@ -1,11 +1,11 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
+  $ (cd $TESTDIR/..; jenga build -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
   $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/10-haskell-diamond-auto-deps example
 
-  $ jenga build -m -a
+  $ jenga build -a
   A: find $HOME/.stack | grep -v lib | grep bin/ghc$ | sort -n | tail -1 > ghc-path
   A: echo exec $(cat ghc-path) '"$@"' > ghc.exe ; chmod +x ghc.exe
   A: echo 'import Top' > main.hs
@@ -19,10 +19,10 @@
   checked 15 targets
   ran 10 commands
 
-  $ ,jenga/example/diamond.exe
+  $ example/diamond.exe
   Top[B[A],C[A]]
 
-  $ jenga build -m -a --debug-demand
+  $ jenga build -a --debug-demand
   B: Require: example/ghc-path
   B: Require: example/ghc.exe
   B: Require: example/depends

@@ -4,4 +4,4 @@
 stack.yaml.lock
 .markdown-preview.html
 ,jenga
-jenga.exe
+*.exe

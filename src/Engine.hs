@@ -647,8 +647,8 @@ showActionRes Config{worker} (ActionRes xs) = do
     XIO $ do
       forM_ xs $ \CommandRes{exitCode,stdout,stderr} -> do
         -- TODO: distinuish stdout/stderr? link to rule?
-        putStr stdout
-        putStr stderr
+        when (stdout/="") $ printf "(stdout) %s" stdout
+        when (stderr/="") $ printf "(stderr) %s" stderr
         let isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
         when (isFailure exitCode) $ putStrLn (show exitCode)
 

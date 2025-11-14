@@ -48,7 +48,7 @@ Add -Wall to both compile rule. Two actions get rerun.
   $ jenga build -m -a
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
-  main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
+  (stderr) main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
       3 | void main() { // Oops! main should be declared to return int.
         |      ^~~~
   checked 3 targets
@@ -91,13 +91,13 @@ Define and use header file. Build fails because we failed to declare dependecy o
 
   $ jenga build -m -a 2>&1 | grep -v 'called at'
   A: gcc -Wall -c fib.c -o fib.o
-  fib.c:1:10: fatal error: fib.h: No such file or directory
+  (stderr) fib.c:1:10: fatal error: fib.h: No such file or directory
       1 | #include "fib.h"
         |          ^~~~~~~
   compilation terminated.
   ExitFailure 1
   A: gcc -Wall -c main.c -o main.o
-  main.c:2:10: fatal error: fib.h: No such file or directory
+  (stderr) main.c:2:10: fatal error: fib.h: No such file or directory
       2 | #include "fib.h"
         |          ^~~~~~~
   compilation terminated.

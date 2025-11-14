@@ -31,14 +31,14 @@ Change the example to echo a warning before exiting
   A: tail -1 lots > t
   A: touch x
   A: echo WARNING; exit 0
-  WARNING
+  (stdout) WARNING
   checked 4 targets
   ran 4 commands
 
 And zero build (see warning even though no actions were run)
 
   $ jenga build -m -a
-  WARNING
+  (stdout) WARNING
   checked 4 targets
 
 Change the example to have a non-zero error code
@@ -49,7 +49,7 @@ Change the example to have a non-zero error code
   A: tail -1 lots > t
   A: touch x
   A: echo WARNING; exit 42
-  WARNING
+  (stdout) WARNING
   ExitFailure 42
   ran 4 commands
   Build failed for 1 reasons:
@@ -58,7 +58,7 @@ Change the example to have a non-zero error code
 And zero build (see warning and error, again even though no actions were run)
 
   $ jenga build -m -a
-  WARNING
+  (stdout) WARNING
   ExitFailure 42
   Build failed for 1 reasons:
   (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'

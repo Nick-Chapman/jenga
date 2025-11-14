@@ -1,0 +1,15 @@
+#!/bin/bash
+
+watch_mode=""
+args=""
+for i in "$@"; do
+    if [ "$i" = "-w" ]
+    then watch_mode=true
+    else args="$args $i"
+    fi
+done
+
+if [ "$watch_mode" = "" ];
+then exec jenga.exe $args
+else exec jenga-w $args
+fi

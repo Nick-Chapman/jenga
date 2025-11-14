@@ -6,7 +6,7 @@ JENGA_HOME=$(dirname $(readlink -f "$0"))
 
 # Run once to start...
 clear
-jenga "$@"
+jenga.exe "$@"
 i=1
 
 # Run via inotifywait..
@@ -21,5 +21,5 @@ while read e; do
   i=$((i+1))
   clear
   #echo $i -- $e # show the counter and triggering event. (feel free to comment out this line)
-  jenga "$@"
+  jenga.exe "$@"
 done

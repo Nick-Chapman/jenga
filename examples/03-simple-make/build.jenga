@@ -2,15 +2,15 @@
 # Compile C...
 
 main.o : main.c fib.h defs.h
-  gcc -c main.c -o main.o
+  gcc -c $< -o $@
 
 fib.o : fib.c fib.h
-  gcc -c fib.c -o fib.o
+  gcc -c $< -o $@
 
 # Link...
 
 !main.exe : fib.o main.o
-  gcc fib.o main.o -o main.exe
+  gcc $^ -o main.exe
 
 
 # Preprocess defs.h to remove blank lines for better build cutoff!

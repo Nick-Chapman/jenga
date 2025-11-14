@@ -43,13 +43,18 @@ elaborate config0  = do
             }
             where
               dollarAtReplacement = intercalate " " [ name | MTarget _ name <- targets ]
-              expandSpecial :: String -> String -- TODO also support: $^ and $<
+              -- very simplistic support for $^ and $<
+              dollarHatReplacement = intercalate " " [ name | DepPlain name <- deps]
+              dollarLeftReplacement = intercalate " " (take 1 [ name | DepPlain name <- deps])
+              expandSpecial :: String -> String
               expandSpecial = loop
                 where
                   loop = \case
                     [] -> []
                     '$':'$':rest -> '$' : loop rest
                     '$':'@':rest -> dollarAtReplacement ++ loop rest
+                    '$':'^':rest -> dollarHatReplacement ++ loop rest
+                    '$':'<':rest -> dollarLeftReplacement ++ loop rest
                     x:xs -> x : loop xs
 
     bash :: [String] -> Action

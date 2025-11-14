@@ -19,7 +19,7 @@ Get the example.
 
 Initial build. Expect 3 actions to be run
 
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
@@ -28,7 +28,7 @@ Initial build. Expect 3 actions to be run
 
 Running executable returns exit code 17
 
-  $ ,jenga/hello.exe; echo $?
+  $ jenga build -mq && ,jenga/hello.exe; echo $?
   Hello, 55 jenga!
   17
 

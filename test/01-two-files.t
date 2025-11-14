@@ -52,20 +52,20 @@ Rebuild after no changes:
 Update main.c "world->UNIVERSE" and rerun:
 
   $ sed -i 's/world/UNIVERSE/g' example/main.c
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 3 targets
   ran 2 commands
-  $ ,jenga/example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 UNIVERSE
 
 Reverting to previous state of main.c causes no rebuilding:
 
   $ sed -i 's/UNIVERSE/world/g' example/main.c
-  $ jenga build -m -a
+  $ jenga build -a
   checked 3 targets
-  $ ,jenga/example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 world
 
 Whitespace only change to main.c cause no link step (early cutoff):
@@ -79,15 +79,15 @@ Whitespace only change to main.c cause no link step (early cutoff):
 Update build rules to link executable under a different name:
 
   $ sed -i 's/main.exe/RENAMED.exe/' example/build.jenga
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc fib.o main.o -o RENAMED.exe
   checked 3 targets
   ran 1 command
 
-  $ ,jenga/example/RENAMED.exe
+  $ jenga exec example/RENAMED.exe
   hello, 55 world
 
-  $ find ,jenga
+  $ jenga build -mq && find ,jenga
   ,jenga
   ,jenga/example
   ,jenga/example/fib.o
@@ -127,7 +127,7 @@ Duplicate the example directory; double elaborated rules; still no rebuilds:
 Modify code in one of the example directories; minimal rebuild as required:
 
   $ sed -i 's/fib(10)/fib(20)/g' RELOCATED/main.c
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o RENAMED.exe
   checked 6 targets
@@ -135,9 +135,9 @@ Modify code in one of the example directories; minimal rebuild as required:
 
 Run the two versions:
 
-  $ ,jenga/RELOCATED/RENAMED.exe
+  $ jenga exec RELOCATED/RENAMED.exe
   hello, 6765 world
-  $ ,jenga/ANOTHER/RENAMED.exe
+  $ jenga exec ANOTHER/RENAMED.exe
   hello, 55 world
 
 Materalize all targets:
@@ -187,8 +187,8 @@ Remove one directory copy
 Mod some more, try -q
 
   $ sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c
-  $ jenga build -m -q
-  $ ,jenga/ANOTHER/RENAMED.exe
+  $ jenga build -q
+  $ jenga exec ANOTHER/RENAMED.exe
   hello, 89 world
 
 Mod again, use "jenga exec"

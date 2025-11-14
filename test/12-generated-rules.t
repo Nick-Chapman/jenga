@@ -32,7 +32,7 @@ Change & rebuild:
   $ jenga exec example/hello.exe
   Hello, 89 jenga. Discovered deps and generated rules.
 
-Artifacts:
+Artifacts (materialize all)
 
   $ jenga build -mq && find ,jenga
   ,jenga
@@ -46,25 +46,9 @@ Artifacts:
   ,jenga/example/h.files
   ,jenga/example/main.o
 
-Artifacts (materialize all)
-
-  $ jenga build -m -a
-  checked 8 targets
-  $ find ,jenga
-  ,jenga
-  ,jenga/example
-  ,jenga/example/fib.o
-  ,jenga/example/c.rules
-  ,jenga/example/c.files
-  ,jenga/example/depends
-  ,jenga/example/hello.exe
-  ,jenga/example/o.files
-  ,jenga/example/h.files
-  ,jenga/example/main.o
-
 Targets:
 
-  $ jenga build -m -a --list-targets
+  $ jenga build -a --list-targets
   example/main.o
   example/fib.o
   example/c.rules

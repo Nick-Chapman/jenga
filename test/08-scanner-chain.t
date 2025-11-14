@@ -28,29 +28,29 @@ Inspect the generated deps
 
 Mod-A (change const value)
   $ echo '#define MY_CONST 11' > example/defs2.h
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 6 targets
   ran 2 commands
-  $ ,jenga/example/main.exe
+  $ jenga exec example/main.exe
   hello, 89 world with #include chain
-  $ find ,jenga -name '*.d*' | xargs grep .
+  $ jenga build -mq && find ,jenga -name '*.d*' | xargs grep .
   ,jenga/example/main.d:main.o: main.c fib.h defs.h defs2.h
   ,jenga/example/main.d2:main.d main.o: main.c fib.h defs.h
   ,jenga/example/fib.d:fib.o: fib.c fib.h
 
 Mod-B (shorten the chain)
   $ echo '#define MY_CONST 12' > example/defs.h
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 6 targets
   ran 3 commands
-  $ ,jenga/example/main.exe
+  $ jenga exec example/main.exe
   hello, 144 world with #include chain
-  $ find ,jenga -name '*.d*' | xargs grep .
+  $ jenga build -mq && find ,jenga -name '*.d*' | xargs grep .
   ,jenga/example/main.d:main.o: main.c fib.h defs.h
   ,jenga/example/main.d2:main.d main.o: main.c fib.h defs.h
   ,jenga/example/fib.d:fib.o: fib.c fib.h
@@ -58,15 +58,15 @@ Mod-B (shorten the chain)
 Mod-C (repoint the chain)
   $ echo '#define MY_CONST 13' > example/defs3.h
   $ echo '#include "defs3.h"' > example/defs.h
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 6 targets
   ran 3 commands
-  $ ,jenga/example/main.exe
+  $ jenga exec example/main.exe
   hello, 233 world with #include chain
-  $ find ,jenga -name '*.d*' | xargs grep .
+  $ jenga build -mq && find ,jenga -name '*.d*' | xargs grep .
   ,jenga/example/main.d:main.o: main.c fib.h defs.h defs3.h
   ,jenga/example/main.d2:main.d main.o: main.c fib.h defs.h
   ,jenga/example/fib.d:fib.o: fib.c fib.h

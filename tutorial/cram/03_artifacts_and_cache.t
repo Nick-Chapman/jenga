@@ -60,10 +60,10 @@ Initial build. Expect 3 actions to be run
 
 Zero build
 
-  $ jenga build -m -a -c.
+  $ jenga build -a -c.
   checked 3 targets
 
-  $ find ,jenga
+  $ jenga build -mq && find ,jenga
   ,jenga
   ,jenga/example
   ,jenga/example/fib.o
@@ -71,9 +71,9 @@ Zero build
   ,jenga/example/main.o
 
   $ cd example
-  $ jenga build -m -a
+  $ jenga build -a
   checked 3 targets
-  $ find ,jenga
+  $ jenga build -mq && find ,jenga
   ,jenga
   ,jenga/fib.o
   ,jenga/hello.exe
@@ -113,12 +113,6 @@ Specifying a build cache
 
   $ tmp/.cache/jenga/files/0fcce4811e995a71fe45c2826bb0868b
   Hello, 55 jenga!
-
-These commands are not deterministic!
-$ find tmp/.cache/jenga/files -type f | xargs ls -l
-$ find ,jenga -type f | xargs ls -l
-$ rm -rf tmp/.cache/jenga/files
-$ find ,jenga -type f | xargs ls -l
 
   $ find tmp/.cache/jenga/traces
   tmp/.cache/jenga/traces

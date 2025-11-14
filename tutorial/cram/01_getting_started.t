@@ -31,7 +31,7 @@ Run built executable. See no actions, then the hello program output.
 
 Modify file and rebuild. See the rebuild action, and the changed output.
   $ sed -i s/world/universe/ main.c
-  $ jenga build -m -a; ,jenga/hello.exe
+  $ jenga build -a && jenga exec hello.exe
   A: gcc main.c -o hello.exe
   checked 1 target
   ran 1 command
@@ -39,6 +39,6 @@ Modify file and rebuild. See the rebuild action, and the changed output.
 
 Reset file. See no actions (they were cached), but the output reverted.
   $ sed -i s/universe/world/ main.c
-  $ jenga build -m -a; ,jenga/hello.exe
+  $ jenga build -a && jenga exec hello.exe
   checked 1 target
   Hello, jenga world!

@@ -5,7 +5,7 @@
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/06-diamond example
 
-  $ jenga build -m -a
+  $ jenga build -a
   A: echo -n A > a
   A: echo -n B  > b
   A: cat a b > ab
@@ -15,7 +15,7 @@
   checked 6 targets
   ran 6 commands
 
-  $ cat ,jenga/example/top
+  $ jenga build -mq && cat ,jenga/example/top
   ABBC (no-eol)
 
 The example has a diamond dependency on target 'b', reached via 'ab' and 'bc'.

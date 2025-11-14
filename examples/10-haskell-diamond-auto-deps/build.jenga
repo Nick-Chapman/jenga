@@ -36,7 +36,7 @@ depends : ghc.exe main.hs A.hs B.hs C.hs Top.hs
 # ghc.exe
 
 ghc.exe : ghc-path
-  echo exec $(cat ghc-path) '"$@"' > ghc.exe ; chmod +x ghc.exe
+  echo exec $(cat ghc-path) '"$$@"' > ghc.exe ; chmod +x ghc.exe
 
 ghc-path :
   find $HOME/.stack | grep -v lib | grep bin/ghc$ | sort -n | tail -1 > ghc-path

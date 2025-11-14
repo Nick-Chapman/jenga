@@ -1,5 +1,6 @@
 module MakeStyle (elaborate) where
 
+import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Loc,What(..))
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
@@ -27,9 +28,10 @@ elaborate config0  = do
           ClauseInclude filename -> elabRuleFile (makeKey filename)
 
         elabTrip :: Trip -> G ()
-        elabTrip Trip{pos=Position{line},targets,deps,commands} = do
+        elabTrip Trip{pos=Position{line},targets,deps,commands=commands0} = do
           let rulename = printf "%s:%d" (show config) line
           let targetNames = [ name | MTarget _ name <- targets ]
+          let commands = map expandSpecial commands0
           GRule $ Rule
             { rulename
             , dir
@@ -39,6 +41,16 @@ elaborate config0  = do
                 sequence_ [ makeDep targetNames dep | dep <- deps ]
                 pure (bash commands)
             }
+            where
+              dollarAtReplacement = intercalate " " [ name | MTarget _ name <- targets ]
+              expandSpecial :: String -> String -- TODO also support: $^ and $<
+              expandSpecial = loop
+                where
+                  loop = \case
+                    [] -> []
+                    '$':'$':rest -> '$' : loop rest
+                    '$':'@':rest -> dollarAtReplacement ++ loop rest
+                    x:xs -> x : loop xs
 
     bash :: [String] -> Action
     bash commands = Action { hidden = False, commands }

@@ -57,7 +57,7 @@ data D a where
   DReadKey :: Key -> D String
   DExistsKey :: Key -> D Bool
 
--- TODO: Is this two level Key, Loc really necessary or usefule?
+-- TODO: Is this two level Key, Loc really necessary or useful?
 data Key = Key Loc deriving (Eq,Ord)
 
 data Loc = Loc FilePath deriving (Eq,Ord)

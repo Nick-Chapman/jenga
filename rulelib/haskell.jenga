@@ -39,7 +39,7 @@ ghc.pkgdb :
   echo ~/.ghcup/ghc/9.8.4/lib/ghc-9.8.4/lib/package.conf.d > ghc.pkgdb
 
 ghc.compiler : ghc.exe pkgdb all.options
-  echo exec unbuffer $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$@"' > ghc.compiler
+  echo exec unbuffer $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$$@"' > ghc.compiler
   chmod +x ghc.compiler
 
 all.options : ?ghc-options ?default-extensions
@@ -47,7 +47,7 @@ all.options : ?ghc-options ?default-extensions
   (cat ghc-options ; cat default-extensions | sed 's|^|-X|') | sort > all.options
 
 ghc.linker : ghc.exe pkgdb package-id-flags
-  echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat package-id-flags) '"$@"'  -package containers > ghc.linker
+  echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat package-id-flags) '"$$@"'  -package containers > ghc.linker
   chmod +x ghc.linker
 
 package-id-flags: versioned-packages

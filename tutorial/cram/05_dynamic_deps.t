@@ -2,7 +2,7 @@
 Get an up-to-date jenga executable in path, which runs with a local cachee
 
   $ (cd $TESTDIR/../..; jenga build -q)
-  $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' > jenga
+  $ echo exec $TESTDIR/../../jenga.exe '"$@"' > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
 

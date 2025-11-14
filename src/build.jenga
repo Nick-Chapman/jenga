@@ -1,9 +1,6 @@
 
-!jenga.exe: jenga
-  ln jenga jenga.exe
-
 executable-name:
-  echo jenga > executable-name
+  echo jenga.exe > executable-name
 
 include ../rulelib/haskell.jenga
 

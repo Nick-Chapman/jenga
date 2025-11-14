@@ -45,7 +45,7 @@ Add -Wall to both compile rule. Two actions get rerun.
   fib.o : fib.c
     gcc -Wall -c fib.c -o fib.o
 
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   (stderr) main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
@@ -89,7 +89,7 @@ Define and use header file. Build fails because we failed to declare dependecy o
     return fib(x-1) + fib(x-2);
   }
 
-  $ jenga build -m -a 2>&1 | grep -v 'called at'
+  $ jenga build -a 2>&1 | grep -v 'called at'
   A: gcc -Wall -c fib.c -o fib.o
   (stderr) fib.c:1:10: fatal error: fib.h: No such file or directory
       1 | #include "fib.h"
@@ -120,7 +120,7 @@ Add missing dep to both compile rules
   fib.o : fib.c fib.h
     gcc -Wall -c fib.c -o fib.o
 
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   checked 3 targets

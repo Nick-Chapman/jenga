@@ -75,7 +75,7 @@ Targets:
 
 Rules:
 
-  $ jenga build -m -a --list-rules
+  $ jenga build -a --list-rules
   example/main.o : example/main.c example/fib.h example/defs.h
     cd example ; gcc -c -o main.o main.c
   

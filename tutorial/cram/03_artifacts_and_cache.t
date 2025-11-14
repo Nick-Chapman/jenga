@@ -51,7 +51,7 @@ Get an up-to-date jenga executable in path, which runs with a local cachee
 
 Initial build. Expect 3 actions to be run
 
-  $ jenga build -m -a -c.
+  $ jenga build -a -c.
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
@@ -82,7 +82,7 @@ Zero build
 
 Specifying a build cache
 
-  $ jenga build -m -a --cache=tmp
+  $ jenga build -a --cache=tmp
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
@@ -133,12 +133,12 @@ $ find ,jenga -type f | xargs ls -l
 Double build
 
   $ cp -rp example copied
-  $ jenga build -m -a -c.
+  $ jenga build -a -c.
   checked 6 targets
 
 What are the targets?
 
-  $ jenga build -m -a --list-targets -c.
+  $ jenga build -a --list-targets -c.
   example/fib.o
   example/main.o
   example/hello.exe
@@ -146,7 +146,7 @@ What are the targets?
   copied/main.o
   copied/hello.exe
 
-  $ jenga build -m -a --list-targets -c.
+  $ jenga build -a --list-targets -c.
   example/fib.o
   example/main.o
   example/hello.exe
@@ -156,23 +156,23 @@ What are the targets?
 
 Controlling the scope of what to build
 
-  $ jenga build -m -a copied -c.
+  $ jenga build -a copied -c.
   checked 3 targets
 
-  $ jenga build -m -a --list-targets copied -c.
+  $ jenga build -a --list-targets copied -c.
   copied/fib.o
   copied/main.o
   copied/hello.exe
 
 Builds are relative
   $ cd copied
-  $ jenga build -m -a -c..
+  $ jenga build -a -c..
   checked 3 targets
   $ cd ..
 
 Using a non-default cache:
 
-  $ jenga build -m -a --cache=my-cache
+  $ jenga build -a --cache=my-cache
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
@@ -181,12 +181,12 @@ Using a non-default cache:
 
 Using a non-default cache (still get minimal builds)
 
-  $ jenga build -m -a --cache=my-cache
+  $ jenga build -a --cache=my-cache
   checked 6 targets
 
 Using a temporary cache with -f. Forces run of all the actions
 
-  $ jenga build -m -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
@@ -194,7 +194,7 @@ Using a temporary cache with -f. Forces run of all the actions
   checked 6 targets
   ran 3 commands
 
-  $ jenga build -m -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o

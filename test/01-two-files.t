@@ -46,7 +46,7 @@ Run the built artifact:
 
 Rebuild after no changes:
 
-  $ jenga build -m -a
+  $ jenga build -a
   checked 3 targets
 
 Update main.c "world->UNIVERSE" and rerun:
@@ -71,7 +71,7 @@ Reverting to previous state of main.c causes no rebuilding:
 Whitespace only change to main.c cause no link step (early cutoff):
 
   $ sed -i 's/int main/int      main/g' example/main.c
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc -c main.c -o main.o
   checked 3 targets
   ran 1 command

@@ -16,13 +16,13 @@ Get the example.
   $ cp -rp $TESTDIR/../files/01/main.c .
 
 Build. See one build action.
-  $ jenga build -m -a
+  $ jenga build -a
   A: gcc main.c -o hello.exe
   checked 1 target
   ran 1 command
 
 Zero rebuild. See no build actions.
-  $ jenga build -m -a
+  $ jenga build -a
   checked 1 target
 
 Run built executable. See no actions, then the hello program output.

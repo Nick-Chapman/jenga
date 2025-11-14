@@ -62,13 +62,13 @@ See the depends
 
 See the targets and rules
 
-  $ jenga build -m -a --list-targets -c.
+  $ jenga build -a --list-targets -c.
   example/depends
   example/fib.o
   example/main.o
   example/hello.exe
 
-  $ jenga build -m -a -r -c.
+  $ jenga build -a -r -c.
   example/depends : example/main.c example/fib.c
     cd example ; gcc -MG -MM *.c > depends
   
@@ -81,7 +81,7 @@ See the targets and rules
   example/hello.exe : example/main.o example/fib.o
     cd example ; gcc main.o fib.o -o hello.exe
 
-  $ (cd example; ../jenga build -m -r -c..)
+  $ (cd example; ../jenga build -r -c..)
   depends : main.c fib.c
     gcc -MG -MM *.c > depends
   
@@ -94,7 +94,7 @@ See the targets and rules
   hello.exe : main.o fib.o
     gcc main.o fib.o -o hello.exe
 
-  $ (cd example; ../jenga build -m -arf)  | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
+  $ (cd example; ../jenga build -arf)  | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
   using temporary cache: /tmp/.cache/jenga/$$
   A: gcc -MG -MM *.c > depends
   depends : main.c fib.c

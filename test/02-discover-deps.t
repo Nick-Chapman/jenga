@@ -67,7 +67,7 @@ Change const value in defs.h
 
 Setup ALT defs file (causes no actions):
   $ echo '#define MY_CONST 12' > example/defsALT.h
-  $ jenga build -m -a
+  $ jenga build -a
   A: cat all.files | grep '.c$' > c.files
   checked 11 targets
   ran 1 command
@@ -102,7 +102,7 @@ Use feature of CC setup macro which is conditionally dependent on cflags key...
 
 Compile with -Wall:
   $ echo '-Wall' > example/cflags
-  $ jenga build -m -a
+  $ jenga build -a
   A: cat all.files | grep '.c$' > c.files
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
@@ -113,7 +113,7 @@ Compile with -Wall:
 
 Compile with -O2 causes relink:
   $ echo '-O2' > example/cflags
-  $ jenga build -m -a
+  $ jenga build -a
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   A: gcc -O2 -c fib.c -o fib.o

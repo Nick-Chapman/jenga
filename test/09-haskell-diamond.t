@@ -23,7 +23,7 @@
   $ ,jenga/example/diamond.exe
   Top[B[A],C[A]]
 
-  $ jenga build -m -a --debug-demand
+  $ jenga build -a --debug-demand
   B: Require: example/ghc-path
   B: Require: example/ghc.exe
   B: Require: example/Top.hi

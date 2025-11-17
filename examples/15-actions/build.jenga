@@ -1,0 +1,14 @@
+
+*run : the.sh
+  ./the.sh
+
+*test : the.out the.out.expected
+  diff $^
+
+the.out : the.sh
+  ./$< > $@
+
+promotion.rules :
+  echo '!the.out.expected : the.out : ln $$< $$@' > $@
+
+#include promotion.rules

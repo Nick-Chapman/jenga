@@ -3,8 +3,9 @@ module Interface
   , Rule(..)    -- A Rule with dynamic dependencies.
   , Action(..)  -- A user action which is run when a rule triggers.
   , D(..)       -- The Dependency monad.
-  , Target(..)  -- targets + materialization control
-  , Key(..)     -- An identifier for targets and dependencies.
+  , Target(..)  -- list of artifacts or an action name
+  , Artifact(..)-- artifact name + materialization control
+  , Key(..)     -- An identifier for artifacts and dependencies.
   , Loc(..)     -- A file-path location.
   , What(..)    -- what kind of file-system object is at a given location
   ) where
@@ -31,11 +32,13 @@ data Rule = Rule
   { rulename :: String
   , dir :: Loc
   , hidden :: Bool
-  , targets :: [Target]
+  , target :: Target
   , depcom :: D Action
   }
 
-data Target = Target
+data Target = Artifacts [Artifact] | Phony String
+
+data Artifact = Artifact
   { materialize :: Bool
   , key :: Key
   }
@@ -58,7 +61,7 @@ data D a where
   DExistsKey :: Key -> D Bool
 
 -- TODO: Is this two level Key, Loc really necessary or useful?
-data Key = Key Loc deriving (Eq,Ord)
+data Key = Key Loc deriving (Eq,Ord) -- Artifact Key
 
 data Loc = Loc FilePath deriving (Eq,Ord)
 

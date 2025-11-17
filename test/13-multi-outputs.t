@@ -53,7 +53,7 @@ Change the example to have a non-zero error code
   ExitFailure 42
   ran 4 commands
   Build failed for 1 reasons:
-  (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'
+  (1) action failed for rule targeting: example/h example/t
 
 And zero build (see warning and error, again even though no actions were run)
 
@@ -61,4 +61,4 @@ And zero build (see warning and error, again even though no actions were run)
   (stdout) WARNING
   ExitFailure 42
   Build failed for 1 reasons:
-  (1) 'example/h example/t': action failed for rule 'example/build.jenga:7'
+  (1) action failed for rule targeting: example/h example/t

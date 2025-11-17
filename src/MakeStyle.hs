@@ -2,7 +2,7 @@ module MakeStyle (elaborate) where
 
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
-import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Loc,What(..))
+import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),Loc,What(..))
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 import StdBuildUtils ((</>),dirKey,baseKey)
 import Text.Printf (printf)
@@ -28,21 +28,35 @@ elaborate config0  = do
           ClauseInclude filename -> elabRuleFile (makeKey filename)
 
         elabTrip :: Trip -> G ()
-        elabTrip Trip{pos=Position{line},targets,deps,commands=commands0} = do
+        elabTrip Trip{pos=Position{line},ruleTarget,deps,commands=commands0} = do
           let rulename = printf "%s:%d" (show config) line
-          let targetNames = [ name | MTarget _ name <- targets ]
+          let
+            artNames =
+              case ruleTarget of
+                MArtifacts xs -> [ name | (_,name) <- xs ]
+                MPhony{} -> []
           let commands = map expandSpecial commands0
           GRule $ Rule
             { rulename
             , dir
             , hidden = False
-            , targets = [ Target { materialize = mat, key = makeKey name } | MTarget mat name <- targets ]
+            , target =
+              case ruleTarget of
+                MArtifacts xs ->
+                  Artifacts [ Artifact { materialize = mat, key = makeKey name }
+                            | (mat, name) <- xs ]
+                MPhony name ->
+                  Phony name
             , depcom = do
-                sequence_ [ makeDep targetNames dep | dep <- deps ]
+                sequence_ [ makeDep artNames dep | dep <- deps ]
                 pure (bash commands)
             }
             where
-              dollarAtReplacement = intercalate " " [ name | MTarget _ name <- targets ]
+              dollarAtReplacement =
+                case ruleTarget of
+                  MArtifacts xs -> intercalate " " [ name | (_,name) <- xs ]
+                  MPhony name -> name
+
               -- very simplistic support for $^ and $<
               dollarHatReplacement = intercalate " " [ name | DepPlain name <- deps]
               dollarLeftReplacement = intercalate " " (take 1 [ name | DepPlain name <- deps])
@@ -60,12 +74,12 @@ elaborate config0  = do
     bash :: [String] -> Action
     bash commands = Action { hidden = False, commands }
 
-    makeDep targets = \case
+    makeDep artNames = \case
       DepPlain file -> DNeed (makeKey file)
       DepScanner file -> do
         let key = makeKey file
         contents <- DReadKey key
-        let deps = filterDepsFor targets contents
+        let deps = filterDepsFor artNames contents
         sequence_ [ DNeed (makeKey dep) | dep <- deps ]
       DepOpt file -> do
         let key = makeKey file
@@ -82,7 +96,8 @@ elaborate config0  = do
       GRule (Rule { rulename = printf "glob-%s" (show dir)
                   , dir
                   , hidden = True
-                  , targets = [ Target { materialize = False, key = makeKey allFilesName } ]
+                  , target = Artifacts [ Artifact { materialize = False
+                                                  , key = makeKey allFilesName } ]
                   , depcom = pure (Action
                                     { hidden = True
                                     , commands = [printf "echo -n '%s' > %s"
@@ -97,7 +112,7 @@ glob dir = do
     _what -> GFail (printf "glob: expected %s to be a directory" (show dir))
 
 filterDepsFor :: [String] -> String -> [String]
-filterDepsFor targets contents = do
+filterDepsFor artNames contents = do
   let
     parseDepsLine :: String -> [String]
     parseDepsLine line =
@@ -106,7 +121,7 @@ filterDepsFor targets contents = do
         -- we regard names on the right as the list of deps,
         -- but only take them if we target a name listed on the left.
         [left,right] -> do
-          if any (`elem` targets) (words left) then words right else []
+          if any (`elem` artNames) (words left) then words right else []
         _ -> do
           -- No colon: we take all the deps
           words line
@@ -118,12 +133,14 @@ data Clause = ClauseTrip Trip | ClauseInclude String
 
 data Trip = Trip
   { pos :: Position
-  , targets :: [MTarget]
+  , ruleTarget :: MTarget
   , deps :: [Dep]
   , commands :: [String]
   }
 
-data MTarget = MTarget Bool String
+data MTarget
+  = MArtifacts [(Bool,String)] -- Bool indicates user materizalization (!)
+  | MPhony String
 
 data Dep
   = DepPlain String     -- key
@@ -155,17 +172,25 @@ gram = start
 
     ruleClause = do
       pos <- position
-      targets <- some target
+      ruleTarget <- ruleTarget
       colon
       deps <- many dep
       commands <- alts [tradRule,onelineRule]
       skip $ alts [nl,commentToEol]
-      pure (ClauseTrip (Trip {pos,targets,deps,commands}))
+      pure (ClauseTrip (Trip {pos,ruleTarget,deps,commands}))
 
-    target = do
+    ruleTarget = do
+      alts [ MArtifacts <$> some artifactName
+           , MPhony <$> actionName ]
+
+    artifactName = do
       mat <- alts [ do lit '!'; pure True, pure False ]
       name <- identifier
-      pure (MTarget mat name)
+      pure (mat,name)
+
+    actionName = do
+      lit '*'
+      identifier
 
     -- traditional make syntax
     tradRule = do
@@ -202,7 +227,7 @@ gram = start
 
     identifierChar = sat (not . specialChar)
 
-    specialChar = (`elem` " :#()\n!")
+    specialChar = (`elem` " :#()\n!*")
 
     singleCommandLine = do
       trimTrailingSpace <$> many actionChar

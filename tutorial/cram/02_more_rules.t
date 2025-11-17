@@ -105,8 +105,8 @@ Define and use header file. Build fails because we failed to declare dependecy o
   ExitFailure 1
   ran 2 commands
   Build failed for 2 reasons:
-  (1) 'fib.o': action failed for rule 'build.jenga:7'
-  (2) 'main.o': action failed for rule 'build.jenga:4'
+  (1) action failed for rule targeting: fib.o
+  (2) action failed for rule targeting: main.o
 
 Add missing dep to both compile rules
   $ sed -i 's/: main.c/: main.c fib.h/' build.jenga

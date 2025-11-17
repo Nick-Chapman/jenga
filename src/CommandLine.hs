@@ -30,7 +30,8 @@ data BuildMode
   = ModeListTargets
   | ModeListRules
   | ModeBuild
-  | ModeBuildAndRun FilePath [FilePath]
+  | ModeExec FilePath [FilePath]
+  | ModeRun [String]
 
 exec :: IO Config
 exec = customExecParser
@@ -47,8 +48,13 @@ subCommands =
   <|>
   hsubparser
   (command "exec"
+    (info execCommand
+      (progDesc "Update the build and run a single executable target")))
+  <|>
+  hsubparser
+  (command "run"
     (info runCommand
-      (progDesc "Build and run a single executable target")))
+      (progDesc "Update the build and run the action for a phony build target)")))
 
 buildCommand :: Parser Config
 buildCommand = do
@@ -70,15 +76,24 @@ buildCommand = do
       many (strArgument (metavar "DIRS" <> help "Directories to search for build rules; default CWD"))
   sharedOptions LogNormal args buildMode
 
+execCommand :: Parser Config
+execCommand = do
+  let
+    buildMode = do
+      exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
+      exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
+      pure (ModeExec exe exeArgs)
+  let args = pure []
+  sharedOptions LogQuiet args buildMode
+
 runCommand :: Parser Config
 runCommand = do
   let
     buildMode = do
-      exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
-      exeArgs <- many (strArgument (metavar "EXE-ARG" <> help "Argument for target executable"))
-      pure (ModeBuildAndRun exe exeArgs)
+      ps <- some (strArgument (metavar "PHONY+" <> help "Phony targets to build and run"))
+      pure (ModeRun ps)
   let args = pure []
-  sharedOptions LogQuiet args buildMode
+  sharedOptions LogNormal args buildMode
 
 sharedOptions :: LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
 sharedOptions defaultLogMode args buildMode = do

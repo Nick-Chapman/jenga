@@ -12,7 +12,7 @@ import Data.List qualified as List (foldl')
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Interface (G(..),D(..),Rule(..),Action(..),Target(..), Key(..),Loc(..),What(..))
+import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
 import StdBuildUtils ((</>),dirLoc)
 import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile,getHomeDirectory)
 import System.Environment (lookupEnv)
@@ -67,8 +67,16 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{rules} = system
-        let allTargets = [ target | Rule{hidden,targets} <- rules, Target {key = target} <- targets, not hidden ]
-        sequence_ [ BLog (show key) | key <- allTargets ]
+        sequence_
+          [ BLog t
+          | Rule{hidden,target} <- rules
+          , not hidden
+          , t <-
+              case target of
+                Artifacts arts -> [ show key | Artifact{key} <- arts ]
+                -- TODO: should "-t" show *actions as well?
+                Phony _name -> [] -- [ "*" ++ _name ]
+          ]
 
     ModeListRules -> do
       runBuild cacheDir config $ \config -> do
@@ -79,25 +87,38 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
                         pure [ StaticRule { rulename, dir, targets, deps, action }
                              | not actionHidden
                              ]
-                   | Rule{rulename,dir,hidden=ruleHidden,targets=tars,depcom} <- rules
-                   , let targets = [ key | Target{key} <- tars ]
+                   | Rule{rulename,dir,hidden=ruleHidden,target,depcom} <- rules
                    , not ruleHidden
+                   -- dont list any phony rules -- TODO: why not!
+                   , case target of Artifacts{} -> True ; Phony{} -> False
+                   , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
+                   , let targets = [ key | Artifact{key} <- arts ]
                    ]
         BLog (intercalate "\n\n" (map show staticRules))
 
     ModeBuild -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
-        buildWithSystem config system
+        buildEverythingInSystem config system
         reportSystem config system
 
-    ModeBuildAndRun target argsForTarget -> do
+    ModeExec target argsForTarget -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [FP.takeDirectory target])
+        buildEverythingInSystem config system -- TODO: ???
         let System{how} = system
-        digest <- buildTarget config how (Key (Loc target))
+        digest <- buildArtifact config how (Key (Loc target))
         cacheFile <- cacheFile digest
         Execute (XIO (callProcess (show cacheFile) argsForTarget))
+
+    ModeRun names -> do
+      runBuild cacheDir config $ \config -> do
+        system <- runElaboration config (userProg args)
+        buildEverythingInSystem config system
+        reportSystem config system
+        let System{how} = system
+        parallel_ [ buildPhony config how name | name <- names ]
+
 
 runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
 runBuild cacheDir config f = do
@@ -112,14 +133,18 @@ nCopies config@Config{jnum} f =
     f config -- parent
     mapM_ waitpid children
 
-buildWithSystem :: Config -> System -> B ()
-buildWithSystem config system = do
+buildEverythingInSystem :: Config -> System -> B ()
+buildEverythingInSystem config system = do
   let System{rules,how} = system
-  let allTargets = [ target | Rule{hidden,targets} <- rules, target <- targets, not hidden ]
-  _ :: [()] <- parallel [ buildAndMaterialize config how target
-                        | target <- allTargets
-                        ]
-  pure ()
+  let
+    allArtifacts =
+        [ art
+        | Rule{hidden,target} <- rules
+        , not hidden
+        , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
+        , art <- arts
+        ]
+  parallel_ [ buildAndMaterialize config how art | art <- allArtifacts ]
 
 data StaticRule = StaticRule
   { rulename :: String
@@ -144,13 +169,18 @@ pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
 reportSystem :: Config -> System -> B ()
 reportSystem Config{logMode,worker} System{rules} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
-  let nTargets = sum [ length targets |  Rule{targets,hidden} <- rules, not hidden ]
+  let nTargets =
+        sum [ length arts
+            | Rule{target,hidden} <- rules
+            , not hidden
+            , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
+            ]
   when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
-buildAndMaterialize :: Config -> How -> Target -> B ()
+buildAndMaterialize :: Config -> How -> Artifact -> B ()
 buildAndMaterialize config@Config{materializeCommaJenga} how target = do
-  let Target { materialize, key } = target
-  digest <- buildTarget config how key
+  let Artifact { materialize, key } = target
+  digest <- buildArtifact config how key
   when materializeCommaJenga $ materializeInCommaJenga digest key
   when materialize $ materializeInUserDir digest key
   pure ()
@@ -203,7 +233,9 @@ commaJengaDir = Loc ",jenga"
 
 data System = System { rules :: [Rule], how :: How }
 
-type How = Map Key Rule
+data How = How { ahow :: Map Key Rule -- map from (artifact)-key to rule
+               , phow :: Map String [Rule] -- map from phoy name to set of rules
+               }
 
 runElaboration :: Config -> G () -> B System
 runElaboration config m =
@@ -213,7 +245,7 @@ runElaboration config m =
 
   where
     system0 :: System
-    system0 = System { rules = [], how = Map.empty }
+    system0 = System { rules = [], how = How { ahow = Map.empty, phow = Map.empty } }
 
     k0 :: System -> () -> B System
     k0 s () = pure s
@@ -227,22 +259,33 @@ runElaboration config m =
         k system ()
       GFail mes -> bfail mes --ignore k
       GRule rule -> do
-        let Rule{targets} = rule
-        xs <- sequence [ do b <- Execute (XFileExists loc); pure (key,b)
-                       | Target { materialize = False, key = key@(Key loc) } <- targets ]
-        -- we only report a clash for non-materializing targets
-        case [ key | (key,isSource) <- xs, isSource ] of
-          clashS@(_:_) -> do
-            bfail $ printf "rule targets clash with source :%s" (show clashS)
-          [] -> do
-            let targetKeys = [ key | Target { key } <- targets ]
+        let Rule{target} = rule
+        case target of
+          Phony phonyName -> do
             let System{rules,how} = system
-            case filter (flip Map.member how) targetKeys of
-              clashR@(_:_) -> do
-                bfail $ printf "rule targets defined by earlier rule :%s" (show clashR)
+            let How{phow} = how
+            let existingRulesForThisPhony = maybe [] id $ Map.lookup phonyName phow
+            phow <- pure $ Map.insert phonyName (rule : existingRulesForThisPhony) phow
+            k system { rules = rule : rules, how = how { phow } } ()
+
+          Artifacts arts -> do
+            xs <- sequence [ do b <- Execute (XFileExists loc); pure (key,b)
+                           | Artifact { materialize = False, key = key@(Key loc) } <- arts
+                           ]
+            -- we only report a clash for non-materializing targets
+            case [ key | (key,isSource) <- xs, isSource ] of
+              clashS@(_:_) -> do
+                bfail $ printf "rule targets clash with source :%s" (show clashS)
               [] -> do
-                how <- pure $ List.foldl' (flip (flip Map.insert rule)) how targetKeys
-                k system { rules = rule : rules, how } ()
+                let targetKeys = [ key | Artifact { key } <- arts ]
+                let System{rules,how} = system
+                let How{ahow} = how
+                case filter (\k -> Map.member k ahow) targetKeys of
+                  clashR@(_:_) -> do
+                    bfail $ printf "rule targets defined by earlier rule :%s" (show clashR)
+                  [] -> do
+                    ahow <- pure $ List.foldl' (flip (\k -> Map.insert k rule)) ahow targetKeys
+                    k system { rules = rule : rules, how = how { ahow } } ()
 
       GWhat loc -> do
         Execute (xwhat loc) >>= k system
@@ -269,18 +312,28 @@ xwhat loc = do
             False -> pure File
             True -> Directory <$> XListDir loc
 
-locateKey :: Key -> Loc
+locateKey :: Key -> Loc -- TODO: use distinguished return type to promise basename behaviour
 locateKey (Key (Loc fp)) = Loc (FP.takeFileName fp)
 
 ----------------------------------------------------------------------
 -- Build
 
-buildTarget :: Config -> How -> Key -> B Digest
-buildTarget config@Config{debugDemand} how = do
+buildPhony :: Config -> How -> String -> B ()
+buildPhony config@Config{debugDemand=_} how@How{phow} phonyName = do
+  case maybe [] id $ Map.lookup phonyName phow of
+    [] ->
+      bfail (printf "no rules for phony target '%s'" phonyName)
+    rules ->
+      parallel_ [ do _ :: WitMap <- buildRule config how rule; pure ()
+                | rule <- rules
+                ]
+
+buildArtifact :: Config -> How -> Key -> B Digest
+buildArtifact config@Config{debugDemand} how@How{ahow} = do
   -- TODO: document this flow.
   -- TODO: check for cycles.
   BMemoKey $ \sought -> do
-    case Map.lookup sought how of
+    case Map.lookup sought ahow of
       Nothing -> do
         let Key loc = sought
         Execute (XFileExists loc) >>= \case
@@ -292,47 +345,48 @@ buildTarget config@Config{debugDemand} how = do
 
       Just rule -> do
         when debugDemand $ BLog (printf "B: Require: %s" (show sought))
-        wtargets <- buildRule config how rule
+        -- We only memoize the run of rule targeting artifacts (not phonys)
+        wtargets <- BMemoRule (buildRule config how) rule
         let digest = lookWitMap (locateKey sought) wtargets
         pure digest
 
 buildRule :: Config -> How -> Rule -> B WitMap
-buildRule config@Config{debugLocking} how =
-  BMemoRule $ \rule -> do
-    let Rule{targets=tars,depcom} = rule
-    let targets = [ key | Target { key } <- tars ]
-    (deps,action@Action{commands}) <- gatherDeps config how depcom
-    wdeps <- (WitMap . Map.fromList) <$>
-      parallel [ do digest <- buildTarget config how dep; pure (locateKey dep,digest)
-               | dep <- deps
-               ]
-    let witKey = WitnessKey { targets = map locateKey targets, commands, wdeps }
-    let wkd = digestWitnessKey witKey
-    -- If the witness trace already exists, use it.
-    when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
-    verifyWitness config wkd rule >>= \case
-      Just w -> pure w
-      Nothing -> do
-        -- If not, someone has to run the job...
-        when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
-        tryGainingLock debugLocking wkd $ \case
-          True -> do
-            -- We got the lock, check again for the trace...
-            when debugLocking $ Execute $ XLog (printf "L: look again for witness: %s" (show wkd))
-            verifyWitness config wkd rule >>= \case
-              Just w -> pure w
-              Nothing -> do
-                when debugLocking $ Execute $ XLog (printf "L: still no witness; running jobs NOW: %s" (show wkd))
-                -- We have the lock and there is still no trace, so we run the job....
-                runActionSaveWitness config action wkd wdeps rule
-          False -> do
-            when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
-            -- Another process beat us to the lock; it's running the job.
-            awaitLockYielding config wkd
-            -- Now it will have finished.
-            verifyWitness config wkd rule >>= \case
-              Just w -> pure w
-              Nothing -> BResult (FAIL [])
+buildRule config@Config{debugLocking} how rule = do
+  let Rule{target,depcom} = rule
+  let arts = case target of Artifacts arts -> arts ; Phony{} -> []
+  let targets = [ key | Artifact { key } <- arts ]
+  (deps,action@Action{commands}) <- gatherDeps config how depcom
+  wdeps <- (WitMap . Map.fromList) <$>
+    parallel [ do digest <- buildArtifact config how dep; pure (locateKey dep,digest)
+             | dep <- deps
+             ]
+  let witKey = WitnessKey { targets = map locateKey targets, commands, wdeps }
+  let wkd = digestWitnessKey witKey
+  -- If the witness trace already exists, use it.
+  when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
+  verifyWitness config wkd rule >>= \case
+    Just w -> pure w
+    Nothing -> do
+      -- If not, someone has to run the job...
+      when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
+      tryGainingLock debugLocking wkd $ \case
+        True -> do
+          -- We got the lock, check again for the trace...
+          when debugLocking $ Execute $ XLog (printf "L: look again for witness: %s" (show wkd))
+          verifyWitness config wkd rule >>= \case
+            Just w -> pure w
+            Nothing -> do
+              when debugLocking $ Execute $ XLog (printf "L: still no witness; running jobs NOW: %s" (show wkd))
+              -- We have the lock and there is still no trace, so we run the job....
+              runActionSaveWitness config action wkd wdeps rule
+        False -> do
+          when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
+          -- Another process beat us to the lock; it's running the job.
+          awaitLockYielding config wkd
+          -- Now it will have finished.
+          verifyWitness config wkd rule >>= \case
+            Just w -> pure w
+            Nothing -> BResult (FAIL [])
 
 verifyWitness :: Config -> WitKeyDigest -> Rule -> B (Maybe WitMap)
 verifyWitness config wkd rule = do
@@ -404,13 +458,13 @@ gatherDeps config how d = loop d [] k0
 
 readKey :: Config -> How -> Key -> B String
 readKey config how key = do
-  digest <- buildTarget config how key
+  digest <- buildArtifact config how key
   file <- cacheFile digest
   Execute (XReadFile file)
 
 existsKey :: How -> Key -> B Bool
-existsKey how key =
-  if Map.member key how
+existsKey How{ahow} key =
+  if Map.member key ahow
   then pure True
   else do
     let Key loc = key
@@ -437,9 +491,13 @@ runActionSaveWitness config action wkd depWit rule = do
 
 actionFailed :: Rule -> B a
 actionFailed rule = do
-  let Rule{targets=tars,rulename} = rule
-  let targets = [ key | Target { key } <- tars ]
-  bfail (printf "'%s': action failed for rule '%s'" (intercalate " " $ map show targets) rulename)
+  let Rule{target} = rule
+  bfail (printf "action failed for rule targeting: %s" (showTarget target))
+
+showTarget :: Target -> String
+showTarget = \case
+  Artifacts arts -> intercalate " " [ show key | Artifact { key } <- arts ]
+  Phony phonyName -> "*" ++ phonyName
 
 setupInputs :: Loc -> WitMap -> B ()
 setupInputs sandbox (WitMap m1) = do
@@ -465,8 +523,9 @@ hardLinkRetry1 src dest =  do
           error e2 -- hard error for error on 2nd attempt
 
 cacheOutputs :: Loc -> Rule -> B WitMap
-cacheOutputs sandbox Rule{rulename,targets=tars} = do
-  let targets = [ key | Target { key } <- tars ]
+cacheOutputs sandbox Rule{rulename,target} = do
+  let arts = case target of Artifacts arts -> arts ; Phony{} -> []
+  let targets = [ key | Artifact { key } <- arts ]
   WitMap . Map.fromList <$> sequence
     [ do
         let tag = locateKey target
@@ -599,7 +658,7 @@ data QCommandRes = RUN
   }
   deriving (Show,Read)
 
-type QWitMap = [(FilePath,QDigest)]
+type QWitMap = [(FilePath,QDigest)] -- note: just the basename of every path
 type QDigest = String
 
 toQ :: Witness -> QWitness
@@ -672,6 +731,9 @@ removeReasons = \case
 
 bfail :: Reason -> B a
 bfail r1 = BResult (FAIL [r1])
+
+parallel_ :: [B ()] -> B ()
+parallel_ xs = do _ :: [()] <- parallel xs; pure ()
 
 parallel :: [B a] -> B [a]
 parallel = \case
@@ -748,8 +810,9 @@ runB cacheDir config@Config{logMode} build0 = do
             loop (f key) s { memoT = Map.insert key WIP (memoT s)} $ \s res -> do
               k s { memoT = Map.insert key (Ready res) (memoT s) } res
 
-      BMemoRule f rule@Rule{targets=tars} -> do
-        let targets = [ key | Target { key } <- tars ]
+      BMemoRule f rule@Rule{target} -> do
+        let arts = case target of Artifacts arts -> arts ; Phony{} -> error "BMemoRule/Phony"
+        let targets = [ key | Artifact { key } <- arts ]
         case Map.lookup targets (memoR s) of
           Just res -> k s (removeReasons res)
           Nothing -> do
@@ -818,7 +881,7 @@ reportBuildRes Config{worker} res =
 
 data BState = BState
   { sandboxCounter :: Int
-  , runCounter :: Int -- less that sandboxCounter because of hidden actions
+  , runCounter :: Int -- less than sandboxCounter because of hidden actions
   , memoT :: Map Key (OrWIP (BuildRes Digest))
   , memoR :: Map [Key] (BuildRes WitMap)
   , jobs :: [BJob]

@@ -1,0 +1,6 @@
+
+expect.rules.gen : expect.names ?.promote
+  cat expect.names | sed 's|\(.*\)|*test : expected/\1.expected \1 : git diff --color \1.expected \1|' >> $@
+  if [ -f .promote ]; then cat expect.names | sed 's|\(.*\)|!expected/\1.expected : \1 : ln \1 \1.expected|' >> $@; fi
+
+include expect.rules.gen

@@ -163,8 +163,8 @@ sharedOptions defaultLogMode args buildMode = do
     switch (long "promote"
             <> help "Promote test output as expected")
 
-  strict <-
-    switch (long "strict"
-            <> help "Run jenga actions in an empty environment")
+  strict <- not <$>
+    switch (long "sloppy"
+            <> help "Run jenga actions with a sloppy environment")
 
   pure $ Config { .. }

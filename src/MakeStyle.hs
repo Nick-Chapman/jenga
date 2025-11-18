@@ -1,5 +1,6 @@
 module MakeStyle (elaborate) where
 
+import Control.Monad (when)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),Loc,What(..))
@@ -7,8 +8,9 @@ import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 import StdBuildUtils ((</>),dirKey,baseKey)
 import Text.Printf (printf)
 
-elaborate :: Key -> G ()
-elaborate config0  = do
+elaborate :: Bool -> Key -> G ()
+elaborate withPromotion config0  = do
+  when withPromotion $ promoteRule
   allFilesRule
   elabRuleFile config0
   where
@@ -104,6 +106,20 @@ elaborate config0  = do
                                                   (unlines (map baseKey allFiles))
                                                   allFilesName]
                                     })})
+
+    promoteName = ".promote"
+    promoteRule =  do
+      GRule (Rule { rulename = printf ".promote-%s" (show dir)
+                  , dir
+                  , hidden = True
+                  , target = Artifacts [ Artifact { materialize = False
+                                                  , key = makeKey promoteName } ]
+                  , depcom = pure (Action
+                                    { hidden = True
+                                    , commands = [printf "touch %s"
+                                                  promoteName]
+                                    })})
+
 
 glob :: Loc -> G [Loc]
 glob dir = do

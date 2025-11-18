@@ -7,10 +7,10 @@ import MakeStyle qualified (elaborate)
 import StdBuildUtils ((</>))
 
 main :: IO ()
-main = engineMain $ \args -> do
+main = engineMain $ \withPromotion args -> do
   configs <- findConfigs args
   --GLog (show configs)
-  sequence_ [ MakeStyle.elaborate (Key config) | config <- configs ]
+  sequence_ [ MakeStyle.elaborate withPromotion (Key config) | config <- configs ]
 
 _parallel_ :: [G ()] -> G ()
 _parallel_ = \case

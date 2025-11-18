@@ -34,9 +34,10 @@ import WaitPid(waitpid)
 
 type UserProg = [String] -> G ()
 
-engineMain :: UserProg -> IO ()
-engineMain userProg = do
-  config@Config{cacheDirSpec,logMode} <- CommandLine.exec
+engineMain :: (Bool -> UserProg) -> IO ()
+engineMain mkUserProg = do
+  config@Config{cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
+  let userProg = mkUserProg withPromotion
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 

@@ -49,12 +49,17 @@ subCommands =
   hsubparser
   (command "exec"
     (info execCommand
-      (progDesc "Update the build and run a single executable target")))
+      (progDesc "build; then run a single executable target")))
   <|>
   hsubparser
   (command "run"
     (info runCommand
-      (progDesc "Update the build and run the action for a phony build target)")))
+      (progDesc "build; then run a list of actions")))
+  <|>
+  hsubparser
+  (command "test"
+    (info testCommand
+      (progDesc "build; then run the 'test' action")))
 
 buildCommand :: Parser Config
 buildCommand = do
@@ -94,6 +99,11 @@ runCommand = do
       pure (ModeRun ps)
   let args = pure []
   sharedOptions LogNormal args buildMode
+
+testCommand :: Parser Config
+testCommand = do
+  let args = pure []
+  sharedOptions LogNormal args (pure (ModeRun ["test"]))
 
 sharedOptions :: LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
 sharedOptions defaultLogMode args buildMode = do

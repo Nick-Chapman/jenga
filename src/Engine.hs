@@ -23,7 +23,7 @@ import System.IO (hFlush,hPutStrLn,withFile,IOMode(WriteMode),hPutStr)
 import System.IO qualified as IO (stderr,stdout)
 import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,getSymbolicLinkStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory,isSymbolicLink)
 import System.Posix.Process (forkProcess)
-import System.Process (shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
+import System.Process (CreateProcess(env),shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 import System.IO.SafeWrite (syncFile)
@@ -353,7 +353,7 @@ buildArtifact config@Config{debugDemand} how@How{ahow} = do
         pure digest
 
 buildRule :: Config -> How -> Rule -> B WitMap
-buildRule config@Config{debugLocking} how rule = do
+buildRule config@Config{debugLocking,strict} how rule = do
   let Rule{target,depcom} = rule
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
@@ -362,7 +362,7 @@ buildRule config@Config{debugLocking} how rule = do
     parallel [ do digest <- buildArtifact config how dep; pure (locateKey dep,digest)
              | dep <- deps
              ]
-  let witKey = WitnessKey { targets = map locateKey targets, commands, wdeps }
+  let witKey = WitnessKey { strict, targets = map locateKey targets, commands, wdeps }
   let wkd = digestWitnessKey witKey
   -- If the witness trace already exists, use it.
   when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
@@ -592,7 +592,7 @@ data WitnessValue
   = WitnessSUCC { wtargets :: WitMap, ares :: ActionRes }
   | WitnessFAIL ActionRes
 
-data WitnessKey = WitnessKey { targets :: [Loc], commands :: [String], wdeps :: WitMap } deriving Show
+data WitnessKey = WitnessKey { strict :: Bool, targets :: [Loc], commands :: [String], wdeps :: WitMap } deriving Show
 
 -- TODO: perhaps filemode should be included in the target WitMap
 data WitMap = WitMap (Map Loc Digest) deriving Show
@@ -936,13 +936,21 @@ data X a where
   XRemoveDirRecursive :: Loc -> X ()
 
 runX :: Config -> X a -> IO a
-runX config@Config{logMode,debugExternal,debugInternal,debugLocking} = loop
+runX config@Config{strict,logMode,debugExternal,debugInternal,debugLocking} = loop
   where
 
     log mes = maybePrefixPid config mes >>= putOut
 
     logI :: String -> IO ()
     logI mes = when debugInternal $ log (printf "I: %s" mes)
+
+    shell :: String -> CreateProcess
+    shell s =
+      if strict
+      then (System.Process.shell s) { env = Just [ ("PATH","/usr/bin")
+                                                 , ("HOME","/home/nic") -- TODO: inherit?
+                                                 ] }
+      else System.Process.shell s
 
     loop :: X a -> IO a
     loop x = case x of

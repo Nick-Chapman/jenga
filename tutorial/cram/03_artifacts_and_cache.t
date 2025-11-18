@@ -116,11 +116,11 @@ Specifying a build cache
 
   $ find tmp/.cache/jenga/traces
   tmp/.cache/jenga/traces
-  tmp/.cache/jenga/traces/a8eaac84a3846346e595f63a268ffc45
-  tmp/.cache/jenga/traces/51c3df6cc40e72832038021c981b78f4
-  tmp/.cache/jenga/traces/db6b016a94155599e02bf3102c2c5467
+  tmp/.cache/jenga/traces/9577cfdcc86de1b024cd029d9c5b8b5a
+  tmp/.cache/jenga/traces/51b2cc9b47b3ea1a3760708c1f45b40f
+  tmp/.cache/jenga/traces/498913e1e67b35de94dd38ac7e44a5e4
 
-  $ cat tmp/.cache/jenga/traces/a8eaac84a3846346e595f63a268ffc45
+  $ cat tmp/.cache/jenga/traces/498913e1e67b35de94dd38ac7e44a5e4
   TRACE [RUN {exitCode = ExitSuccess, stdout = "", stderr = ""}] (Just [("hello.exe","0fcce4811e995a71fe45c2826bb0868b")])
 
 

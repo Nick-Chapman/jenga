@@ -23,6 +23,7 @@ data Config = Config
   , debugLocking :: Bool
   , materializeCommaJenga :: Bool
   , withPromotion :: Bool
+  , strict :: Bool
   }
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
@@ -161,5 +162,9 @@ sharedOptions defaultLogMode args buildMode = do
   withPromotion <-
     switch (long "promote"
             <> help "Promote test output as expected")
+
+  strict <-
+    switch (long "strict"
+            <> help "Run jenga actions in an empty environment")
 
   pure $ Config { .. }

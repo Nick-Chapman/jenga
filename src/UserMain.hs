@@ -9,19 +9,20 @@ import StdBuildUtils ((</>))
 main :: IO ()
 main = engineMain $ \args -> do
   configs <- findConfigs args
-  parallel_ [ MakeStyle.elaborate (Key config) | config <- configs ]
+  --GLog (show configs)
+  sequence_ [ MakeStyle.elaborate (Key config) | config <- configs ]
 
-parallel_ :: [G ()] -> G ()
-parallel_ = \case
+_parallel_ :: [G ()] -> G ()
+_parallel_ = \case
   [] -> pure ()
   [g] -> g
-  g:gs -> (\((),()) -> ()) <$> GPar g (parallel_ gs)
+  g:gs -> (\((),()) -> ()) <$> GPar g (_parallel_ gs)
 
 findConfigs :: [String] -> G [Loc]
 findConfigs args = do
   let args' = case args of [] -> ["."]; _ -> args
   configs <- concat <$> sequence [ findFrom (Loc arg) | arg <- args' ]
-  pure (nubSort configs)
+  pure (reverse $ nubSort configs) -- reverse so subdirs come earlier
 
 findFrom :: Loc -> G [Loc]
 findFrom loc = do

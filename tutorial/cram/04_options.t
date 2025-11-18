@@ -54,20 +54,12 @@ Double build
 What are the targets?
 
   $ jenga build -a --list-targets -c.
-  example/fib.o
-  example/main.o
-  example/hello.exe
   copied/fib.o
   copied/main.o
   copied/hello.exe
-
-  $ jenga build -a --list-targets -c.
   example/fib.o
   example/main.o
   example/hello.exe
-  copied/fib.o
-  copied/main.o
-  copied/hello.exe
 
 Controlling the scope of what to build
 

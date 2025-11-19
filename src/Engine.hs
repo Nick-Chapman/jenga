@@ -34,10 +34,11 @@ import WaitPid(waitpid)
 
 type UserProg = [String] -> G ()
 
-engineMain :: (Bool -> UserProg) -> IO ()
+engineMain :: (String -> Bool -> UserProg) -> IO ()
 engineMain mkUserProg = do
+  homeDir <- maybe "" id <$> lookupEnv "HOME" -- for tilda expansion
   config@Config{cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
-  let userProg = mkUserProg withPromotion
+  let userProg = mkUserProg homeDir withPromotion
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 

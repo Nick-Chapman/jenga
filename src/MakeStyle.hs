@@ -8,8 +8,8 @@ import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 import StdBuildUtils ((</>),dirKey,baseKey)
 import Text.Printf (printf)
 
-elaborate :: Bool -> Key -> G ()
-elaborate withPromotion config0  = do
+elaborate :: String -> Bool -> Key -> G ()
+elaborate homeDir withPromotion config0  = do
   when withPromotion $ promoteRule
   allFilesRule
   elabRuleFile config0
@@ -89,7 +89,12 @@ elaborate withPromotion config0  = do
         if b then DNeed key else pure ()
 
     makeKey :: String -> Key
-    makeKey basename = Key (dir </> basename)
+    makeKey basename = Key (dir </> expandTildaSlash basename)
+
+    expandTildaSlash :: String -> String
+    expandTildaSlash = \case
+      '~':'/':s -> homeDir ++ "/" ++ s
+      s -> s
 
     -- hidden rule so user-rules can access the list of file names
     allFilesName = "all.files"

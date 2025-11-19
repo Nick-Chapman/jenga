@@ -198,6 +198,9 @@ materializeInUserDir digest key = do
           oldDigest <- XDigest materializedFile
           pure $ (digest /= oldDigest)
     when needToLink $ do
+      XFileExists materializedFile >>= \case
+        True -> XTransferFileMode materializedFile cacheFile
+        False -> pure ()
       XUnLink materializedFile
       XMakeDir (dirLoc materializedFile)
       XTryHardLink cacheFile materializedFile >>= \case

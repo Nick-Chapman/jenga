@@ -14,7 +14,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
 import StdBuildUtils ((</>),dirLoc)
-import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile,getHomeDirectory)
+import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile)
 import System.Environment (lookupEnv)
 import System.Exit(ExitCode(..))
 import System.FileLock (tryLockFile,SharedExclusive(Exclusive),unlockFile)
@@ -36,7 +36,7 @@ type UserProg = [String] -> G ()
 
 engineMain :: (String -> Bool -> UserProg) -> IO ()
 engineMain mkUserProg = do
-  homeDir <- maybe "" id <$> lookupEnv "HOME" -- for tilda expansion
+  homeDir <- maybe "" id <$> lookupEnv "HOME"
   config@Config{cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
   let userProg = mkUserProg homeDir withPromotion
   let quiet = case logMode of LogQuiet -> True; _ -> False
@@ -49,8 +49,7 @@ engineMain mkUserProg = do
           Just cache -> do
             pure (Loc cache </> "jenga")
           Nothing -> do
-            home <- getHomeDirectory
-            pure (Loc home </> ".cache/jenga")
+            pure (Loc homeDir </> ".cache/jenga")
       CacheDirChosen dir -> do
         pure (Loc dir  </> ".cache/jenga")
       CacheDirTemp -> do
@@ -124,8 +123,9 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
 
 runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
 runBuild cacheDir config f = do
+  homeDir <- maybe "" id <$> lookupEnv "HOME"
   nCopies config $ \config -> do
-    runX config $ do
+    runX homeDir config $ do
       runB cacheDir config (f config)
 
 nCopies :: Config -> (Config -> IO ()) -> IO ()
@@ -939,8 +939,8 @@ data X a where
   XUnLink :: Loc -> X ()
   XRemoveDirRecursive :: Loc -> X ()
 
-runX :: Config -> X a -> IO a
-runX config@Config{strict,logMode,debugExternal,debugInternal,debugLocking} = loop
+runX :: String -> Config -> X a -> IO a
+runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocking} = loop
   where
 
     log mes = maybePrefixPid config mes >>= putOut
@@ -952,7 +952,7 @@ runX config@Config{strict,logMode,debugExternal,debugInternal,debugLocking} = lo
     shell s =
       if strict
       then (System.Process.shell s) { env = Just [ ("PATH","/usr/bin")
-                                                 , ("HOME","/home/nic") -- TODO: inherit?
+                                                 , ("HOME",homeDir)
                                                  ] }
       else System.Process.shell s
 

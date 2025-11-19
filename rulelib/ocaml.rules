@@ -8,15 +8,15 @@ ocaml.rules.gen: ocaml.modules
 include ocaml.rules.gen
 
 ocamlopt.sh: ocaml.flags
-  echo /home/nic/.opam/5.1.1/bin/ocamlopt.opt $(cat ocaml.flags) '"$$@"' >> ocamlopt.sh
+  echo ~/.opam/5.1.1/bin/ocamlopt.opt $(cat ocaml.flags) '"$$@"' >> ocamlopt.sh
   chmod +x ocamlopt.sh
 
 ocaml.packages:
   touch ocaml.packages
-  echo /home/nic/.opam/5.1.1/lib/ocaml/unix/unix.cmxa >> ocaml.packages
+  echo ~/.opam/5.1.1/lib/ocaml/unix/unix.cmxa >> ocaml.packages
 
 ocamlopt-link.sh: ocaml.flags ocaml.packages
-  echo /home/nic/.opam/5.1.1/bin/ocamlopt.opt $(cat ocaml.flags) $(cat ocaml.packages) '"$$@"' >> ocamlopt-link.sh
+  echo ~/.opam/5.1.1/bin/ocamlopt.opt $(cat ocaml.flags) $(cat ocaml.packages) '"$$@"' >> ocamlopt-link.sh
   chmod +x ocamlopt-link.sh
 
 ocaml.flags: ?ocaml.xflags

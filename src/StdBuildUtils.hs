@@ -23,7 +23,7 @@ dirLoc :: Loc -> Loc
 dirLoc (Loc fp) = Loc (FP.takeDirectory fp)
 
 (</>) :: Loc -> String -> Loc
-(</>) (Loc dir) path = -- TODO: support tilda (~) expansion
+(</>) (Loc dir) path =
   case path of
     '/':_ -> Loc path
     rel ->

@@ -9,7 +9,6 @@ import StdBuildUtils ((</>))
 main :: IO ()
 main = engineMain $ \homeDir withPromotion args -> do
   configs <- findConfigs args
-  --GLog (show configs)
   sequence_ [ MakeStyle.elaborate homeDir withPromotion (Key config) | config <- configs ]
 
 _parallel_ :: [G ()] -> G ()

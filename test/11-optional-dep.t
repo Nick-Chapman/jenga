@@ -32,9 +32,12 @@ Change CFLAGS; rebuilds:
   $ echo '-Wall' > example/CFLAGS
   $ jenga build -a
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+  (directory) example
+  (rule) main.o : main.c CFLAGS
+  (command) $ gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   (stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
-      2 | void main() { //m ain ought to be declared as int. -Wall will detect this.
-        |      ^~~~
+  (stderr)     2 | void main() { //m ain ought to be declared as int. -Wall will detect this.
+  (stderr)       |      ^~~~
   checked 2 targets
   ran 1 command
 

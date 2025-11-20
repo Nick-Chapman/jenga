@@ -48,9 +48,12 @@ Add -Wall to both compile rule. Two actions get rerun.
   $ jenga build -a
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  (directory) .
+  (rule) main.o : main.c
+  (command) $ gcc -Wall -c main.c -o main.o
   (stderr) main.c:3:6: warning: return type of 'main' is not 'int' [-Wmain]
-      3 | void main() { // Oops! main should be declared to return int.
-        |      ^~~~
+  (stderr)     3 | void main() { // Oops! main should be declared to return int.
+  (stderr)       |      ^~~~
   checked 3 targets
   ran 2 commands
 
@@ -92,17 +95,23 @@ Define and use header file. Build fails because we failed to declare dependecy o
 
   $ jenga build -a 2>&1 | grep -v 'called at'
   A: gcc -Wall -c fib.c -o fib.o
+  (directory) .
+  (rule) fib.o : fib.c
+  (command) $ gcc -Wall -c fib.c -o fib.o
   (stderr) fib.c:1:10: fatal error: fib.h: No such file or directory
-      1 | #include "fib.h"
-        |          ^~~~~~~
-  compilation terminated.
-  ExitFailure 1
+  (stderr)     1 | #include "fib.h"
+  (stderr)       |          ^~~~~~~
+  (stderr) compilation terminated.
+  (exit-code) 1
   A: gcc -Wall -c main.c -o main.o
+  (directory) .
+  (rule) main.o : main.c
+  (command) $ gcc -Wall -c main.c -o main.o
   (stderr) main.c:2:10: fatal error: fib.h: No such file or directory
-      2 | #include "fib.h"
-        |          ^~~~~~~
-  compilation terminated.
-  ExitFailure 1
+  (stderr)     2 | #include "fib.h"
+  (stderr)       |          ^~~~~~~
+  (stderr) compilation terminated.
+  (exit-code) 1
   ran 2 commands
   Build failed for 2 reasons:
   (1) action failed for rule targeting: fib.o

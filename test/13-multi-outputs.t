@@ -31,6 +31,12 @@ Change the example to echo a warning before exiting
   A: tail -1 lots > t
   A: touch x
   A: echo WARNING; exit 0
+  (directory) example
+  (rule) h t : lots
+  (command) $ head -1 lots > h
+  (command) $ tail -1 lots > t
+  (command) $ touch x
+  (command) $ echo WARNING; exit 0
   (stdout) WARNING
   checked 4 targets
   ran 4 commands
@@ -38,6 +44,12 @@ Change the example to echo a warning before exiting
 And zero build (see warning even though no actions were run)
 
   $ jenga build -a
+  (directory) example
+  (rule) h t : lots
+  (command) $ head -1 lots > h
+  (command) $ tail -1 lots > t
+  (command) $ touch x
+  (command) $ echo WARNING; exit 0
   (stdout) WARNING
   checked 4 targets
 
@@ -49,8 +61,14 @@ Change the example to have a non-zero error code
   A: tail -1 lots > t
   A: touch x
   A: echo WARNING; exit 42
+  (directory) example
+  (rule) h t : lots
+  (command) $ head -1 lots > h
+  (command) $ tail -1 lots > t
+  (command) $ touch x
+  (command) $ echo WARNING; exit 42
   (stdout) WARNING
-  ExitFailure 42
+  (exit-code) 42
   ran 4 commands
   Build failed for 1 reasons:
   (1) action failed for rule targeting: example/h example/t
@@ -58,7 +76,13 @@ Change the example to have a non-zero error code
 And zero build (see warning and error, again even though no actions were run)
 
   $ jenga build -a
+  (directory) example
+  (rule) h t : lots
+  (command) $ head -1 lots > h
+  (command) $ tail -1 lots > t
+  (command) $ touch x
+  (command) $ echo WARNING; exit 42
   (stdout) WARNING
-  ExitFailure 42
+  (exit-code) 42
   Build failed for 1 reasons:
   (1) action failed for rule targeting: example/h example/t

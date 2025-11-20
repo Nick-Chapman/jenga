@@ -4,11 +4,12 @@ import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Control.Exception (try,SomeException)
 import Control.Monad (ap,liftM)
-import Control.Monad (when,forM,forM_)
+import Control.Monad (when,forM)
 import Data.Hash.MD5 qualified as MD5
 import Data.IORef (newIORef,readIORef,writeIORef)
 import Data.List (intercalate)
 import Data.List qualified as List (foldl')
+import Data.List.Extra (dropPrefix)
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -21,12 +22,12 @@ import System.FileLock (tryLockFile,SharedExclusive(Exclusive),unlockFile)
 import System.FilePath qualified as FP
 import System.IO (hFlush,hPutStrLn,withFile,IOMode(WriteMode),hPutStr)
 import System.IO qualified as IO (stderr,stdout)
+import System.IO.SafeWrite (syncFile)
 import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,getSymbolicLinkStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory,isSymbolicLink)
 import System.Posix.Process (forkProcess)
 import System.Process (CreateProcess(env),shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
-import System.IO.SafeWrite (syncFile)
 import WaitPid(waitpid)
 
 ----------------------------------------------------------------------
@@ -85,15 +86,11 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         let System{how,rules} = system
         staticRules :: [StaticRule] <- concat <$>
           sequence [ do (deps,action@Action{hidden=actionHidden}) <- gatherDeps config how depcom
-                        pure [ StaticRule { rulename, dir, targets, deps, action }
+                        pure [ StaticRule { rulename, dir, target, deps, action }
                              | not actionHidden
                              ]
                    | Rule{rulename,dir,hidden=ruleHidden,target,depcom} <- rules
                    , not ruleHidden
-                   -- dont list any phony rules -- TODO: why not!
-                   , case target of Artifacts{} -> True ; Phony{} -> False
-                   , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
-                   , let targets = [ key | Artifact{key} <- arts ]
                    ]
         BLog (intercalate "\n\n" (map show staticRules))
 
@@ -151,19 +148,25 @@ buildEverythingInSystem config system = do
 data StaticRule = StaticRule
   { rulename :: String
   , dir :: Loc
-  , targets :: [Key]
+  , target :: Target
   , deps :: [Key]
   , action :: Action
   }
 
 instance Show StaticRule where
-  show StaticRule{dir,targets,deps,action=Action{commands}} = do
+  show StaticRule{dir,target,deps,action=Action{commands}} = do
     let cdPrefix = if dir == Loc "." then "" else printf "cd %s ; " (show dir)
     let sep = printf "\n  %s" cdPrefix
-    printf "%s : %s%s%s" (seeKeys targets) (seeKeys deps) sep (intercalate sep commands)
+    printf "%s : %s%s%s" (showTarget target) (showKeys deps) sep (intercalate sep commands)
+      where
 
-seeKeys :: [Key] -> String
-seeKeys = intercalate " " . map show
+showTarget :: Target -> String
+showTarget = \case
+  Artifacts arts -> showKeys [ key | Artifact { key } <- arts ]
+  Phony phonyName -> "*" ++ phonyName
+
+showKeys :: [Key] -> String
+showKeys = unwords . map show
 
 pluralize :: Int -> String -> String
 pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
@@ -358,10 +361,11 @@ buildArtifact config@Config{debugDemand} how@How{ahow} = do
 
 buildRule :: Config -> How -> Rule -> B WitMap
 buildRule config@Config{debugLocking,strict} how rule = do
-  let Rule{target,depcom} = rule
+  let Rule{rulename,dir,target,depcom} = rule
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
   (deps,action@Action{commands}) <- gatherDeps config how depcom
+  let sr = StaticRule { rulename, dir, target, deps, action } -- used for message context
   wdeps <- (WitMap . Map.fromList) <$>
     parallel [ do digest <- buildArtifact config how dep; pure (locateKey dep,digest)
              | dep <- deps
@@ -370,7 +374,7 @@ buildRule config@Config{debugLocking,strict} how rule = do
   let wkd = digestWitnessKey witKey
   -- If the witness trace already exists, use it.
   when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
-  verifyWitness config wkd rule >>= \case
+  verifyWitness config sr wkd >>= \case
     Just w -> pure w
     Nothing -> do
       -- If not, someone has to run the job...
@@ -379,35 +383,35 @@ buildRule config@Config{debugLocking,strict} how rule = do
         True -> do
           -- We got the lock, check again for the trace...
           when debugLocking $ Execute $ XLog (printf "L: look again for witness: %s" (show wkd))
-          verifyWitness config wkd rule >>= \case
+          verifyWitness config sr wkd >>= \case
             Just w -> pure w
             Nothing -> do
               when debugLocking $ Execute $ XLog (printf "L: still no witness; running jobs NOW: %s" (show wkd))
               -- We have the lock and there is still no trace, so we run the job....
-              runActionSaveWitness config action wkd wdeps rule
+              runActionSaveWitness config sr action wkd wdeps rule
         False -> do
           when debugLocking $ Execute $ XLog (printf "L: running elsewhere: %s" (show wkd))
           -- Another process beat us to the lock; it's running the job.
           awaitLockYielding config wkd
           -- Now it will have finished.
-          verifyWitness config wkd rule >>= \case
+          verifyWitness config sr wkd >>= \case
             Just w -> pure w
             Nothing -> BResult (FAIL [])
 
-verifyWitness :: Config -> WitKeyDigest -> Rule -> B (Maybe WitMap)
-verifyWitness config wkd rule = do
+verifyWitness :: Config -> StaticRule -> WitKeyDigest -> B (Maybe WitMap)
+verifyWitness config sr wkd = do
   lookupWitness wkd >>= \case
     Nothing -> pure Nothing
     Just wit -> do
       case wit of
         WitnessFAIL ares -> do
-          Execute (showActionRes config ares)
-          actionFailed rule
+          Execute (showActionRes config sr ares)
+          actionFailed sr
         WitnessSUCC{wtargets,ares} -> do
           let WitMap m = wtargets
           ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
           if not ok then pure Nothing else do
-            Execute (showActionRes config ares)
+            Execute (showActionRes config sr ares)
             pure (Just wtargets)
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
@@ -476,34 +480,29 @@ existsKey How{ahow} key =
     let Key loc = key
     Execute (XFileExists loc)
 
-runActionSaveWitness :: Config -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
-runActionSaveWitness config action wkd depWit rule = do
+runActionSaveWitness :: Config -> StaticRule -> Action -> WitKeyDigest -> WitMap -> Rule -> B WitMap
+runActionSaveWitness config sr action wkd depWit rule = do
   sandbox <- BNewSandbox
   Execute (XMakeDir sandbox)
   setupInputs sandbox depWit
   ares <- BRunActionInDir sandbox action
-  Execute (showActionRes config ares)
+  Execute (showActionRes config sr ares)
   let ok = actionResIsOk ares
   case ok of
     False -> do
       let wit = WitnessFAIL ares
       saveWitness wkd wit
-      actionFailed rule
+      actionFailed sr
     True -> do
       wtargets <- cacheOutputs sandbox rule -- If this fails we dont write a witness. TODO: is that right?
       let wit = WitnessSUCC { wtargets, ares }
       saveWitness wkd wit
       pure wtargets
 
-actionFailed :: Rule -> B a
-actionFailed rule = do
-  let Rule{target} = rule
+actionFailed :: StaticRule -> B a
+actionFailed StaticRule{target} = do
   bfail (printf "action failed for rule targeting: %s" (showTarget target))
 
-showTarget :: Target -> String
-showTarget = \case
-  Artifacts arts -> intercalate " " [ show key | Artifact { key } <- arts ]
-  Phony phonyName -> "*" ++ phonyName
 
 setupInputs :: Loc -> WitMap -> B ()
 setupInputs sandbox (WitMap m1) = do
@@ -705,16 +704,60 @@ actionResIsOk (ActionRes xs) =
          , let ok = case exitCode of ExitSuccess -> True; ExitFailure{} -> False
          ]
 
-showActionRes :: Config -> ActionRes -> X ()
-showActionRes Config{worker} (ActionRes xs) = do
-  when (not worker) $ do
-    XIO $ do
-      forM_ xs $ \CommandRes{exitCode,stdout,stderr} -> do
-        -- TODO: distinuish stdout/stderr? link to rule?
-        when (stdout/="") $ printf "(stdout) %s" stdout
-        when (stderr/="") $ printf "(stderr) %s" stderr
-        let isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
-        when (isFailure exitCode) $ putStrLn (show exitCode)
+showActionRes :: Config -> StaticRule -> ActionRes -> X ()
+showActionRes Config{worker} sr ar = do
+  when (not worker && anythingToSee ar) $ do
+    XIO $ putStr (seeActionResAndContext sr ar)
+
+anythingToSee :: ActionRes -> Bool
+anythingToSee (ActionRes xs) =
+  any id [ isFailure exitCode || stdout/="" || stderr/=""
+         | CommandRes {exitCode,stdout,stderr} <- xs ]
+  where
+    isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
+
+seeActionResAndContext :: StaticRule -> ActionRes -> String
+seeActionResAndContext sr@StaticRule{action=Action{commands}} (ActionRes xs) =
+  if length commands /= length xs then error "seeActionResAndContext" else
+    seeStaticRule sr ++
+    concat [ seeCommandAndRes command res | (command,res) <- zip commands xs ]
+
+seeStaticRule :: StaticRule -> String
+seeStaticRule StaticRule{dir,target,deps} = do
+  seeDir dir ++ "\n" ++ seeRule target deps ++ "\n"
+  where
+    seeDir :: Loc -> String
+    seeDir x = "(directory) " ++ show x
+
+    seeRule :: Target -> [Key] -> String
+    seeRule target deps = "(rule) " ++ seeTarget target ++ " : " ++ seeKeys deps
+
+    seeTarget :: Target -> String
+    seeTarget = \case
+      Artifacts arts -> seeKeys [ key | Artifact { key } <- arts ]
+      Phony phonyName -> "*" ++ phonyName
+
+    seeKeys :: [Key] -> String
+    seeKeys = unwords . map seeKey
+
+    seeKey :: Key -> String
+    seeKey key = dropPrefix (show dir++"/") (show key)
+
+seeCommandAndRes :: String -> CommandRes -> String
+seeCommandAndRes command CommandRes{exitCode,stdout,stderr} =
+  "(command) $ " ++ command ++ "\n" ++
+  seeOutput "(stdout) " stdout ++
+  seeOutput "(stderr) " stderr ++
+  seeFailureExit exitCode
+  where
+    seeOutput :: String -> String -> String
+    seeOutput tag output = if output == "" then "" else
+      concat [ printf "%s%s\n" tag line | line  <- lines output ]
+
+    seeFailureExit :: ExitCode -> String
+    seeFailureExit = \case
+      ExitFailure code -> "(exit-code) " ++ show code ++ "\n"
+      ExitSuccess -> ""
 
 ----------------------------------------------------------------------
 -- B: build monad

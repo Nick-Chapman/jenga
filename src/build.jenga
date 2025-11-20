@@ -36,3 +36,4 @@ packages:
   echo filelock >>packages
   echo optparse-applicative >>packages
   echo safeio >>packages
+  echo extra >>packages

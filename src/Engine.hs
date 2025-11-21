@@ -597,7 +597,7 @@ data WitnessValue
 
 data WitnessKey = WitnessKey { strict :: Bool, targets :: [Loc], commands :: [String], wdeps :: WitMap } deriving Show
 
--- TODO: perhaps filemode should be included in the target WitMap
+-- TODO: Filemode should be included in the target WitMap to solve the problem of a forgotten chmod +x on a generated script. Currently the callers wont be triggered to run again because they see no change in their deps; so they will be stuck showing the error which occurred when the script did not have exec perm.
 data WitMap = WitMap (Map Loc Digest) deriving Show
 
 -- message digest of a witness key; computer by internal MD5 code

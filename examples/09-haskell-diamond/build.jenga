@@ -38,4 +38,4 @@ ghc.exe : ghc-path
   chmod +x ghc.exe
 
 ghc-path :
-  find $HOME/.stack | grep -v lib | grep bin/ghc$ | sort -n | tail -1 > ghc-path
+  find $HOME/.stack | grep -v /lib/ghc | grep bin/ghc$ | sort -n | tail -1 >  ghc-path

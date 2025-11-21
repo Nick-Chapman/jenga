@@ -38,9 +38,12 @@ ghc.exe: ghc-version
 ghc.pkgdb :
   echo ~/.ghcup/ghc/9.8.4/lib/ghc-9.8.4/lib/package.conf.d > ghc.pkgdb
 
-ghc.compiler : ghc.exe pkgdb all.options
-  echo exec unbuffer $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$$@"' > ghc.compiler
+ghc.compiler : maybe.unbuffer ghc.exe pkgdb all.options
+  echo $(cat ./maybe.unbuffer) $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$$@"' > ghc.compiler
   chmod +x ghc.compiler
+
+maybe.unbuffer :
+  if [ "$(which unbuffer)" = "" ]; then echo exec; else echo unbuffer; fi > $@
 
 all.options : ?ghc-options ?default-extensions
   touch ghc-option default-extensions

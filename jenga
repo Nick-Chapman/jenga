@@ -1,15 +1,41 @@
 #!/bin/bash
 
-watch_mode=""
-args=""
+# Small wrapper script to support watcher mode (-w)
+
+watcher_mode=false
+args="" # collect remaining args to pass along
 for i in "$@"; do
     if [ "$i" = "-w" ]
-    then watch_mode=true
+    then watcher_mode=true
     else args="$args $i"
     fi
 done
 
-if [ "$watch_mode" = "" ];
+# No watcher mode requested; dispatch directly the the core jenga,exe
+if [ $watcher_mode = false ];
 then exec jenga.exe $args
-else exec jenga-w $args
 fi
+
+# Drop through for watcher mode support via `inotifywait` (sudo apt install inotify-tools)
+
+JENGA_HOME=$(dirname $(readlink -f "$0"))
+
+# Run once to start...
+clear
+jenga.exe $args
+i=1
+
+# Subsequent run triggers via inotifywait..
+# Flags/options: -q(quiet) -m(keep watching) -r(recursive) .(start from current dir & rulelib)
+# Don't pay attention to read/access events.
+# Ignore special directories, and emacs droppings.
+# Maintain a counter to see how often we are being triggered.
+inotifywait -q -m -r . "$JENGA_HOME/rulelib" \
+            -e create,modify,delete,move \
+            --exclude '(\.git/|\.cache|,jenga|\.#.*|~)' |
+while read e; do
+  i=$((i+1))
+  clear
+  #echo $i -- $e # show the counter and triggering event.
+  jenga.exe $args
+done

@@ -54,10 +54,8 @@ Jenga supports parallel builds via the `-j` command line option.
 Or simply by running multiple instances of `jenga` at the command line.
 
 - __Watcher mode__:
-Jenga has no integrated support,
-but a rudimentary watcher mode is possible via `inotifywait`,
-provided in the [`jenga-w`](jenga-w) wrapper script.
-
+The wrapper script [`jenga`](./jenga) adds support for `-w` using `inotifywait`.
+Other command line arguments are handled by the core `jenga.exe` executable.
 
 ## Prerequisites
 

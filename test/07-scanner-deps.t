@@ -16,7 +16,7 @@ Initial build
   ran 5 commands
 
 Run the executable
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 world with scanner deps
 
 Inspect the generated deps
@@ -30,5 +30,5 @@ Inspect the generated deps
   A: gcc fib.o main.o -o main.exe
   checked 5 targets
   ran 2 commands
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 89 world with scanner deps

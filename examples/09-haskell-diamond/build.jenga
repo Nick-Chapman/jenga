@@ -5,7 +5,7 @@
 
 # Generate main code; compile it and link everything
 
-!diamond.exe : ghc.exe main.o Top.o B.o C.o A.o
+diamond.exe : ghc.exe main.o Top.o B.o C.o A.o
  ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
 
 main.o : ghc.exe main.hs Top.hi

@@ -15,6 +15,6 @@
 
 Run the materizalized executable
 
-  $ example/main.exe
+  $ jenga exec example/main.exe
   hello, 55 world with explicit make-style rules
 

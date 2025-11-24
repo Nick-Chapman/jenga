@@ -21,7 +21,7 @@
   checked 16 targets
   ran 12 commands
 
-  $ example/diamond.exe
+  $ jenga exec example/diamond.exe
   Top[B[A],C[A]]
 
   $ jenga build -a --debug-demand

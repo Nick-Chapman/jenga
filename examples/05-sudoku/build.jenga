@@ -10,7 +10,7 @@ main.o : ghc.exe main.hs Sudoku.hi
 
 # Link the executable (including the containers package)
 
-!solver.exe : ghc.exe main.o Sudoku.o
+solver.exe : ghc.exe main.o Sudoku.o
   ./ghc.exe main.o Sudoku.o -package containers -o solver.exe
 
 

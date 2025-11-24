@@ -21,5 +21,5 @@ main.d : main.c
 
 # Link...
 
-!main.exe : fib.o main.o
+main.exe : fib.o main.o
   gcc fib.o main.o -o main.exe

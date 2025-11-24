@@ -9,7 +9,7 @@ fib.o : fib.c fib.h
 
 # Link...
 
-!main.exe : fib.o main.o
+main.exe : fib.o main.o
   gcc $^ -o main.exe
 
 

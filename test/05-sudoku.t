@@ -16,7 +16,7 @@
   checked 7 targets
   ran 7 commands
 
-  $ example/solver.exe example/puzzle
+  $ jenga exec example/solver.exe example/puzzle
   ...3.9..5
   ...475...
   ......4..

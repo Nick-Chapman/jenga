@@ -109,6 +109,14 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         cacheFile <- cacheFile digest
         Execute (XIO (callProcess (show cacheFile) argsForTarget))
 
+    ModeInstall target destination -> do
+      runBuild cacheDir config $ \config -> do
+        system <- runElaboration config (userProg [FP.takeDirectory target])
+        buildEverythingInSystem config system
+        let System{how} = system
+        digest <- buildArtifact config how (Key (Loc target))
+        installDigest digest (Loc destination)
+
     ModeRun names -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
@@ -192,25 +200,29 @@ buildAndMaterialize config@Config{materializeCommaJenga} how target = do
 
 materializeInUserDir :: Digest -> Key -> B ()
 materializeInUserDir digest key = do
-  cacheFile <- cacheFile digest
   let materializedFile = Loc (show key)
+  installDigest digest materializedFile
+
+installDigest :: Digest -> Loc -> B ()
+installDigest digest destination = do
+  cacheFile <- cacheFile digest
   Execute $ do
     needToLink <-
-      XFileExists materializedFile >>= \case
+      XFileExists destination >>= \case
         False -> pure True
         True -> do
-          oldDigest <- XDigest materializedFile
+          oldDigest <- XDigest destination
           pure $ (digest /= oldDigest)
     when needToLink $ do
-      XFileExists materializedFile >>= \case
-        True -> XTransferFileMode materializedFile cacheFile
+      XFileExists destination >>= \case
+        True -> XTransferFileMode destination cacheFile
         False -> pure ()
-      XUnLink materializedFile
-      XMakeDir (dirLoc materializedFile)
-      XTryHardLink cacheFile materializedFile >>= \case
+      XUnLink destination
+      XMakeDir (dirLoc destination)
+      XTryHardLink cacheFile destination >>= \case
         Nothing -> pure ()
         Just{} -> do
-          XLog (printf "materializeInUserDir: nope! %s -> %s" (show cacheFile) (show materializedFile))
+          XLog (printf "installDigest: nope! %s -> %s" (show cacheFile) (show destination))
           pure ()
 
 materializeInCommaJenga :: Digest -> Key -> B ()

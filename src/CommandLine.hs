@@ -33,6 +33,7 @@ data BuildMode
   | ModeListRules
   | ModeBuild
   | ModeExec FilePath [FilePath]
+  | ModeInstall FilePath FilePath
   | ModeRun [String]
 
 exec :: IO Config
@@ -52,6 +53,11 @@ subCommands =
   (command "exec"
     (info execCommand
       (progDesc "build; then run a single executable target")))
+  <|>
+  hsubparser
+  (command "install"
+    (info installCommand
+      (progDesc "build; then install a single executable")))
   <|>
   hsubparser
   (command "run"
@@ -90,6 +96,16 @@ execCommand = do
       exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
       exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
       pure (ModeExec exe exeArgs)
+  let args = pure []
+  sharedOptions LogQuiet args buildMode
+
+installCommand :: Parser Config
+installCommand = do
+  let
+    buildMode = do
+      exe <- strArgument (metavar "EXE" <> help "Executable to build and install")
+      dest <- strArgument (metavar "DEST" <> help "Destination of installed executable")
+      pure (ModeInstall exe dest)
   let args = pure []
   sharedOptions LogQuiet args buildMode
 

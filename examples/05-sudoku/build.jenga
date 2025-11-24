@@ -1,8 +1,4 @@
 
-# jenga build rules for sampele haskell program. Grabbed from: https://github.com/Nick-Chapman/sudoku
-# This is a step towards generalizing build rule creation for any haskell project.
-
-
 # Build the Haskell source (with explicit dependencies)
 
 Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
@@ -18,16 +14,14 @@ main.o : ghc.exe main.hs Sudoku.hi
   ./ghc.exe main.o Sudoku.o -package containers -o solver.exe
 
 
-# Choose a ghc binary and create a dispatcher script
+# Compiler script
 
-latest-version :
-  find $HOME/.stack | grep lib/.*/bin/ghc$ | rev | cut -d/ -f3 | rev | cut -d- -f2 | sort -n | tail -1 > latest-version
+version:
+  echo 9.8.4 > $@
 
-version : latest-version
-  cp latest-version version
-
-ghc-path : version
-  find $HOME/.stack | grep lib/.*/bin/ghc$ | grep $(cat version) > ghc-path
+ghc-path: version
+  echo ~/.ghcup/bin/ghc-$(cat version) > $@
 
 ghc.exe : ghc-path
-  echo exec $(cat ghc-path) '"$$@"' > ghc.exe; chmod +x ghc.exe
+  echo exec $(cat ghc-path) '"$$@"' > $@
+  chmod +x $@

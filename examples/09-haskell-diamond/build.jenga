@@ -30,12 +30,14 @@ Top.hi Top.o : ghc.exe Top.hs B.hi C.hi
   ./ghc.exe -c Top.hs
 
 
-# ghc.exe
+# Compiler script
+
+version:
+  echo 9.8.4 > $@
+
+ghc-path: version
+  echo ~/.ghcup/bin/ghc-$(cat version) > $@
 
 ghc.exe : ghc-path
-  # Make use of multi-line actions and comments in actions...
-  echo exec $(cat ghc-path) '"$$@"' > ghc.exe
-  chmod +x ghc.exe
-
-ghc-path :
-  find $HOME/.stack | grep -v /lib/ghc | grep bin/ghc$ | sort -n | tail -1 >  ghc-path
+  echo exec $(cat ghc-path) '"$$@"' > $@
+  chmod +x $@

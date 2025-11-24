@@ -33,10 +33,14 @@ depends : ghc.exe main.hs A.hs B.hs C.hs Top.hs
   ./ghc.exe -M *.hs -dep-makefile depends
 
 
-# ghc.exe
+# Compiler script
+
+version:
+  echo 9.8.4 > $@
+
+ghc-path: version
+  echo ~/.ghcup/bin/ghc-$(cat version) > $@
 
 ghc.exe : ghc-path
-  echo exec $(cat ghc-path) '"$$@"' > ghc.exe ; chmod +x ghc.exe
-
-ghc-path :
-  find $HOME/.stack | grep -v /lib/ghc | grep bin/ghc$ | sort -n | tail -1 >  ghc-path
+  echo exec $(cat ghc-path) '"$$@"' > $@
+  chmod +x $@

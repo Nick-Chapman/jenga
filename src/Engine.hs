@@ -1,7 +1,6 @@
+
 module Engine (engineMain) where
 
-import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
-import CommandLine qualified (exec)
 import Control.Exception (try,SomeException)
 import Control.Monad (ap,liftM)
 import Control.Monad (when,forM)
@@ -13,8 +12,6 @@ import Data.List.Extra (dropPrefix)
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
-import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
-import StdBuildUtils ((</>),dirLoc)
 import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile)
 import System.Environment (lookupEnv)
 import System.Exit(ExitCode(..))
@@ -28,7 +25,12 @@ import System.Posix.Process (forkProcess)
 import System.Process (CreateProcess(env),shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
-import WaitPid(waitpid)
+
+import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
+import CommandLine qualified (exec)
+import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
+import StdBuildUtils ((</>),dirLoc)
+import WaitPid (waitpid)
 
 ----------------------------------------------------------------------
 -- Engine main

@@ -1,3 +1,4 @@
+
 module StdBuildUtils
   ( mkKey
   , baseKey
@@ -6,9 +7,10 @@ module StdBuildUtils
   , dirLoc
   ) where
 
-import Interface (Key(..),Loc(..))
 import System.FilePath qualified as FP
 import System.Path.NameManip (guess_dotdot)
+
+import Interface (Key(..),Loc(..))
 
 mkKey :: Loc -> String -> Key
 mkKey (Loc fp) suffix = Key (Loc (fp++suffix))

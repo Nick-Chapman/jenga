@@ -1,3 +1,4 @@
+
 module Interface
   ( G(..)       -- The Generation monad; used to define rules and artifacts.
   , Rule(..)    -- A Rule with dynamic dependencies.

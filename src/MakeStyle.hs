@@ -1,12 +1,14 @@
+
 module MakeStyle (elaborate) where
 
 import Control.Monad (when)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
+import Text.Printf (printf)
+
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),Loc,What(..))
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 import StdBuildUtils ((</>),dirKey,baseKey)
-import Text.Printf (printf)
 
 elaborate :: String -> Bool -> Key -> G ()
 elaborate homeDir withPromotion config0  = do

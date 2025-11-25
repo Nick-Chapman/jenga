@@ -3,12 +3,12 @@ module Par4 (Par,parse,word,key,int,ws0,ws1,sp,nl,lit,sat,char,alts,opt,skip,sep
 
 import Control.Applicative (Alternative,empty,(<|>),many,some)
 import Control.Monad (ap,liftM)
-import qualified Data.Char as Char
 import Text.Printf (printf)
+import qualified Data.Char as Char
 
-instance Functor Par where fmap = liftM
-instance Applicative Par where pure = Ret; (<*>) = ap
 instance Alternative Par where empty = Fail; (<|>) = Alt
+instance Applicative Par where pure = Ret; (<*>) = ap
+instance Functor Par where fmap = liftM
 instance Monad Par where (>>=) = Bind
 
 skip :: Par () -> Par ()

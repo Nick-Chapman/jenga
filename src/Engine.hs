@@ -1,5 +1,5 @@
 
-module Engine (engineMain) where
+module Engine (main) where
 
 import Control.Exception (try,SomeException)
 import Control.Monad (ap,liftM)
@@ -9,6 +9,7 @@ import Data.IORef (newIORef,readIORef,writeIORef)
 import Data.List (intercalate)
 import Data.List qualified as List (foldl')
 import Data.List.Extra (dropPrefix)
+import Data.List.Ordered (nubSort)
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
@@ -29,8 +30,48 @@ import Text.Read (readMaybe)
 import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
+import MakeStyle qualified (elaborate)
 import StdBuildUtils ((</>),dirLoc)
 import WaitPid (waitpid)
+
+----------------------------------------------------------------------
+-- UserMain
+
+main :: IO ()
+main = engineMain $ \homeDir withPromotion args -> do
+  configs <- findConfigs args
+  sequence_ [ MakeStyle.elaborate homeDir withPromotion (Key config) | config <- configs ]
+
+findConfigs :: [String] -> G [Loc]
+findConfigs args = do
+  let args' = case args of [] -> ["."]; _ -> args
+  configs <- concat <$> sequence [ findFrom (Loc arg) | arg <- args' ]
+  pure (reverse $ nubSort configs) -- reverse so subdirs come earlier
+
+findFrom :: Loc -> G [Loc]
+findFrom loc = do
+  GWhat loc >>= \case
+    Missing -> pure []
+    Link -> pure []
+    File -> pure []
+    Directory{entries} -> do
+      case "build.jenga" `elem` entries of
+        False -> configs
+        True -> do
+          let config = loc </> "build.jenga"
+          (config:) <$> configs
+      where
+        configs = concat <$> sequence [ findFrom (loc </> e)
+                                      | e <- entries , not (blockName e)]
+
+blockName :: String -> Bool
+blockName = \case
+  ".git" -> True
+  ".stack-work" -> True
+  ".cache" -> True
+  ",jenga" -> True
+  "_build" -> True -- dune
+  _ -> False
 
 ----------------------------------------------------------------------
 -- Engine main

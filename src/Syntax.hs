@@ -4,6 +4,7 @@ module Syntax (elaborate) where
 import Control.Monad (when)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
+import System.FilePath qualified as FP
 import Text.Printf (printf)
 
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),Loc,What(..))
@@ -58,12 +59,12 @@ elaborate homeDir withPromotion config0  = do
             where
               dollarAtReplacement =
                 case ruleTarget of
-                  MArtifacts xs -> intercalate " " [ name | (_,name) <- xs ]
+                  MArtifacts xs -> intercalate " " [ FP.takeFileName name | (_,name) <- xs ]
                   MPhony name -> name
 
               -- very simplistic support for $^ and $<
-              dollarHatReplacement = intercalate " " [ name | DepPlain name <- deps]
-              dollarLeftReplacement = intercalate " " (take 1 [ name | DepPlain name <- deps])
+              dollarHatReplacement = intercalate " " [ FP.takeFileName name | DepPlain name <- deps]
+              dollarLeftReplacement = intercalate " " (take 1 [ FP.takeFileName name | DepPlain name <- deps])
               expandSpecial :: String -> String
               expandSpecial = loop
                 where

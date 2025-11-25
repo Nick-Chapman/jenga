@@ -30,8 +30,8 @@ import Text.Read (readMaybe)
 import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
-import MakeStyle qualified (elaborate)
 import StdBuildUtils ((</>),dirLoc)
+import Syntax qualified (elaborate)
 import WaitPid (waitpid)
 
 ----------------------------------------------------------------------
@@ -40,7 +40,7 @@ import WaitPid (waitpid)
 main :: IO ()
 main = engineMain $ \homeDir withPromotion args -> do
   configs <- findConfigs args
-  sequence_ [ MakeStyle.elaborate homeDir withPromotion (Key config) | config <- configs ]
+  sequence_ [ Syntax.elaborate homeDir withPromotion (Key config) | config <- configs ]
 
 findConfigs :: [String] -> G [Loc]
 findConfigs args = do

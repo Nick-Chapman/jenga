@@ -5,7 +5,7 @@ Jenga's config files are named `build.jenga` and have the following syntax.
 
 Meta-notation: uppercase for lexical items; lower case for grammatical items; double quoted strings for literal keywords and symbols. Alternation is marked using pipe (`|`). Repetition is marked as `{...}*` for zero or more items, or `{...}+` for one or more items.
 
-See [MakeStyle.hs](../src/MakeStyle.hs)
+See [Syntax.hs](../src/Syntax.hs)
 for the actual grammar implementation `gram :: Par [Clause]`
 as well as the semantic processing function `elaborate :: Key -> G ()`.
 

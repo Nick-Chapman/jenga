@@ -1,5 +1,5 @@
-
-module MakeStyle (elaborate) where
+-- | Syntax and elaboration for build.jenga files
+module Syntax (elaborate) where
 
 import Control.Monad (when)
 import Data.List (intercalate)

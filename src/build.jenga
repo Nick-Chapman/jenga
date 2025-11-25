@@ -2,35 +2,33 @@
 # Materialize the jenga.exe. Use by cram tests.
 
 !jenga.exe : jenga
-  ln jenga jenga.exe
+  ln $< $@
 
 executable-name:
-  echo jenga > executable-name
+  echo jenga > $@
 
 include ../rulelib/haskell.jenga
 
 main-entry:
-  echo Engine > main-entry
+  echo Engine > $@
 
 ghc-version:
-  echo 9.8.4 > ghc-version
+  echo 9.8.4 > $@
 
 ghc-options:
-  touch ghc-options
-  echo -Werror >>ghc-options
-  echo -Wall >>ghc-options
-  echo -Wno-name-shadowing >>ghc-options
+  echo -Werror >> $@
+  echo -Wall >> $@
+  echo -Wno-name-shadowing >> $@
 
 default-extensions:
-  echo LambdaCase >>default-extensions
-  echo DuplicateRecordFields >>default-extensions
-  echo GADTs >>default-extensions
+  echo LambdaCase >> $@
+  echo DuplicateRecordFields >> $@
+  echo GADTs >> $@
 
 packages:
-  touch packages
-  echo MissingH >>packages
-  echo data-ordlist >>packages
-  echo filelock >>packages
-  echo optparse-applicative >>packages
-  echo safeio >>packages
-  echo extra >>packages
+  echo MissingH >> $@
+  echo data-ordlist >> $@
+  echo filelock >> $@
+  echo optparse-applicative >> $@
+  echo safeio >> $@
+  echo extra >> $@

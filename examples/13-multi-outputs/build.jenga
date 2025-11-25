@@ -1,14 +1,14 @@
 
 lots :
- echo 11 >> lots
- echo 22 >> lots
- echo 33 >> lots
+ echo 11 >> $@
+ echo 22 >> $@
+ echo 33 >> $@
 
 h t : lots
- head -1 lots > h
- tail -1 lots > t
+ head -1 $< > h
+ tail -1 $< > t
  touch x
  exit 0
 
 final: h t
-  cat h t > final
+  cat $^ > $@

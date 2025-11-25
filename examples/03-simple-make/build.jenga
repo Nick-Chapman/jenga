@@ -10,10 +10,10 @@ fib.o : fib.c fib.h
 # Link...
 
 main.exe : fib.o main.o
-  gcc $^ -o main.exe
+  gcc $^ -o $@
 
 
 # Preprocess defs.h to remove blank lines for better build cutoff!
 
 defs.h : defs.h.in
-  grep -v '^$' defs.h.in > defs.h
+  grep -v '^$' $< > $@

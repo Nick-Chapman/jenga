@@ -70,7 +70,7 @@ Rules:
   example/c.rules : example/c.files
     cd example ; cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
   
-  example/depends : example/c.files example/fib.c example/main.c example/h.files example/defs.h example/fib.h
+  example/depends : example/c.files example/fib.c example/main.c example/defs.h example/fib.h
     cd example ; gcc -MG -MM $(cat c.files) > depends
   
   example/h.files : example/all.files

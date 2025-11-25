@@ -6,4 +6,4 @@ include cc.jenga
 # But we can add adhoc extra stuff here.
 
 defs.h : defs.h.in
-  grep -v '^$' defs.h.in > defs.h
+  grep -v '^$' $< > $@

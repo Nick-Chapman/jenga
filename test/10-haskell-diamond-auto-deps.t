@@ -17,7 +17,7 @@
   A: ./ghc.exe -c B.hs
   A: ./ghc.exe -c Top.hs
   A: ./ghc.exe -c main.hs
-  A: ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
+  A: ./ghc.exe main.o Top.o B.o C.o A.o -o diamond.exe
   checked 16 targets
   ran 12 commands
 

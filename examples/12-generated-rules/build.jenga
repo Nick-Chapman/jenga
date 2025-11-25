@@ -1,19 +1,20 @@
 
-hello.exe : o.files @o.files : gcc -o hello.exe $(cat o.files)
+hello.exe : o.files @o.files
+  gcc -o $@ $(cat o.files)
 
 c.files : all.files
-  cat all.files | grep '.c$' > c.files
+  cat $< | grep '.c$' > $@
 
 o.files : c.files
-  cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
+  cat $< | sed 's|\(.*\).c|\1.o|' > $@
 
 h.files : all.files
-  cat all.files | grep '.h$' > h.files
+  cat $< | grep '.h$' > $@
 
-depends : c.files @c.files h.files @h.files
-  gcc -MG -MM $(cat c.files) > depends
+depends : c.files @c.files @h.files
+  gcc -MG -MM $(cat $<) > $@
 
 c.rules : c.files
-  cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
+  cat $< | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > $@
 
 include c.rules

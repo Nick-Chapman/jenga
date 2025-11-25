@@ -4,16 +4,16 @@
 # Compile C; using scanner dependencies "@"
 
 main.o : @main.d
-  gcc -c main.c -o main.o
+  gcc -c main.c -o $@
 
 fib.o : @fib.d
-  gcc -c fib.c -o fib.o
+  gcc -c fib.c -o $@
 
 
 # Deps generation... fib.d as before. main.d needs more work!
 
 fib.d : fib.c
-  gcc -MG -MM fib.c > fib.d
+  gcc -MG -MM $< > $@
 
 # Because of 2-step include, we need 2-step "-MM" to automate dicovery
 # In general this should repeat to a fixed point.
@@ -21,13 +21,13 @@ fib.d : fib.c
 # But the following hand crafted rules for main give the idea.
 
 main.d : @main.d2
-  gcc -MG -MM main.c > main.d
+  gcc -MG -MM main.c > $@
 
 main.d2 : main.c
-  (echo -n 'main.d '; gcc -MG -MM main.c) > main.d2
+  (echo -n 'main.d '; gcc -MG -MM $<) > $@
 
 
 # Link...
 
 main.exe : fib.o main.o
-  gcc fib.o main.o -o main.exe
+  gcc $^ -o $@

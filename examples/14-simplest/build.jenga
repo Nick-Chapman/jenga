@@ -1,9 +1,9 @@
 
 a :
- echo -n A > a
+ echo -n A > $@
 
 b :
- echo -n B > b
+ echo -n B > $@
 
 ab : a b
- cat a b > ab
+ cat $^ > $@

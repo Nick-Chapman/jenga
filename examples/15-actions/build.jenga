@@ -1,6 +1,6 @@
 
 *run : the.sh
-  ./the.sh
+  ./$<
 
 *test : the.out the.out.expected
   diff $^

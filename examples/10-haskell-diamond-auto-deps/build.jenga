@@ -6,13 +6,13 @@
 # Link the executable
 
 diamond.exe : ghc.exe main.o Top.o B.o C.o A.o
- ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
+ ./$^ -o $@
 
 
 # Generate the main
 
 main.hs :
-  echo 'import Top' > main.hs
+  echo 'import Top' > $@
 
 
 # Compilation rules for all haskell modules now has the exact same pattern
@@ -30,7 +30,7 @@ Top.hi Top.o : ghc.exe @depends
 
 
 depends : ghc.exe main.hs A.hs B.hs C.hs Top.hs
-  ./ghc.exe -M *.hs -dep-makefile depends
+  ./ghc.exe -M *.hs -dep-makefile $@
 
 
 # Compiler script
@@ -39,8 +39,8 @@ version:
   echo 9.8.4 > $@
 
 ghc-path: version
-  echo ~/.ghcup/bin/ghc-$(cat version) > $@
+  echo ~/.ghcup/bin/ghc-$(cat $<) > $@
 
 ghc.exe : ghc-path
-  echo exec $(cat ghc-path) '"$$@"' > $@
+  echo exec $(cat $<) '"$$@"' > $@
   chmod +x $@

@@ -48,8 +48,8 @@ ghc.compiler : maybe.unbuffer ghc.exe pkgdb all.options
   echo $(cat ./maybe.unbuffer) $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$$@"' > ghc.compiler
   chmod +x ghc.compiler
 
-maybe.unbuffer :
-  if [ "$(which unbuffer)" = "" ]; then echo exec; else echo unbuffer; fi > $@
+maybe.unbuffer : ?/usr/bin/unbuffer
+  if [ ! -f unbuffer ]; then echo exec; else echo unbuffer; fi > $@
 
 all.options : ?ghc-options ?default-extensions
   touch ghc-option default-extensions

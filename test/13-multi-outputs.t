@@ -37,7 +37,7 @@ Change the example to echo a warning before exiting
   (command) $ tail -1 lots > t
   (command) $ touch x
   (command) $ echo WARNING; exit 0
-  (stdout) WARNING
+  WARNING
   checked 4 targets
   ran 4 commands
 
@@ -50,7 +50,7 @@ And zero build (see warning even though no actions were run)
   (command) $ tail -1 lots > t
   (command) $ touch x
   (command) $ echo WARNING; exit 0
-  (stdout) WARNING
+  WARNING
   checked 4 targets
 
 Change the example to have a non-zero error code
@@ -67,7 +67,7 @@ Change the example to have a non-zero error code
   (command) $ tail -1 lots > t
   (command) $ touch x
   (command) $ echo WARNING; exit 42
-  (stdout) WARNING
+  WARNING
   (exit-code) 42
   ran 4 commands
   Build failed for 1 reasons:
@@ -82,7 +82,7 @@ And zero build (see warning and error, again even though no actions were run)
   (command) $ tail -1 lots > t
   (command) $ touch x
   (command) $ echo WARNING; exit 42
-  (stdout) WARNING
+  WARNING
   (exit-code) 42
   Build failed for 1 reasons:
   (1) action failed for rule targeting: example/h example/t

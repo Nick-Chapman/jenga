@@ -803,7 +803,7 @@ seeStaticRule StaticRule{dir,target,deps} = do
 seeCommandAndRes :: String -> CommandRes -> String
 seeCommandAndRes command CommandRes{exitCode,stdout,stderr} =
   "(command) $ " ++ command ++ "\n" ++
-  seeOutput "(stdout) " stdout ++ -- TODO: loose the (stdout) prefix
+  stdout ++ -- seeOutput "(stdout) " stdout ++
   seeOutput "(stderr) " stderr ++
   seeFailureExit exitCode
   where

@@ -4,12 +4,11 @@ module Syntax (elaborate) where
 import Control.Monad (when)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
-import System.FilePath qualified as FP
 import Text.Printf (printf)
 
-import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),Loc,What(..))
+import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
+import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,makeLoc)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
-import StdBuildUtils ((</>),dirKey,baseKey)
 
 elaborate :: String -> Bool -> Key -> G ()
 elaborate homeDir withPromotion config0  = do
@@ -18,6 +17,9 @@ elaborate homeDir withPromotion config0  = do
   elabRuleFile config0
   where
     dir = dirKey config0 -- A rule is w.r.t the directory of the build.jenga config file
+
+    dirKey :: Key -> Dir
+    dirKey (Key loc) = takeDir loc
 
     elabRuleFile :: Key -> G ()
     elabRuleFile config  = do
@@ -59,12 +61,18 @@ elaborate homeDir withPromotion config0  = do
             where
               dollarAtReplacement =
                 case ruleTarget of
-                  MArtifacts xs -> intercalate " " [ FP.takeFileName name | (_,name) <- xs ]
+                  MArtifacts xs ->
+                    intercalate " " [ show (takeBase (makeLoc name))
+                                    | (_,name) <- xs ]
                   MPhony name -> name
 
-              -- very simplistic support for $^ and $<
-              dollarHatReplacement = intercalate " " [ FP.takeFileName name | DepPlain name <- deps]
-              dollarLeftReplacement = intercalate " " (take 1 [ FP.takeFileName name | DepPlain name <- deps])
+              -- very simplistic support for $$, $@, $^ and $<
+              dollarHatReplacement =
+                intercalate " " [ show (takeBase (makeLoc name))
+                                | DepPlain name <- deps ]
+              dollarLeftReplacement =
+                intercalate " " (take 1 [ show (takeBase (makeLoc name))
+                                        | DepPlain name <- deps])
               expandSpecial :: String -> String
               expandSpecial = loop
                 where
@@ -115,6 +123,10 @@ elaborate homeDir withPromotion config0  = do
                                                   allFilesName]
                                     })})
 
+        where
+          baseKey :: Key -> String
+          baseKey (Key loc) = show (takeBase loc)
+
     promoteName = ".promote"
     promoteRule =  do
       GRule (Rule { rulename = printf ".promote-%s" (show dir)
@@ -129,9 +141,9 @@ elaborate homeDir withPromotion config0  = do
                                     })})
 
 
-glob :: Loc -> G [Loc]
+glob :: Dir -> G [Loc]
 glob dir = do
-  GWhat dir >>= \case
+  GWhat (locOfDir dir) >>= \case
     Directory entries -> pure [ dir </> e | e <- entries ]
     _what -> GFail (printf "glob: expected %s to be a directory" (show dir))
 

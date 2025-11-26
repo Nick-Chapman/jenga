@@ -17,7 +17,6 @@ import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirec
 import System.Environment (lookupEnv)
 import System.Exit(ExitCode(..))
 import System.FileLock (tryLockFile,SharedExclusive(Exclusive),unlockFile)
-import System.FilePath qualified as FP
 import System.IO (hFlush,hPutStrLn,withFile,IOMode(WriteMode),hPutStr)
 import System.IO qualified as IO (stderr,stdout)
 import System.IO.SafeWrite (syncFile)
@@ -29,8 +28,8 @@ import Text.Read (readMaybe)
 
 import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
-import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),Loc(..),What(..))
-import StdBuildUtils ((</>),dirLoc)
+import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
+import Locate (Loc,makeLoc,pathOfLoc,Dir,makeDir,pathOfDir,takeDir,(</>),subDir,insistLocIsDir,Tag,makeTag,stringOfTag,takeBase)
 import Syntax qualified (elaborate)
 import WaitPid (waitpid)
 
@@ -42,10 +41,10 @@ main = engineMain $ \homeDir withPromotion args -> do
   configs <- findConfigs args
   sequence_ [ Syntax.elaborate homeDir withPromotion (Key config) | config <- configs ]
 
-findConfigs :: [String] -> G [Loc]
+findConfigs :: [String] -> G [Loc] -- TODO: take [Dir]
 findConfigs args = do
   let args' = case args of [] -> ["."]; _ -> args
-  configs <- concat <$> sequence [ findFrom (Loc arg) | arg <- args' ]
+  configs <- concat <$> sequence [ findFrom (makeLoc arg) | arg <- args' ]
   pure (reverse $ nubSort configs) -- reverse so subdirs come earlier
 
 findFrom :: Loc -> G [Loc]
@@ -58,10 +57,11 @@ findFrom loc = do
       case "build.jenga" `elem` entries of
         False -> configs
         True -> do
-          let config = loc </> "build.jenga"
+          let config = dir </> "build.jenga"
           (config:) <$> configs
       where
-        configs = concat <$> sequence [ findFrom (loc </> e)
+        dir = insistLocIsDir loc
+        configs = concat <$> sequence [ findFrom (dir </> e)
                                       | e <- entries , not (blockName e)]
 
 blockName :: String -> Bool
@@ -86,25 +86,25 @@ engineMain mkUserProg = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
-  cacheDir <-
+  cacheDir :: Dir <- insistLocIsDir <$>
     case cacheDirSpec of
       CacheDirDefault -> do
         lookupEnv "XDG_CACHE_HOME" >>= \case
           Just cache -> do
-            pure (Loc cache </> "jenga")
+            pure (makeDir cache </> "jenga")
           Nothing -> do
-            pure (Loc homeDir </> ".cache/jenga")
+            pure (makeDir homeDir </> ".cache/jenga")
       CacheDirChosen dir -> do
-        pure (Loc dir  </> ".cache/jenga")
+        pure (makeDir dir  </> ".cache/jenga")
       CacheDirTemp -> do
-        let loc = Loc (printf "/tmp/.cache/jenga/%s" (show myPid))
+        let loc = makeLoc (printf "/tmp/.cache/jenga/%s" (show myPid))
         when (not quiet) $ putOut (printf "using temporary cache: %s" (show loc))
         pure loc
 
   elaborateAndBuild cacheDir config userProg
 
 
-elaborateAndBuild :: Loc -> Config -> UserProg -> IO ()
+elaborateAndBuild :: Dir -> Config -> UserProg -> IO ()
 elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
   case buildMode of
 
@@ -144,21 +144,23 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         reportSystem config system
 
     ModeExec target argsForTarget -> do
+      let dir = pathOfDir (takeDir (makeLoc target))
       runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg [FP.takeDirectory target])
+        system <- runElaboration config (userProg [dir])
         buildEverythingInSystem config system -- TODO: ???
         let System{how} = system
-        digest <- buildArtifact config how (Key (Loc target))
+        digest <- buildArtifact config how (Key (makeLoc target))
         cacheFile <- cacheFile digest
         Execute (XIO (callProcess (show cacheFile) argsForTarget))
 
     ModeInstall target destination -> do
+      let dir = pathOfDir (takeDir (makeLoc target))
       runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg [FP.takeDirectory target])
+        system <- runElaboration config (userProg [dir])
         buildEverythingInSystem config system
         let System{how} = system
-        digest <- buildArtifact config how (Key (Loc target))
-        installDigest digest (Loc destination)
+        digest <- buildArtifact config how (Key (makeLoc target))
+        installDigest digest (makeLoc destination)
 
     ModeRun names -> do
       runBuild cacheDir config $ \config -> do
@@ -169,7 +171,7 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         parallel_ [ buildPhony config how name | name <- names ]
 
 
-runBuild :: Loc -> Config -> (Config -> B ()) -> IO ()
+runBuild :: Dir -> Config -> (Config -> B ()) -> IO ()
 runBuild cacheDir config f = do
   homeDir <- maybe "" id <$> lookupEnv "HOME"
   nCopies config $ \config -> do
@@ -198,7 +200,7 @@ buildEverythingInSystem config system = do
 
 data StaticRule = StaticRule
   { rulename :: String
-  , dir :: Loc
+  , dir :: Dir
   , target :: Target
   , deps :: [Key]
   , action :: Action
@@ -206,7 +208,7 @@ data StaticRule = StaticRule
 
 instance Show StaticRule where
   show StaticRule{dir,target,deps,action=Action{commands}} = do
-    let cdPrefix = if dir == Loc "." then "" else printf "cd %s ; " (show dir)
+    let cdPrefix = if dir == makeDir "." then "" else printf "cd %s ; " (show dir)
     let sep = printf "\n  %s" cdPrefix
     printf "%s : %s%s%s" (showTarget target) (showKeys deps) sep (intercalate sep commands)
       where
@@ -243,7 +245,7 @@ buildAndMaterialize config@Config{materializeCommaJenga} how target = do
 
 materializeInUserDir :: Digest -> Key -> B ()
 materializeInUserDir digest key = do
-  let materializedFile = Loc (show key)
+  let materializedFile = makeLoc (show key)
   installDigest digest materializedFile
 
 installDigest :: Digest -> Loc -> B ()
@@ -261,7 +263,7 @@ installDigest digest destination = do
         True -> XTransferFileMode destination cacheFile
         False -> pure ()
       XUnLink destination
-      XMakeDir (dirLoc destination)
+      XMakeDir (takeDir destination)
       XTryHardLink cacheFile destination >>= \case
         Nothing -> pure ()
         Just{} -> do
@@ -273,7 +275,7 @@ materializeInCommaJenga digest key = do
   cacheFile <- cacheFile digest
   let materializedFile = commaJengaDir </> show key
   Execute $ do
-    XMakeDir (dirLoc materializedFile)
+    XMakeDir (takeDir materializedFile)
     XTryHardLink cacheFile materializedFile >>= \case
       Nothing -> pure ()
       Just{} -> do
@@ -285,12 +287,12 @@ materializeInCommaJenga digest key = do
 ----------------------------------------------------------------------
 -- locations for cache, sandbox etc
 
-cachedFilesDir,tracesDir :: B Loc
-cachedFilesDir = do cacheDir <- BCacheDir; pure (cacheDir </> "files")
-tracesDir = do cacheDir <- BCacheDir; pure (cacheDir </> "traces")
+cachedFilesDir,tracesDir :: B Dir
+cachedFilesDir = do cacheDir <- BCacheDir; pure (cacheDir `subDir` "files")
+tracesDir = do cacheDir <- BCacheDir; pure (cacheDir `subDir` "traces")
 
-commaJengaDir :: Loc
-commaJengaDir = Loc ",jenga"
+commaJengaDir :: Dir
+commaJengaDir = makeDir ",jenga"
 
 ----------------------------------------------------------------------
 -- Elaborate
@@ -376,8 +378,8 @@ xwhat loc = do
             False -> pure File
             True -> Directory <$> XListDir loc
 
-locateKey :: Key -> Loc -- TODO: use distinguished return type to promise basename behaviour
-locateKey (Key (Loc fp)) = Loc (FP.takeFileName fp)
+tagOfKey :: Key -> Tag
+tagOfKey (Key loc) = takeBase loc
 
 ----------------------------------------------------------------------
 -- Build
@@ -411,7 +413,7 @@ buildArtifact config@Config{debugDemand} how@How{ahow} = do
         when debugDemand $ BLog (printf "B: Require: %s" (show sought))
         -- We only memoize the run of rule targeting artifacts (not phonys)
         wtargets <- BMemoRule (buildRule config how) rule
-        let digest = lookWitMap (locateKey sought) wtargets
+        let digest = lookWitMap (tagOfKey sought) wtargets
         pure digest
 
 buildRule :: Config -> How -> Rule -> B WitMap
@@ -422,10 +424,10 @@ buildRule config@Config{debugLocking,strict} how rule = do
   (deps,action@Action{commands}) <- gatherDeps config how depcom
   let sr = StaticRule { rulename, dir, target, deps, action } -- used for message context
   wdeps <- (WitMap . Map.fromList) <$>
-    parallel [ do digest <- buildArtifact config how dep; pure (locateKey dep,digest)
+    parallel [ do digest <- buildArtifact config how dep; pure (tagOfKey dep,digest)
              | dep <- deps
              ]
-  let witKey = WitnessKey { strict, targets = map locateKey targets, commands, wdeps }
+  let witKey = WitnessKey { strict, targets = map tagOfKey targets, commands, wdeps }
   let wkd = digestWitnessKey witKey
   -- If the witness trace already exists, use it.
   when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
@@ -484,7 +486,7 @@ awaitLockYielding Config{debugLocking} wkd = loop 0
 tryGainingLock :: Bool -> WitKeyDigest -> (Bool -> B a) -> B a
 tryGainingLock debug wkd f = do
   tracesDir <- tracesDir
-  let Loc lockPath = tracesDir </> (show wkd ++ ".lock")
+  let lockPath = pathOfLoc (tracesDir </> (show wkd ++ ".lock"))
   -- Try to gain the lock...
   Execute (XIO (tryLockFile lockPath Exclusive)) >>= \case
     Just lock -> do
@@ -493,7 +495,7 @@ tryGainingLock debug wkd f = do
       res <- BCatch (f True)
       -- Critical section finished; release the lock (unlink and unlok).
       Execute $ do
-        XUnLink (Loc lockPath)
+        XUnLink (makeLoc lockPath)
         XIO (unlockFile lock)
         when debug $ XLog $ printf "L: unlocked %s" (show wkd)
       BResult res
@@ -559,7 +561,7 @@ actionFailed StaticRule{target} = do
   bfail (printf "action failed for rule targeting: %s" (showTarget target))
 
 
-setupInputs :: Loc -> WitMap -> B ()
+setupInputs :: Dir -> WitMap -> B ()
 setupInputs sandbox (WitMap m1) = do
   sequence_
     [ do
@@ -582,13 +584,13 @@ hardLinkRetry1 src dest =  do
           -- TODO: I don't think we can assume we only need a single retry
           error e2 -- hard error for error on 2nd attempt
 
-cacheOutputs :: Loc -> Rule -> B WitMap
+cacheOutputs :: Dir -> Rule -> B WitMap
 cacheOutputs sandbox Rule{rulename,target} = do
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
   WitMap . Map.fromList <$> sequence
     [ do
-        let tag = locateKey target
+        let tag = tagOfKey target
         let sandboxLoc = sandbox </> show tag
         Execute (XFileExists sandboxLoc) >>= \case
           False -> do
@@ -650,19 +652,19 @@ data WitnessValue
   = WitnessSUCC { wtargets :: WitMap, ares :: ActionRes }
   | WitnessFAIL ActionRes
 
-data WitnessKey = WitnessKey { strict :: Bool, targets :: [Loc], commands :: [String], wdeps :: WitMap } deriving Show
+data WitnessKey = WitnessKey { strict :: Bool, targets :: [Tag], commands :: [String], wdeps :: WitMap } deriving Show
 
 -- TODO: Filemode should be included in the target WitMap to solve the problem of a forgotten chmod +x on a generated script. Currently the callers wont be triggered to run again because they see no change in their deps; so they will be stuck showing the error which occurred when the script did not have exec perm.
-data WitMap = WitMap (Map Loc Digest) deriving Show
+data WitMap = WitMap (Map Tag Digest) deriving Show
 
 -- message digest of a witness key; computer by internal MD5 code
 data WitKeyDigest = WitKeyDigest String
 
 instance Show WitKeyDigest where show (WitKeyDigest str) = str
 
-lookWitMap :: Loc -> WitMap -> Digest
-lookWitMap loc (WitMap m) = maybe err id $ Map.lookup loc m
-  where err = error (show ("lookWitMap",loc,Map.keys m))
+lookWitMap :: Tag -> WitMap -> Digest
+lookWitMap tag (WitMap m) = maybe err id $ Map.lookup tag m
+  where err = error (show ("lookWitMap",tag,Map.keys m))
 
 digestWitnessKey :: WitnessKey -> WitKeyDigest
 digestWitnessKey wk = WitKeyDigest (MD5.md5s (MD5.Str (show wk)))
@@ -728,7 +730,7 @@ toQ = \case
     TRACE cs Nothing
   WitnessSUCC{wtargets=WitMap m,ares=ActionRes xs} -> do
     let cs = [ RUN{exitCode,stdout,stderr} | CommandRes{exitCode,stdout,stderr} <- xs ]
-    let targets = [ (fp,digest) | (Loc fp,Digest digest) <- Map.toList m ]
+    let targets = [ (stringOfTag tag,digest) | (tag,Digest digest) <- Map.toList m ]
     TRACE cs (Just targets)
 
 fromQ :: QWitness -> Witness
@@ -738,7 +740,7 @@ fromQ = \case
     case topt of
       Nothing -> WitnessFAIL ares
       Just targets -> do
-        let wtargets = WitMap (Map.fromList [ (Loc fp,Digest digest) | (fp,digest) <- targets ])
+        let wtargets = WitMap (Map.fromList [ (makeTag fp,Digest digest) | (fp,digest) <- targets ])
         WitnessSUCC{wtargets,ares}
 
 ----------------------------------------------------------------------
@@ -781,7 +783,7 @@ seeStaticRule :: StaticRule -> String
 seeStaticRule StaticRule{dir,target,deps} = do
   seeDir dir ++ "\n" ++ seeRule target deps ++ "\n"
   where
-    seeDir :: Loc -> String
+    seeDir :: Dir -> String
     seeDir x = "(directory) " ++ show x
 
     seeRule :: Target -> [Key] -> String
@@ -854,16 +856,16 @@ data B a where
   BBind :: B a -> (a -> B b) -> B b
   BLog :: String -> B ()
   BCatch :: B a -> B (BuildRes a)
-  BCacheDir :: B Loc
-  BNewSandbox :: B Loc
-  BRunActionInDir :: Loc -> Action -> B ActionRes
+  BCacheDir :: B Dir
+  BNewSandbox :: B Dir
+  BRunActionInDir :: Dir -> Action -> B ActionRes
   Execute :: X a -> B a
   BMemoKey :: (Key -> B Digest) -> Key -> B Digest
   BMemoRule :: (Rule -> B WitMap) -> Rule -> B WitMap
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
 
-runB :: Loc -> Config -> B () -> X ()
+runB :: Dir -> Config -> B () -> X ()
 runB cacheDir config@Config{logMode} build0 = do
   loop build bstate0 kFinal
   where
@@ -871,7 +873,7 @@ runB cacheDir config@Config{logMode} build0 = do
       initDirs config
       build0
 
-    sandboxParent pid = Loc (printf "/tmp/.jbox/%s" (show pid))
+    sandboxParent pid = makeDir (printf "/tmp/.jbox/%s" (show pid))
 
     kFinal :: BState -> BuildRes () -> X ()
     kFinal BState{runCounter,jobs} res = do
@@ -898,7 +900,7 @@ runB cacheDir config@Config{logMode} build0 = do
       BNewSandbox -> do
         myPid <- XIO getCurrentPid
         let BState{sandboxCounter=i} = s
-        k s { sandboxCounter = 1 + i } (SUCC (sandboxParent myPid </> show i))
+        k s { sandboxCounter = 1 + i } (SUCC (sandboxParent myPid `subDir` show i))
 
       BRunActionInDir sandbox action@Action{hidden,commands} -> do
         res <- XRunActionInDir sandbox action
@@ -1019,7 +1021,7 @@ data X a where
   XLogErr :: String -> X ()
   XIO :: IO a -> X a
 
-  XRunActionInDir :: Loc -> Action -> X ActionRes
+  XRunActionInDir :: Dir -> Action -> X ActionRes
   XDigest :: Loc -> X Digest
 
   XFileExists :: Loc -> X Bool
@@ -1027,7 +1029,7 @@ data X a where
   XIsDirectory :: Loc -> X Bool
   XListDir :: Loc -> X [String]
 
-  XMakeDir :: Loc -> X ()
+  XMakeDir :: Dir -> X ()
   XCopyFile :: Loc -> Loc -> X ()
   XTransferFileMode :: Loc -> Loc -> X ()
   XMakeReadOnly :: Loc -> X ()
@@ -1035,7 +1037,7 @@ data X a where
   XWriteFile :: String -> Loc -> X ()
   XTryHardLink :: Loc -> Loc -> X (Maybe String)
   XUnLink :: Loc -> X ()
-  XRemoveDirRecursive :: Loc -> X ()
+  XRemoveDirRecursive :: Dir -> X ()
 
 runX :: String -> Config -> X a -> IO a
 runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocking} = loop
@@ -1063,17 +1065,17 @@ runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocki
       XLogErr mes -> maybePrefixPid config mes >>= putErr
 
       -- sandboxed execution of user's action; for now always a list of bash commands
-      XRunActionInDir (Loc dir) Action{hidden,commands} -> ActionRes <$> do
+      XRunActionInDir dir Action{hidden,commands} -> ActionRes <$> do
         forM commands $ \command -> do
           let logAction = case logMode of LogActions -> True; _ -> False
           when (not hidden && logAction) $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-
-            withCurrentDirectory dir (readCreateProcessWithExitCode (shell command) "")
+            withCurrentDirectory (pathOfDir dir) (readCreateProcessWithExitCode (shell command) "")
           pure $ CommandRes { exitCode, stdout, stderr }
 
       -- other commands with shell out to external process
-      XDigest (Loc fp) -> do
-        let command = printf "md5sum %s" fp
+      XDigest loc -> do
+        let command = printf "md5sum %s" (pathOfLoc loc)
         when debugExternal $ log (printf "X: %s" command)
         output <- readCreateProcess (shell command) ""
         let str = case (splitOn " " output) of [] -> error "XDigest/split"; x:_ -> x
@@ -1081,53 +1083,54 @@ runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocki
 
       -- internal file system access (log approx equivalent external command)
 
-      XFileExists (Loc fp) -> do
-        logI $ printf "test -e %s" fp
-        safeFileExist fp
-      XIsSymbolicLink (Loc fp) -> do
-        logI $ printf "test -L %s" fp
-        status <- getSymbolicLinkStatus fp
+      XFileExists loc -> do
+        logI $ printf "test -e %s" (show loc)
+        safeFileExist (pathOfLoc loc)
+      XIsSymbolicLink loc -> do
+        logI $ printf "test -L %s" (show loc)
+        status <- getSymbolicLinkStatus (pathOfLoc loc)
         pure (isSymbolicLink status)
-      XIsDirectory (Loc fp) -> do
-        logI $ printf "test -d %s" fp
-        safeFileExist fp >>= \case
+      XIsDirectory loc -> do
+        logI $ printf "test -d %s" (show loc)
+        safeFileExist (pathOfLoc loc) >>= \case
           False -> pure False
           True -> do
-            status <- getFileStatus fp
+            status <- getFileStatus (pathOfLoc loc)
             pure (isDirectory status)
-      XListDir (Loc fp) -> do
-        logI $ printf "ls %s" fp
-        safeListDirectory fp
+      XListDir loc -> do
+        logI $ printf "ls %s" (show loc)
+        safeListDirectory (pathOfLoc loc)
 
-      XMakeDir (Loc fp) -> do
-        logI $ printf "mkdir -p %s" fp
-        createDirectoryIfMissing True fp
-      XCopyFile (Loc src) (Loc dest) -> do
-        logI $ printf "cp %s %s" src dest
-        copyFile src dest
-      XTransferFileMode (Loc src) (Loc dest) -> do
-        mode <- fileMode <$> getFileStatus src
-        setFileMode dest mode
-      XMakeReadOnly (Loc fp) -> do
-        logI $ printf "chmod a-w %s" fp
-        mode <- fileMode <$> getFileStatus fp
-        setFileMode fp (intersectFileModes 0o555 mode)
-      XReadFile (Loc fp) -> do
-        logI $ printf "cat %s" fp
-        readFile fp
-      XWriteFile contents (Loc dest) -> do
-        let mes :: String = printf "cat> %s" dest
+      XMakeDir dir -> do
+        logI $ printf "mkdir -p %s" (show dir)
+        createDirectoryIfMissing True (pathOfDir dir)
+      XCopyFile src dest -> do
+        logI $ printf "cp %s %s" (show src) (show dest)
+        copyFile (pathOfLoc src) (pathOfLoc dest)
+      XTransferFileMode src dest -> do
+        -- TODO: no logging here?
+        mode <- fileMode <$> getFileStatus (pathOfLoc src)
+        setFileMode (pathOfLoc dest) mode
+      XMakeReadOnly loc -> do
+        logI $ printf "chmod a-w %s" (show loc)
+        mode <- fileMode <$> getFileStatus (pathOfLoc loc)
+        setFileMode (pathOfLoc loc) (intersectFileModes 0o555 mode)
+      XReadFile loc -> do
+        logI $ printf "cat %s" (show loc)
+        readFile (pathOfLoc loc)
+      XWriteFile contents dest -> do
+        let mes :: String = printf "cat> %s" (show dest)
         when debugLocking $ log (printf "L: %s" mes)
-        writeFileFlush dest contents
-      XTryHardLink (Loc src) (Loc dest) -> do
-        logI $ printf "ln %s %s" src dest
-        tryCreateLink src dest
-      XUnLink (Loc fp) -> do
-        logI $ printf "rm -f %s" fp
-        safeRemoveLink fp
-      XRemoveDirRecursive (Loc fp) -> do
-        logI $ printf "rm -rf %s" fp
-        removePathForcibly fp
+        writeFileFlush (pathOfLoc dest) contents
+      XTryHardLink src dest -> do
+        logI $ printf "ln %s %s" (show src) (show dest)
+        tryCreateLink (pathOfLoc src) (pathOfLoc dest)
+      XUnLink loc -> do
+        logI $ printf "rm -f %s" (show loc)
+        safeRemoveLink (pathOfLoc loc)
+      XRemoveDirRecursive dir -> do
+        logI $ printf "rm -rf %s" (show dir)
+        removePathForcibly (pathOfDir dir)
 
 writeFileFlush :: FilePath -> String -> IO ()
 writeFileFlush fp str = do

@@ -6,12 +6,12 @@ module Interface
   , D(..)       -- The Dependency monad.
   , Target(..)  -- list of artifacts or an action name
   , Artifact(..)-- artifact name + materialization control
-  , Key(..)     -- An identifier for artifacts and dependencies.
-  , Loc(..)     -- A file-path location.
   , What(..)    -- what kind of file-system object is at a given location
+  , Key(..)     -- An identifier for artifacts and dependencies.
   ) where
 
 import Control.Monad (ap,liftM)
+import Locate (Loc,Dir)
 
 instance Functor G where fmap = liftM
 instance Applicative G where pure = GRet; (<*>) = ap
@@ -31,7 +31,7 @@ data What = Missing | File | Link | Directory { entries :: [String] }
 
 data Rule = Rule
   { rulename :: String
-  , dir :: Loc
+  , dir :: Dir
   , hidden :: Bool
   , target :: Target
   , depcom :: D Action
@@ -61,10 +61,5 @@ data D a where
   DReadKey :: Key -> D String
   DExistsKey :: Key -> D Bool
 
--- TODO: Is this two level Key, Loc really necessary or useful?
 data Key = Key Loc deriving (Eq,Ord) -- Artifact Key
-
-data Loc = Loc FilePath deriving (Eq,Ord)
-
 instance Show Key where show (Key loc) = show loc
-instance Show Loc where show (Loc fp) = fp

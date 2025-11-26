@@ -7,7 +7,7 @@ import Data.List.Split (splitOn)
 import Text.Printf (printf)
 
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,makeLoc)
+import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,makeLoc,stringOfTag,pathOfDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: String -> Bool -> Key -> G ()
@@ -62,16 +62,16 @@ elaborate homeDir withPromotion config0  = do
               dollarAtReplacement =
                 case ruleTarget of
                   MArtifacts xs ->
-                    intercalate " " [ show (takeBase (makeLoc name))
+                    intercalate " " [ stringOfTag (takeBase (makeLoc name))
                                     | (_,name) <- xs ]
                   MPhony name -> name
 
               -- very simplistic support for $$, $@, $^ and $<
               dollarHatReplacement =
-                intercalate " " [ show (takeBase (makeLoc name))
+                intercalate " " [ stringOfTag (takeBase (makeLoc name))
                                 | DepPlain name <- deps ]
               dollarLeftReplacement =
-                intercalate " " (take 1 [ show (takeBase (makeLoc name))
+                intercalate " " (take 1 [ stringOfTag (takeBase (makeLoc name))
                                         | DepPlain name <- deps])
               expandSpecial :: String -> String
               expandSpecial = loop
@@ -111,7 +111,7 @@ elaborate homeDir withPromotion config0  = do
     allFilesName = "all.files"
     allFilesRule =  do
       allFiles <- map Key <$> glob dir
-      GRule (Rule { rulename = printf "glob-%s" (show dir)
+      GRule (Rule { rulename = printf "glob-%s" (pathOfDir dir)
                   , dir
                   , hidden = True
                   , target = Artifacts [ Artifact { materialize = False
@@ -125,11 +125,11 @@ elaborate homeDir withPromotion config0  = do
 
         where
           baseKey :: Key -> String
-          baseKey (Key loc) = show (takeBase loc)
+          baseKey (Key loc) = stringOfTag (takeBase loc)
 
     promoteName = ".promote"
     promoteRule =  do
-      GRule (Rule { rulename = printf ".promote-%s" (show dir)
+      GRule (Rule { rulename = printf ".promote-%s" (pathOfDir dir)
                   , dir
                   , hidden = True
                   , target = Artifacts [ Artifact { materialize = False
@@ -145,7 +145,7 @@ glob :: Dir -> G [Loc]
 glob dir = do
   GWhat (locOfDir dir) >>= \case
     Directory entries -> pure [ dir </> e | e <- entries ]
-    _what -> GFail (printf "glob: expected %s to be a directory" (show dir))
+    _what -> GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
 
 filterDepsFor :: [String] -> String -> [String]
 filterDepsFor artNames contents = do

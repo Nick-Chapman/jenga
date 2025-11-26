@@ -26,13 +26,10 @@ import System.Path.NameManip (guess_dotdot)
 
 -- types...
 
-data Loc = LocX FilePath deriving (Eq,Ord)
-instance Show Loc where show (LocX fp) = fp
+newtype Loc = LocX FilePath deriving (Eq,Ord)
+newtype Dir = DirX FilePath
+newtype Tag = TagX String deriving (Eq,Ord)
 
-data Dir = DirX FilePath deriving Eq
-instance Show Dir where show (DirX fp) = fp
-
-data Tag = TagX String deriving (Eq,Ord)
 instance Show Tag where show (TagX s) = s
 
 -- leaving the type world...
@@ -82,5 +79,5 @@ subDir :: Dir -> String -> Dir
 subDir dir e = insistLocIsDir (dir </> e)
 
 insistLocIsDir :: Loc -> Dir
-insistLocIsDir loc = makeDir (show loc)
+insistLocIsDir loc = makeDir (pathOfLoc loc)
 

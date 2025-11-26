@@ -98,7 +98,7 @@ engineMain mkUserProg = do
         pure (makeDir dir  </> ".cache/jenga")
       CacheDirTemp -> do
         let loc = makeLoc (printf "/tmp/.cache/jenga/%s" (show myPid))
-        when (not quiet) $ putOut (printf "using temporary cache: %s" (show loc))
+        when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 
   elaborateAndBuild cacheDir config userProg
@@ -151,7 +151,7 @@ elaborateAndBuild cacheDir config@Config{buildMode,args} userProg = do
         let System{how} = system
         digest <- buildArtifact config how (Key (makeLoc target))
         cacheFile <- cacheFile digest
-        Execute (XIO (callProcess (show cacheFile) argsForTarget))
+        Execute (XIO (callProcess (pathOfLoc cacheFile) argsForTarget))
 
     ModeInstall target destination -> do
       let dir = pathOfDir (takeDir (makeLoc target))
@@ -208,7 +208,7 @@ data StaticRule = StaticRule
 
 instance Show StaticRule where
   show StaticRule{dir,target,deps,action=Action{commands}} = do
-    let cdPrefix = if dir == makeDir "." then "" else printf "cd %s ; " (show dir)
+    let cdPrefix = if pathOfDir dir == "." then "" else printf "cd %s ; " (pathOfDir dir)
     let sep = printf "\n  %s" cdPrefix
     printf "%s : %s%s%s" (showTarget target) (showKeys deps) sep (intercalate sep commands)
       where
@@ -267,7 +267,7 @@ installDigest digest destination = do
       XTryHardLink cacheFile destination >>= \case
         Nothing -> pure ()
         Just{} -> do
-          XLog (printf "installDigest: nope! %s -> %s" (show cacheFile) (show destination))
+          XLog (printf "installDigest: nope! %s -> %s" (pathOfLoc cacheFile) (pathOfLoc destination))
           pure ()
 
 materializeInCommaJenga :: Digest -> Key -> B ()
@@ -566,9 +566,9 @@ setupInputs sandbox (WitMap m1) = do
   sequence_
     [ do
         src <- cacheFile digest
-        let dest = sandbox </> show loc
+        let dest = sandbox </> stringOfTag tag
         Execute $ hardLinkRetry1 src dest
-    | (loc,digest) <- Map.toList m1
+    | (tag,digest) <- Map.toList m1
     ]
 
 hardLinkRetry1 :: Loc -> Loc -> X ()
@@ -591,7 +591,7 @@ cacheOutputs sandbox Rule{rulename,target} = do
   WitMap . Map.fromList <$> sequence
     [ do
         let tag = tagOfKey target
-        let sandboxLoc = sandbox </> show tag
+        let sandboxLoc = sandbox </> stringOfTag tag
         Execute (XFileExists sandboxLoc) >>= \case
           False -> do
             bfail (printf "'%s' : not produced as declared by rule '%s'" (show target) rulename)
@@ -628,7 +628,7 @@ linkIntoCache loc = do
           Just err -> do
             -- job locking ensures this can't happen
             error (printf "linkIntoCache/HardLink: failure: loc=%s, file=%s, err=%s"
-                   (show loc) (show file) (show err)
+                   (pathOfLoc loc) (pathOfLoc file) (show err)
                   )
     XMakeReadOnly file
   pure digest
@@ -784,7 +784,7 @@ seeStaticRule StaticRule{dir,target,deps} = do
   seeDir dir ++ "\n" ++ seeRule target deps ++ "\n"
   where
     seeDir :: Dir -> String
-    seeDir x = "(directory) " ++ show x
+    seeDir dir = "(directory) " ++ pathOfDir dir
 
     seeRule :: Target -> [Key] -> String
     seeRule target deps = "(rule) " ++ seeTarget target ++ " : " ++ seeKeys deps
@@ -798,12 +798,12 @@ seeStaticRule StaticRule{dir,target,deps} = do
     seeKeys = unwords . map seeKey
 
     seeKey :: Key -> String
-    seeKey key = dropPrefix (show dir++"/") (show key)
+    seeKey key = dropPrefix (pathOfDir dir ++ "/") (show key)
 
 seeCommandAndRes :: String -> CommandRes -> String
 seeCommandAndRes command CommandRes{exitCode,stdout,stderr} =
   "(command) $ " ++ command ++ "\n" ++
-  seeOutput "(stdout) " stdout ++
+  seeOutput "(stdout) " stdout ++ -- TODO: loose the (stdout) prefix
   seeOutput "(stderr) " stderr ++
   seeFailureExit exitCode
   where
@@ -1084,52 +1084,52 @@ runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocki
       -- internal file system access (log approx equivalent external command)
 
       XFileExists loc -> do
-        logI $ printf "test -e %s" (show loc)
+        logI $ printf "test -e %s" (pathOfLoc loc)
         safeFileExist (pathOfLoc loc)
       XIsSymbolicLink loc -> do
-        logI $ printf "test -L %s" (show loc)
+        logI $ printf "test -L %s" (pathOfLoc loc)
         status <- getSymbolicLinkStatus (pathOfLoc loc)
         pure (isSymbolicLink status)
       XIsDirectory loc -> do
-        logI $ printf "test -d %s" (show loc)
+        logI $ printf "test -d %s" (pathOfLoc loc)
         safeFileExist (pathOfLoc loc) >>= \case
           False -> pure False
           True -> do
             status <- getFileStatus (pathOfLoc loc)
             pure (isDirectory status)
       XListDir loc -> do
-        logI $ printf "ls %s" (show loc)
+        logI $ printf "ls %s" (pathOfLoc loc)
         safeListDirectory (pathOfLoc loc)
 
       XMakeDir dir -> do
-        logI $ printf "mkdir -p %s" (show dir)
+        logI $ printf "mkdir -p %s" (pathOfDir dir)
         createDirectoryIfMissing True (pathOfDir dir)
       XCopyFile src dest -> do
-        logI $ printf "cp %s %s" (show src) (show dest)
+        logI $ printf "cp %s %s" (pathOfLoc src) (pathOfLoc dest)
         copyFile (pathOfLoc src) (pathOfLoc dest)
       XTransferFileMode src dest -> do
         -- TODO: no logging here?
         mode <- fileMode <$> getFileStatus (pathOfLoc src)
         setFileMode (pathOfLoc dest) mode
       XMakeReadOnly loc -> do
-        logI $ printf "chmod a-w %s" (show loc)
+        logI $ printf "chmod a-w %s" (pathOfLoc loc)
         mode <- fileMode <$> getFileStatus (pathOfLoc loc)
         setFileMode (pathOfLoc loc) (intersectFileModes 0o555 mode)
       XReadFile loc -> do
-        logI $ printf "cat %s" (show loc)
+        logI $ printf "cat %s" (pathOfLoc loc)
         readFile (pathOfLoc loc)
       XWriteFile contents dest -> do
-        let mes :: String = printf "cat> %s" (show dest)
+        let mes :: String = printf "cat> %s" (pathOfLoc dest)
         when debugLocking $ log (printf "L: %s" mes)
         writeFileFlush (pathOfLoc dest) contents
       XTryHardLink src dest -> do
-        logI $ printf "ln %s %s" (show src) (show dest)
+        logI $ printf "ln %s %s" (pathOfLoc src) (pathOfLoc dest)
         tryCreateLink (pathOfLoc src) (pathOfLoc dest)
       XUnLink loc -> do
-        logI $ printf "rm -f %s" (show loc)
+        logI $ printf "rm -f %s" (pathOfLoc loc)
         safeRemoveLink (pathOfLoc loc)
       XRemoveDirRecursive dir -> do
-        logI $ printf "rm -rf %s" (show dir)
+        logI $ printf "rm -rf %s" (pathOfDir dir)
         removePathForcibly (pathOfDir dir)
 
 writeFileFlush :: FilePath -> String -> IO ()

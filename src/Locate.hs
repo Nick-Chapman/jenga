@@ -10,7 +10,7 @@ module Locate
   , stringOfTag
 
   -- constructors
-  , makeDir, makeTag
+  , makeAbsoluteDir, makeTag
   , (</>)
 
   , takeDir
@@ -23,7 +23,7 @@ module Locate
 import System.FilePath qualified as FP
 import System.Path.NameManip (guess_dotdot)
 
--- types...
+-- types... invariant: Loc and Dir *always* start with a '/'
 
 newtype Loc = LocX FilePath deriving (Eq,Ord)
 newtype Dir = DirX FilePath deriving Eq
@@ -44,11 +44,11 @@ stringOfTag (TagX s) = s
 
 -- basic constructors...
 
-makeDir :: String -> FilePath -> Dir
-makeDir who fp = -- TODO: remove who?
+makeAbsoluteDir :: FilePath -> Dir
+makeAbsoluteDir fp =
   case fp of
-    '/':_ -> DirX fp -- absolute; ok
-    _ -> error (show ("makeDir/not-absolute",who,fp))
+    '/':_ -> DirX fp
+    _ -> error (show ("makeAbsoluteDir",fp))
 
 makeTag :: String -> Tag
 makeTag s = TagX s -- TODO: check contains no /s
@@ -56,7 +56,7 @@ makeTag s = TagX s -- TODO: check contains no /s
 -- moving between the types...
 
 takeDir :: Loc -> Dir
-takeDir (LocX fp) = makeDir "[takeDir]" (FP.takeDirectory fp)
+takeDir (LocX fp) = makeAbsoluteDir (FP.takeDirectory fp)
 
 takeBase :: Loc -> Tag
 takeBase (LocX fp) = makeTag (FP.takeFileName fp)
@@ -76,4 +76,4 @@ locOfDir :: Dir -> Loc -- upcast; TODO: shame
 locOfDir (DirX fp) = LocX fp
 
 insistLocIsDir :: Loc -> Dir
-insistLocIsDir loc = makeDir "[insistLocIsDir]" (pathOfLoc loc)
+insistLocIsDir loc = makeAbsoluteDir (pathOfLoc loc)

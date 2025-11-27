@@ -8,7 +8,7 @@ module CommandLine
 import Options.Applicative
 import System.Directory (getCurrentDirectory)
 
-import Locate (Dir,makeDir)
+import Locate (Dir,makeAbsoluteDir)
 
 data LogMode = LogQuiet | LogNormal | LogActions
 
@@ -43,7 +43,7 @@ data BuildMode
 
 exec :: IO Config
 exec = do
-  startDir <- makeDir "[CommandLine.exec]" <$> getCurrentDirectory
+  startDir <- makeAbsoluteDir <$> getCurrentDirectory
   execAt startDir
 
 execAt :: Dir -> IO Config

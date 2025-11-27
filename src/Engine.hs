@@ -29,7 +29,7 @@ import Text.Read (readMaybe)
 import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
-import Locate (Loc,pathOfLoc,Dir,makeDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
+import Locate (Loc,pathOfLoc,Dir,makeAbsoluteDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
 import Syntax qualified (elaborate)
 import WaitPid (waitpid)
 
@@ -91,13 +91,13 @@ engineMain mkUserProg = do
       CacheDirDefault -> do
         lookupEnv "XDG_CACHE_HOME" >>= \case
           Just cache -> do
-            pure (makeDir "[CacheDirDefault/XDG]" cache </> "jenga")
+            pure (makeAbsoluteDir cache </> "jenga")
           Nothing -> do
-            pure (makeDir "[CacheDirDefault]" homeDir </> ".cache/jenga")
+            pure (makeAbsoluteDir homeDir </> ".cache/jenga")
       CacheDirChosen dirString -> do
         pure (insistLocIsDir (startDir </> dirString) </> ".cache/jenga")
       CacheDirTemp -> do
-        let loc = locOfDir (makeDir "[CacheDirTemp]" (printf "/tmp/.cache/jenga/%s" (show myPid)))
+        let loc = locOfDir (makeAbsoluteDir (printf "/tmp/.cache/jenga/%s" (show myPid)))
         when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 
@@ -884,7 +884,7 @@ runB cacheDir config@Config{logMode} build0 = do
       initDirs config
       build0
 
-    sandboxParent pid = makeDir "[sandboxParent]" (printf "/tmp/.jbox/%s" (show pid))
+    sandboxParent pid = makeAbsoluteDir (printf "/tmp/.jbox/%s" (show pid))
 
     kFinal :: BState -> BuildRes () -> X ()
     kFinal BState{runCounter,jobs} res = do

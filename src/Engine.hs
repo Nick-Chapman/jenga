@@ -29,7 +29,7 @@ import Text.Read (readMaybe)
 import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
-import Locate (Loc,makeLoc,pathOfLoc,Dir,makeDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
+import Locate (Loc,pathOfLoc,Dir,makeDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
 import Syntax qualified (elaborate)
 import WaitPid (waitpid)
 
@@ -97,7 +97,7 @@ engineMain mkUserProg = do
       CacheDirChosen dirString -> do
         pure (insistLocIsDir (startDir </> dirString) </> ".cache/jenga")
       CacheDirTemp -> do
-        let loc = makeLoc (printf "/tmp/.cache/jenga/%s" (show myPid))
+        let loc = locOfDir (makeDir "[CacheDirTemp]" (printf "/tmp/.cache/jenga/%s" (show myPid)))
         when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 

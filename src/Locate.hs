@@ -10,11 +10,11 @@ module Locate
   , stringOfTag
 
   -- constructors
-  , makeLoc, makeDir, makeTag
+  , makeDir, makeTag
+  , (</>)
 
   , takeDir
   , takeBase
-  , (</>)
 
   , locOfDir
   , insistLocIsDir
@@ -44,12 +44,6 @@ stringOfTag (TagX s) = s
 
 -- basic constructors...
 
-makeLoc :: FilePath -> Loc -- TODO: think we only use this for dirs. so remove?
-makeLoc fp =
-  case fp of
-    '/':_ -> LocX fp -- absolute; ok
-    _ -> error (show ("makeLoc/not-absolute",fp))
-
 makeDir :: String -> FilePath -> Dir
 makeDir who fp = -- TODO: remove who?
   case fp of
@@ -57,7 +51,7 @@ makeDir who fp = -- TODO: remove who?
     _ -> error (show ("makeDir/not-absolute",who,fp))
 
 makeTag :: String -> Tag
-makeTag s = TagX s
+makeTag s = TagX s -- TODO: check contains no /s
 
 -- moving between the types...
 
@@ -70,7 +64,7 @@ takeBase (LocX fp) = makeTag (FP.takeFileName fp)
 (</>) :: Dir -> String -> Loc
 (</>) (DirX dir) path =
   case path of
-    '/':_ -> makeLoc path -- TODO: when does this happen?
+    '/':_ -> LocX path -- error (show ("</>",dir,path)) -- TODO: when does this happen?
     rel -> do
       LocX (FP.normalise $ removeDotdotIsPossible (dir FP.</> rel))
       where

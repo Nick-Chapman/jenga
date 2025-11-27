@@ -8,7 +8,6 @@ import Data.Hash.MD5 qualified as MD5
 import Data.IORef (newIORef,readIORef,writeIORef)
 import Data.List (stripPrefix,intercalate)
 import Data.List qualified as List (foldl')
---import Data.List.Extra (dropPrefix) -- TODO: remove package dep
 import Data.List.Ordered (nubSort)
 import Data.List.Split (splitOn)
 import Data.Map (Map)

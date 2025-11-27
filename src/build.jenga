@@ -31,4 +31,3 @@ packages:
   echo filelock >> $@
   echo optparse-applicative >> $@
   echo safeio >> $@
-  echo extra >> $@

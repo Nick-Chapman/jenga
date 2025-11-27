@@ -32,56 +32,18 @@ import Locate (Loc,pathOfLoc,Dir,makeAbsoluteDir,pathOfDir,takeDir,(</>),insistL
 import Syntax qualified (elaborate)
 import WaitPid (waitpid)
 
-----------------------------------------------------------------------
--- UserMain
-
-main :: IO () -- TODO have engineMain call userMain directly
-main = engineMain $ \config withPromotion args -> do
-  let Config{startDir} = config
-  dotJengas <- findDotJengas startDir args
-  sequence_ [ Syntax.elaborate config withPromotion (Key dotJenga) | dotJenga <- dotJengas ]
-
-findDotJengas :: Dir -> [String] -> G [Loc] -- TODO: take [Dir]
-findDotJengas dir args = do
-  let args' = case args of [] -> ["."]; _ -> args
-  dotJengas <- concat <$> sequence [ findFrom (dir </> arg) | arg <- args' ]
-  pure (reverse $ nubSort dotJengas) -- reverse so subdirs come earlier
-
-findFrom :: Loc -> G [Loc]
-findFrom loc = do
-  GWhat loc >>= \case
-    Missing -> pure []
-    Link -> pure []
-    File -> pure []
-    Directory{entries} -> do
-      case "build.jenga" `elem` entries of
-        False -> dotJengas
-        True -> do
-          let dotJenga = dir </> "build.jenga"
-          (dotJenga:) <$> dotJengas
-      where
-        dir = insistLocIsDir loc
-        dotJengas = concat <$> sequence [ findFrom (dir </> e)
-                                      | e <- entries , not (blockName e)]
-
-blockName :: String -> Bool
-blockName = \case
-  ".git" -> True
-  ".stack-work" -> True
-  ".cache" -> True
-  ",jenga" -> True
-  "_build" -> True -- dune
-  _ -> False
+main :: IO ()
+main = do
+  config <- CommandLine.exec
+  engineMain config
 
 ----------------------------------------------------------------------
 -- Engine main
 
-type UserProg = [String] -> G ()
+engineMain :: Config -> IO ()
+engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
 
-engineMain :: (Config -> Bool -> UserProg) -> IO ()
-engineMain mkUserProg = do
-  config@Config{startDir,homeDir,cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
-  let userProg = mkUserProg config withPromotion
+  let userProg = mkUserProg config
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
@@ -302,6 +264,50 @@ materializeInCommaJenga startDir digest key = do
 cachedFilesDir,tracesDir :: B Dir
 cachedFilesDir = do cacheDir <- BCacheDir; pure (insistLocIsDir (cacheDir </> "files"))
 tracesDir = do cacheDir <- BCacheDir; pure (insistLocIsDir (cacheDir </> "traces"))
+
+
+----------------------------------------------------------------------
+-- mkUserProg: not really a sensible name anymore
+
+type UserProg = [String] -> G ()
+
+mkUserProg :: Config -> UserProg
+mkUserProg = \config args -> do
+  let Config{startDir} = config
+  dotJengas <- findDotJengas startDir args
+  sequence_ [ Syntax.elaborate config (Key dotJenga) | dotJenga <- dotJengas ]
+
+findDotJengas :: Dir -> [String] -> G [Loc] -- TODO: take [Dir]
+findDotJengas dir args = do
+  let args' = case args of [] -> ["."]; _ -> args
+  dotJengas <- concat <$> sequence [ findFrom (dir </> arg) | arg <- args' ]
+  pure (reverse $ nubSort dotJengas) -- reverse so subdirs come earlier
+
+findFrom :: Loc -> G [Loc]
+findFrom loc = do
+  GWhat loc >>= \case
+    Missing -> pure []
+    Link -> pure []
+    File -> pure []
+    Directory{entries} -> do
+      case "build.jenga" `elem` entries of
+        False -> dotJengas
+        True -> do
+          let dotJenga = dir </> "build.jenga"
+          (dotJenga:) <$> dotJengas
+      where
+        dir = insistLocIsDir loc
+        dotJengas = concat <$> sequence [ findFrom (dir </> e)
+                                      | e <- entries , not (blockName e)]
+
+blockName :: String -> Bool
+blockName = \case
+  ".git" -> True
+  ".stack-work" -> True
+  ".cache" -> True
+  ",jenga" -> True
+  "_build" -> True -- dune
+  _ -> False
 
 ----------------------------------------------------------------------
 -- Elaborate

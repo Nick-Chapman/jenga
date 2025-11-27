@@ -11,8 +11,8 @@ import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..
 import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
-elaborate :: Config -> Bool -> Key -> G ()
-elaborate Config{homeDir} withPromotion dotJengaFile0 = do
+elaborate :: Config -> Key -> G ()
+elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
   when withPromotion $ promoteRule
   allFilesRule
   elabRuleFile dotJengaFile0

@@ -10,7 +10,7 @@ module Locate
   , stringOfTag
 
   -- constructors
-  , makeLoc, makeLocX, makeDir, makeTag
+  , makeLoc, makeDir, makeTag
 
   , takeDir
   , takeBase
@@ -49,9 +49,6 @@ makeLoc fp =
   case fp of
     '/':_ -> LocX fp -- absolute; ok
     _ -> error (show ("makeLoc/not-absolute",fp))
-
-makeLocX :: Dir -> FilePath -> Loc -- TODO: remove. caller uses </> directly
-makeLocX dir suffix = (dir </> suffix)
 
 makeDir :: String -> FilePath -> Dir
 makeDir who fp = -- TODO: remove who?

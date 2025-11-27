@@ -7,7 +7,7 @@ import Data.List.Split (splitOn)
 import Text.Printf (printf)
 
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,makeLocX,stringOfTag,pathOfDir,pathOfLoc)
+import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: String -> Bool -> Key -> G ()
@@ -65,16 +65,16 @@ elaborate homeDir withPromotion dotJengaFile0 = do
               dollarAtReplacement =
                 case ruleTarget of
                   MArtifacts xs ->
-                    intercalate " " [ stringOfTag (takeBase (makeLocX dir name))
+                    intercalate " " [ stringOfTag (takeBase (dir </> name))
                                     | (_,name) <- xs ]
                   MPhony name -> name
 
               -- very simplistic support for $$, $@, $^ and $<
               dollarHatReplacement =
-                intercalate " " [ stringOfTag (takeBase (makeLocX dir name))
+                intercalate " " [ stringOfTag (takeBase (dir </> name))
                                 | DepPlain name <- deps ]
               dollarLeftReplacement =
-                intercalate " " (take 1 [ stringOfTag (takeBase (makeLocX dir name))
+                intercalate " " (take 1 [ stringOfTag (takeBase (dir </> name))
                                         | DepPlain name <- deps])
               expandSpecial :: String -> String
               expandSpecial = loop

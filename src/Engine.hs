@@ -29,7 +29,7 @@ import Text.Read (readMaybe)
 import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
-import Locate (Loc,makeLoc,makeLocX,pathOfLoc,Dir,makeDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
+import Locate (Loc,makeLoc,pathOfLoc,Dir,makeDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
 import Syntax qualified (elaborate)
 import WaitPid (waitpid)
 
@@ -44,7 +44,7 @@ main = engineMain $ \startDir homeDir withPromotion args -> do
 findDotJengas :: Dir -> [String] -> G [Loc] -- TODO: take [Dir]
 findDotJengas dir args = do
   let args' = case args of [] -> ["."]; _ -> args
-  dotJengas <- concat <$> sequence [ findFrom (makeLocX dir arg) | arg <- args' ]
+  dotJengas <- concat <$> sequence [ findFrom (dir </> arg) | arg <- args' ]
   pure (reverse $ nubSort dotJengas) -- reverse so subdirs come earlier
 
 findFrom :: Loc -> G [Loc]
@@ -163,7 +163,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         reportSystem config system
 
     ModeExec exe0 argsForExe -> do
-      let exe = makeLocX startDir exe0
+      let exe = startDir </> exe0
       let dir = pathOfDir (takeDir exe)
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [dir])
@@ -174,8 +174,8 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         Execute (XIO (callProcess (pathOfLoc cacheFile) argsForExe))
 
     ModeInstall src0 dest0 -> do
-      let src = makeLocX startDir src0
-      let dest = makeLocX startDir dest0
+      let src = startDir </> src0
+      let dest = startDir </> dest0
       let dir = pathOfDir (takeDir src)
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [dir])

@@ -80,14 +80,13 @@ type UserProg = [String] -> G ()
 
 engineMain :: (Dir -> String -> Bool -> UserProg) -> IO ()
 engineMain mkUserProg = do
-  homeDir <- maybe "" id <$> lookupEnv "HOME"
+  homeDir <- maybe "" id <$> lookupEnv "HOME" -- TODO: pass homeDir in config
   config@Config{startDir,cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
-  -- TODO: no need to pass startDir as now part of config
   let userProg = mkUserProg startDir homeDir withPromotion
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
-  cacheDir :: Dir <- insistLocIsDir <$>
+  cacheDir :: Dir <- insistLocIsDir <$> -- TODO: pass cacheDir in COnfig
     case cacheDirSpec of
       CacheDirDefault -> do
         lookupEnv "XDG_CACHE_HOME" >>= \case
@@ -102,7 +101,7 @@ engineMain mkUserProg = do
         when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 
-  elaborateAndBuild startDir cacheDir config userProg
+  elaborateAndBuild cacheDir config userProg
 
 dropPrefixChecked :: String -> String -> String
 dropPrefixChecked prefix str =
@@ -124,8 +123,8 @@ ppKey Config{reportRelative,startDir} (Key loc) =
 ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
-elaborateAndBuild :: Dir -> Dir -> Config -> UserProg -> IO ()
-elaborateAndBuild startDir cacheDir config@Config{buildMode,args} userProg = do
+elaborateAndBuild :: Dir -> Config -> UserProg -> IO ()
+elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do
@@ -160,7 +159,7 @@ elaborateAndBuild startDir cacheDir config@Config{buildMode,args} userProg = do
     ModeBuild -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
-        buildEverythingInSystem startDir config system
+        buildEverythingInSystem config system
         reportSystem config system
 
     ModeExec exe0 argsForExe -> do
@@ -168,7 +167,7 @@ elaborateAndBuild startDir cacheDir config@Config{buildMode,args} userProg = do
       let dir = pathOfDir (takeDir exe)
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [dir])
-        buildEverythingInSystem startDir config system -- TODO: ???
+        buildEverythingInSystem config system -- TODO: ???
         let System{how} = system
         digest <- buildArtifact config how (Key exe)
         cacheFile <- cacheFile digest
@@ -180,7 +179,7 @@ elaborateAndBuild startDir cacheDir config@Config{buildMode,args} userProg = do
       let dir = pathOfDir (takeDir src)
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg [dir])
-        buildEverythingInSystem startDir config system
+        buildEverythingInSystem config system
         let System{how} = system
         digest <- buildArtifact config how (Key src)
         installDigest digest dest
@@ -188,7 +187,7 @@ elaborateAndBuild startDir cacheDir config@Config{buildMode,args} userProg = do
     ModeRun names -> do
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
-        buildEverythingInSystem startDir config system
+        buildEverythingInSystem config system
         reportSystem config system
         let System{how} = system
         parallel_ [ buildPhony config how name | name <- names ]
@@ -208,8 +207,8 @@ nCopies config@Config{jnum} f =
     f config -- parent
     mapM_ waitpid children
 
-buildEverythingInSystem :: Dir -> Config -> System -> B ()
-buildEverythingInSystem startDir config system = do
+buildEverythingInSystem :: Config -> System -> B ()
+buildEverythingInSystem config system = do
   let System{rules,how} = system
   let
     allArtifacts =
@@ -219,7 +218,7 @@ buildEverythingInSystem startDir config system = do
         , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
         , art <- arts
         ]
-  parallel_ [ buildAndMaterialize startDir config how art | art <- allArtifacts ]
+  parallel_ [ buildAndMaterialize config how art | art <- allArtifacts ]
 
 data StaticRule = StaticRule
   { rulename :: String
@@ -254,8 +253,8 @@ reportSystem Config{logMode,worker} System{rules} = do
             ]
   when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
-buildAndMaterialize :: Dir -> Config -> How -> Artifact -> B ()
-buildAndMaterialize startDir config@Config{materializeCommaJenga} how target = do
+buildAndMaterialize :: Config -> How -> Artifact -> B ()
+buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = do
   let Artifact { materialize, key } = target
   digest <- buildArtifact config how key
   when materializeCommaJenga $ materializeInCommaJenga startDir digest key

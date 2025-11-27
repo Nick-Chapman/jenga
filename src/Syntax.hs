@@ -7,24 +7,27 @@ import Data.List.Split (splitOn)
 import Text.Printf (printf)
 
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,makeLoc,stringOfTag,pathOfDir)
+import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,makeLocX,stringOfTag,pathOfDir,pathOfLoc)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: String -> Bool -> Key -> G ()
-elaborate homeDir withPromotion config0  = do
+elaborate homeDir withPromotion dotJengaFile0 = do
   when withPromotion $ promoteRule
   allFilesRule
-  elabRuleFile config0
+  elabRuleFile dotJengaFile0
   where
-    dir = dirKey config0 -- A rule is w.r.t the directory of the build.jenga config file
+    dir = dirKey dotJengaFile0
 
     dirKey :: Key -> Dir
     dirKey (Key loc) = takeDir loc
 
+    pathOfKey :: Key -> FilePath
+    pathOfKey (Key loc) = pathOfLoc loc
+
     elabRuleFile :: Key -> G ()
-    elabRuleFile config  = do
-      s <- GReadKey config
-      case Par4.parse (show config) gram s of
+    elabRuleFile dotJengaFile  = do
+      s <- GReadKey dotJengaFile
+      case Par4.parse (pathOfKey dotJengaFile) gram s of
         Left parseError -> GFail parseError
         Right clauses -> mapM_ elabClause clauses
 
@@ -36,7 +39,7 @@ elaborate homeDir withPromotion config0  = do
 
         elabTrip :: Trip -> G ()
         elabTrip Trip{pos=Position{line},ruleTarget,deps,commands=commands0} = do
-          let rulename = printf "%s:%d" (show config) line
+          let rulename = printf "%s:%d" (pathOfKey dotJengaFile) line
           let
             artNames =
               case ruleTarget of
@@ -62,16 +65,16 @@ elaborate homeDir withPromotion config0  = do
               dollarAtReplacement =
                 case ruleTarget of
                   MArtifacts xs ->
-                    intercalate " " [ stringOfTag (takeBase (makeLoc name))
+                    intercalate " " [ stringOfTag (takeBase (makeLocX dir name))
                                     | (_,name) <- xs ]
                   MPhony name -> name
 
               -- very simplistic support for $$, $@, $^ and $<
               dollarHatReplacement =
-                intercalate " " [ stringOfTag (takeBase (makeLoc name))
+                intercalate " " [ stringOfTag (takeBase (makeLocX dir name))
                                 | DepPlain name <- deps ]
               dollarLeftReplacement =
-                intercalate " " (take 1 [ stringOfTag (takeBase (makeLoc name))
+                intercalate " " (take 1 [ stringOfTag (takeBase (makeLocX dir name))
                                         | DepPlain name <- deps])
               expandSpecial :: String -> String
               expandSpecial = loop

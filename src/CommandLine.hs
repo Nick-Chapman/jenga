@@ -6,13 +6,17 @@ module CommandLine
   ) where
 
 import Options.Applicative
+import System.Directory (getCurrentDirectory)
+
+import Locate (Dir,makeDir)
 
 data LogMode = LogQuiet | LogNormal | LogActions
 
 data Config = Config
-  { buildMode :: BuildMode
-  , args :: [FilePath]
+  { startDir :: Dir
   , worker :: Bool -- can't set on command line; but convenient to have in config
+  , buildMode :: BuildMode
+  , args :: [FilePath]
   , jnum :: Int
   , seePid :: Bool
   , cacheDirSpec :: CacheDirSpec
@@ -24,6 +28,7 @@ data Config = Config
   , materializeCommaJenga :: Bool
   , withPromotion :: Bool
   , strict :: Bool
+  , reportRelative :: Bool
   }
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
@@ -37,94 +42,84 @@ data BuildMode
   | ModeRun [String]
 
 exec :: IO Config
-exec = customExecParser
-  (prefs (showHelpOnError <> showHelpOnEmpty))
-  (info (subCommands <**> helper)
-    ( fullDesc <> header "jenga: A build system" ))
+exec = do
+  startDir <- makeDir "[CommandLine.exec]" <$> getCurrentDirectory
+  execAt startDir
 
-subCommands :: Parser Config
-subCommands =
-  hsubparser
-  (command "build"
-    (info buildCommand
-      (progDesc "Bring a build up to date")))
-  <|>
-  hsubparser
-  (command "exec"
-    (info execCommand
-      (progDesc "build; then run a single executable target")))
-  <|>
-  hsubparser
-  (command "install"
-    (info installCommand
-      (progDesc "build; then install a single executable")))
-  <|>
-  hsubparser
-  (command "run"
-    (info runCommand
-      (progDesc "build; then run a list of actions")))
-  <|>
-  hsubparser
-  (command "test"
-    (info testCommand
-      (progDesc "build; then run the 'test' action")))
+execAt :: Dir -> IO Config
+execAt startDir = do
+  customExecParser
+    -- TODO: fix digest-id shown in usage message when run by "jenga exec src/jenga.exe"
+    (prefs (showHelpOnError <> showHelpOnEmpty))
+    (info (subCommands <**> helper)
+     ( fullDesc <> header "jenga: A build system" ))
 
-buildCommand :: Parser Config
-buildCommand = do
-  let
-    buildMode =
-      flag' ModeListTargets
-      (short 't'
-        <> long "list-targets"
-        <> help "List buildable targets")
-      <|>
-      flag' ModeListRules
-      (short 'r'
-        <> long "list-rules"
-        <> help "List generated rules")
-      <|>
-      pure ModeBuild
-  let
-    args =
-      many (strArgument (metavar "DIRS" <> help "Directories to search for build rules; default CWD"))
-  sharedOptions LogNormal args buildMode
+  where
+  subCommands :: Parser Config
+  subCommands =
+    -- TODO: fix "COMMAND" shown in usage message
+    hsubparser (command "build" (info buildCommand (progDesc "Bring a build up to date"))) <|>
+    hsubparser (command "exec" (info execCommand (progDesc "build; then run a single executable target"))) <|>
+    hsubparser (command "install" (info installCommand (progDesc "build; then install a single executable"))) <|>
+    hsubparser (command "run" (info runCommand (progDesc "build; then run a list of actions"))) <|>
+    hsubparser (command "test" (info testCommand (progDesc "build; then run the 'test' action")))
 
-execCommand :: Parser Config
-execCommand = do
-  let
-    buildMode = do
-      exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
-      exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
-      pure (ModeExec exe exeArgs)
-  let args = pure []
-  sharedOptions LogQuiet args buildMode
+  buildCommand :: Parser Config
+  buildCommand = do
+    let
+      buildMode =
+        flag' ModeListTargets
+        (short 't'
+          <> long "list-targets"
+          <> help "List buildable targets")
+        <|>
+        flag' ModeListRules
+        (short 'r'
+          <> long "list-rules"
+          <> help "List generated rules")
+        <|>
+        pure ModeBuild
+    let
+      args =
+        many (strArgument (metavar "DIRS" <> help "Directories to search for build rules; default CWD"))
+    sharedOptions startDir LogNormal args buildMode
 
-installCommand :: Parser Config
-installCommand = do
-  let
-    buildMode = do
-      exe <- strArgument (metavar "EXE" <> help "Executable to build and install")
-      dest <- strArgument (metavar "DEST" <> help "Destination of installed executable")
-      pure (ModeInstall exe dest)
-  let args = pure []
-  sharedOptions LogQuiet args buildMode
+  execCommand :: Parser Config
+  execCommand = do
+    let
+      buildMode = do
+        exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
+        exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
+        pure (ModeExec exe exeArgs)
+    let args = pure []
+    sharedOptions startDir LogQuiet args buildMode
 
-runCommand :: Parser Config
-runCommand = do
-  let
-    buildMode = do
-      ps <- some (strArgument (metavar "PHONY+" <> help "Phony targets to build and run"))
-      pure (ModeRun ps)
-  let args = pure []
-  sharedOptions LogNormal args buildMode
+  installCommand :: Parser Config
+  installCommand = do
+    let
+      buildMode = do
+        exe <- strArgument (metavar "EXE" <> help "Executable to build and install")
+        dest <- strArgument (metavar "DEST" <> help "Destination of installed executable")
+        pure (ModeInstall exe dest)
+    let args = pure []
+    sharedOptions startDir LogQuiet args buildMode
 
-testCommand :: Parser Config
-testCommand = do
-  let args = pure []
-  sharedOptions LogNormal args (pure (ModeRun ["test"]))
+  runCommand :: Parser Config
+  runCommand = do
+    let
+      buildMode = do
+        ps <- some (strArgument (metavar "PHONY+" <> help "Phony targets to build and run"))
+        pure (ModeRun ps)
+    let args = pure []
+    sharedOptions startDir LogNormal args buildMode
 
-sharedOptions :: LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
-sharedOptions defaultLogMode args buildMode = do
+  testCommand :: Parser Config
+  testCommand = do
+    let args = pure []
+    sharedOptions startDir LogNormal args (pure (ModeRun ["test"]))
+
+sharedOptions :: Dir -> LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
+sharedOptions startDir defaultLogMode args buildMode = do
 
   args <- args
   buildMode <- buildMode
@@ -177,10 +172,14 @@ sharedOptions defaultLogMode args buildMode = do
 
   withPromotion <-
     switch (long "promote"
-            <> help "Promote test output as expected")
+            <> help "Promote test output to .expected files")
 
   strict <- not <$>
-    switch (long "sloppy"
+    switch (long "sloppy" -- TODO kill
             <> help "Run jenga actions with a sloppy environment")
+
+  reportRelative <-
+    switch (long "rel"
+            <> help "Report paths relative to starting directory")
 
   pure $ Config { .. }

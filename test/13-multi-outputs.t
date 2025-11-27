@@ -1,6 +1,6 @@
 
   $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
-  $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
+  $ echo 'exec ./jenga.exe "$@" --rel --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/13-multi-outputs example
@@ -32,7 +32,7 @@ Change the example to echo a warning before exiting
   A: touch x
   A: echo WARNING; exit 0
   (directory) example
-  (rule) h t : lots
+  (rule) example/h example/t : example/lots
   (command) $ head -1 lots > h
   (command) $ tail -1 lots > t
   (command) $ touch x
@@ -45,7 +45,7 @@ And zero build (see warning even though no actions were run)
 
   $ jenga build -a
   (directory) example
-  (rule) h t : lots
+  (rule) example/h example/t : example/lots
   (command) $ head -1 lots > h
   (command) $ tail -1 lots > t
   (command) $ touch x
@@ -62,7 +62,7 @@ Change the example to have a non-zero error code
   A: touch x
   A: echo WARNING; exit 42
   (directory) example
-  (rule) h t : lots
+  (rule) example/h example/t : example/lots
   (command) $ head -1 lots > h
   (command) $ tail -1 lots > t
   (command) $ touch x
@@ -77,7 +77,7 @@ And zero build (see warning and error, again even though no actions were run)
 
   $ jenga build -a
   (directory) example
-  (rule) h t : lots
+  (rule) example/h example/t : example/lots
   (command) $ head -1 lots > h
   (command) $ tail -1 lots > t
   (command) $ touch x

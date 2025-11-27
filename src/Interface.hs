@@ -11,7 +11,7 @@ module Interface
   ) where
 
 import Control.Monad (ap,liftM)
-import Locate (Loc,Dir,pathOfLoc)
+import Locate (Loc,Dir)
 
 instance Functor G where fmap = liftM
 instance Applicative G where pure = GRet; (<*>) = ap
@@ -61,5 +61,4 @@ data D a where
   DReadKey :: Key -> D String
   DExistsKey :: Key -> D Bool
 
-data Key = Key Loc deriving (Eq,Ord) -- Artifact Key
-instance Show Key where show (Key loc) = pathOfLoc loc
+data Key = Key Loc deriving (Eq,Ord)

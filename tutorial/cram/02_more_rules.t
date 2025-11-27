@@ -1,15 +1,8 @@
 
-This cram file accompanies the jenga tutorial.
-
-Get a jenga executable
-  $ (cd $TESTDIR/../..; jenga build src -q) && ln $TESTDIR/../../src/jenga.exe jenga.exe
-
-Make a small script to run jenga with a local cache.
-Avoiding interference from the global cache, which will make this test non-deterministic.
-
-  $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
+  $ (cd $TESTDIR/../..; jenga build src -q)
+  $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' --rel --cache=. > jenga
   $ chmod +x jenga
-  $ export PATH=.:$PATH
+  $ export PATH=$PWD:$PATH
 
 Get the example.
 

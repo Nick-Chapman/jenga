@@ -1,6 +1,6 @@
 
   $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
-  $ echo 'exec ./jenga.exe "$@" --cache=.' > jenga
+  $ echo 'exec ./jenga.exe "$@" --rel --cache=.' > jenga
   $ chmod +x jenga
   $ export PATH=.:$PATH
   $ cp -rp $TESTDIR/../examples/09-haskell-diamond example

@@ -71,7 +71,7 @@ infer g = do
               let xs = [(p,ds,length ds) | (p,ds) <- m ]
               let third (_,_,n) = n
               let xs' = sortBy (comparing third) xs
-              let (p,ds,_) = case xs' of [] -> undefined; x:_ -> x
+              let (p,ds,_) = case xs' of [] -> error "infer"; x:_ -> x
               Choice p ds
 
 

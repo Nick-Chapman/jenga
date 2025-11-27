@@ -1,5 +1,8 @@
 
-This cram file accompanies the jenga tutorial.
+  $ (cd $TESTDIR/../..; jenga build src -q)
+  $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' --rel > jenga
+  $ chmod +x jenga
+  $ export PATH=$PWD:$PATH
 
 Get the example.
 
@@ -34,20 +37,12 @@ See files
   fib.o : fib.c fib.h
     gcc -Wall -c fib.c -o fib.o
 
-  $ find .
-  .
-  ./example
-  ./example/fib.c
-  ./example/main.c
-  ./example/fib.h
-  ./example/build.jenga
-
-Get an up-to-date jenga executable in path, which runs with a local cachee
-
-  $ (cd $TESTDIR/../..; jenga build src -q)
-  $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' > jenga
-  $ chmod +x jenga
-  $ export PATH=$PWD:$PATH
+  $ find example
+  example
+  example/fib.c
+  example/main.c
+  example/fib.h
+  example/build.jenga
 
 Initial build. Expect 3 actions to be run
 

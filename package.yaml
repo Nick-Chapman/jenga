@@ -22,6 +22,7 @@ dependencies:
 - safeio
 
 default-extensions:
+- BangPatterns
 - DuplicateRecordFields
 - GADTs
 - ImportQualifiedPost

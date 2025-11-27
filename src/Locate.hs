@@ -9,15 +9,14 @@ module Locate
   , pathOfDir
   , stringOfTag
 
-  -- constructors (should check invariant)
-  , makeLoc, makeDir, makeTag
+  -- constructors
+  , makeLoc, makeLocX, makeDir, makeTag
 
   , takeDir
   , takeBase
   , (</>)
 
   , locOfDir
-  , subDir
   , insistLocIsDir
   ) where
 
@@ -27,7 +26,7 @@ import System.Path.NameManip (guess_dotdot)
 -- types...
 
 newtype Loc = LocX FilePath deriving (Eq,Ord)
-newtype Dir = DirX FilePath
+newtype Dir = DirX FilePath deriving Eq
 newtype Tag = TagX String deriving (Eq,Ord)
 
 instance Show Tag where show (TagX s) = s
@@ -43,12 +42,22 @@ pathOfDir (DirX fp) = fp
 stringOfTag :: Tag -> String
 stringOfTag (TagX s) = s
 
--- basic constructors; TODO: do some checking
-makeLoc :: FilePath -> Loc
-makeLoc fp = LocX fp
+-- basic constructors...
 
-makeDir :: FilePath -> Dir
-makeDir fp = DirX fp
+makeLoc :: FilePath -> Loc -- TODO: think we only use this for dirs. so remove?
+makeLoc fp =
+  case fp of
+    '/':_ -> LocX fp -- absolute; ok
+    _ -> error (show ("makeLoc/not-absolute",fp))
+
+makeLocX :: Dir -> FilePath -> Loc -- TODO: remove. caller uses </> directly
+makeLocX dir suffix = (dir </> suffix)
+
+makeDir :: String -> FilePath -> Dir
+makeDir who fp = -- TODO: remove who?
+  case fp of
+    '/':_ -> DirX fp -- absolute; ok
+    _ -> error (show ("makeDir/not-absolute",who,fp))
 
 makeTag :: String -> Tag
 makeTag s = TagX s
@@ -56,7 +65,7 @@ makeTag s = TagX s
 -- moving between the types...
 
 takeDir :: Loc -> Dir
-takeDir (LocX fp) = makeDir (FP.takeDirectory fp)
+takeDir (LocX fp) = makeDir "[takeDir]" (FP.takeDirectory fp)
 
 takeBase :: Loc -> Tag
 takeBase (LocX fp) = makeTag (FP.takeFileName fp)
@@ -64,9 +73,9 @@ takeBase (LocX fp) = makeTag (FP.takeFileName fp)
 (</>) :: Dir -> String -> Loc
 (</>) (DirX dir) path =
   case path of
-    '/':_ -> makeLoc path
-    rel ->
-      makeLoc (FP.normalise $ removeDotdotIsPossible (dir FP.</> rel))
+    '/':_ -> makeLoc path -- TODO: when does this happen?
+    rel -> do
+      LocX (FP.normalise $ removeDotdotIsPossible (dir FP.</> rel))
       where
         removeDotdotIsPossible :: String -> String
         removeDotdotIsPossible s =
@@ -75,9 +84,5 @@ takeBase (LocX fp) = makeTag (FP.takeFileName fp)
 locOfDir :: Dir -> Loc -- upcast; TODO: shame
 locOfDir (DirX fp) = LocX fp
 
-subDir :: Dir -> String -> Dir
-subDir dir e = insistLocIsDir (dir </> e)
-
 insistLocIsDir :: Loc -> Dir
-insistLocIsDir loc = makeDir (pathOfLoc loc)
-
+insistLocIsDir loc = makeDir "[insistLocIsDir]" (pathOfLoc loc)

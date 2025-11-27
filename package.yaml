@@ -7,18 +7,18 @@ maintainer:          nic@amadido.co.uk
 github:              Nick-Chapman/jenga.git
 
 dependencies:
+- MissingH
 - base >= 4.7 && < 5
 - containers
 - data-ordlist
 - directory
-- filepath
 - filelock
-- MissingH
+- filepath
 - optparse-applicative
 - process
+- safeio
 - split
 - unix
-- safeio
 
 default-extensions:
 - BangPatterns

@@ -29,7 +29,6 @@ data Config = Config
   , debugLocking :: Bool
   , materializeCommaJenga :: Bool
   , withPromotion :: Bool
-  , strict :: Bool
   , reportRelative :: Bool
   }
 
@@ -176,10 +175,6 @@ execAt homeDir startDir = do
     withPromotion <-
       switch (long "promote"
               <> help "Promote test output to .expected files")
-
-    strict <- not <$>
-      switch (long "sloppy" -- TODO kill
-              <> help "Run jenga actions with a sloppy environment")
 
     reportRelative <-
       switch (long "rel"

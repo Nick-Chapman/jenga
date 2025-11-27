@@ -426,7 +426,7 @@ buildArtifact config@Config{debugDemand} how@How{ahow} = do
         pure digest
 
 buildRule :: Config -> How -> Rule -> B WitMap
-buildRule config@Config{debugLocking,strict} how rule = do
+buildRule config@Config{debugLocking} how rule = do
   let Rule{rulename,dir,target,depcom} = rule
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
@@ -436,7 +436,7 @@ buildRule config@Config{debugLocking,strict} how rule = do
     parallel [ do digest <- buildArtifact config how dep; pure (tagOfKey dep,digest)
              | dep <- deps
              ]
-  let witKey = WitnessKey { strict, targets = map tagOfKey targets, commands, wdeps }
+  let witKey = WitnessKey { strict = True, targets = map tagOfKey targets, commands, wdeps }
   let wkd = digestWitnessKey witKey
   -- If the witness trace already exists, use it.
   when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
@@ -661,7 +661,12 @@ data WitnessValue
   = WitnessSUCC { wtargets :: WitMap, ares :: ActionRes }
   | WitnessFAIL ActionRes
 
-data WitnessKey = WitnessKey { strict :: Bool, targets :: [Tag], commands :: [String], wdeps :: WitMap } deriving Show
+data WitnessKey = WitnessKey
+  { strict :: Bool -- always True; TODO: remove
+  , targets :: [Tag]
+  , commands :: [String]
+  , wdeps :: WitMap
+  } deriving Show
 
 -- TODO: Filemode should be included in the target WitMap to solve the problem of a forgotten chmod +x on a generated script. Currently the callers wont be triggered to run again because they see no change in their deps; so they will be stuck showing the error which occurred when the script did not have exec perm.
 data WitMap = WitMap (Map Tag Digest) deriving Show
@@ -1050,7 +1055,7 @@ data X a where
   XRemoveDirRecursive :: Dir -> X ()
 
 runX :: Config -> X a -> IO a
-runX config@Config{homeDir,strict,logMode,debugExternal,debugInternal,debugLocking} = loop
+runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = loop
   where
 
     log mes = maybePrefixPid config mes >>= putOut
@@ -1060,11 +1065,9 @@ runX config@Config{homeDir,strict,logMode,debugExternal,debugInternal,debugLocki
 
     shell :: String -> CreateProcess
     shell s =
-      if strict
-      then (System.Process.shell s) { env = Just [ ("PATH","/usr/bin")
-                                                 , ("HOME",pathOfDir homeDir)
-                                                 ] }
-      else System.Process.shell s
+       (System.Process.shell s) { env = Just [ ("PATH","/usr/bin")
+                                             , ("HOME",pathOfDir homeDir)
+                                             ] }
 
     loop :: X a -> IO a
     loop x = case x of

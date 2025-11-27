@@ -103,7 +103,7 @@ elaborate homeDir withPromotion dotJengaFile0 = do
         if b then DNeed key else pure ()
 
     makeKey :: String -> Key
-    makeKey basename = Key (dir </> expandTildaSlash basename)
+    makeKey str = Key (dir </> expandTildaSlash str)
 
     expandTildaSlash :: String -> String
     expandTildaSlash = \case

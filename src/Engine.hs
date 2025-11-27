@@ -164,9 +164,8 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
 
     ModeExec exe0 argsForExe -> do
       let exe = startDir </> exe0
-      let dir = pathOfDir (takeDir exe)
       runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg [dir])
+        system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system -- TODO: ???
         let System{how} = system
         digest <- buildArtifact config how (Key exe)
@@ -176,9 +175,8 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
       let dest = startDir </> dest0
-      let dir = pathOfDir (takeDir src)
       runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg [dir])
+        system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system
         let System{how} = system
         digest <- buildArtifact config how (Key src)

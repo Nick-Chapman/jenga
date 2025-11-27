@@ -64,7 +64,7 @@ takeBase (LocX fp) = makeTag (FP.takeFileName fp)
 (</>) :: Dir -> String -> Loc
 (</>) (DirX dir) path =
   case path of
-    '/':_ -> LocX path -- error (show ("</>",dir,path)) -- TODO: when does this happen?
+    '/':_ -> LocX path -- TODO: do we get this anyway from FP.</>
     rel -> do
       LocX (FP.normalise $ removeDotdotIsPossible (dir FP.</> rel))
       where

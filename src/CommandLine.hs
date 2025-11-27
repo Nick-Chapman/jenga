@@ -7,6 +7,7 @@ module CommandLine
 
 import Options.Applicative
 import System.Directory (getCurrentDirectory)
+import System.Environment (lookupEnv)
 
 import Locate (Dir,makeAbsoluteDir)
 
@@ -14,6 +15,7 @@ data LogMode = LogQuiet | LogNormal | LogActions
 
 data Config = Config
   { startDir :: Dir
+  , homeDir :: Dir
   , worker :: Bool -- can't set on command line; but convenient to have in config
   , buildMode :: BuildMode
   , args :: [FilePath]
@@ -43,11 +45,12 @@ data BuildMode
 
 exec :: IO Config
 exec = do
+  homeDir <- makeAbsoluteDir <$> maybe "/tmp" id <$> lookupEnv "HOME"
   startDir <- makeAbsoluteDir <$> getCurrentDirectory
-  execAt startDir
+  execAt homeDir startDir
 
-execAt :: Dir -> IO Config
-execAt startDir = do
+execAt :: Dir -> Dir -> IO Config
+execAt homeDir startDir = do
   customExecParser
     -- TODO: fix digest-id shown in usage message when run by "jenga exec src/jenga.exe"
     (prefs (showHelpOnError <> showHelpOnEmpty))
@@ -82,7 +85,7 @@ execAt startDir = do
     let
       args =
         many (strArgument (metavar "DIRS" <> help "Directories to search for build rules; default CWD"))
-    sharedOptions startDir LogNormal args buildMode
+    sharedOptions LogNormal args buildMode
 
   execCommand :: Parser Config
   execCommand = do
@@ -92,7 +95,7 @@ execAt startDir = do
         exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
         pure (ModeExec exe exeArgs)
     let args = pure []
-    sharedOptions startDir LogQuiet args buildMode
+    sharedOptions LogQuiet args buildMode
 
   installCommand :: Parser Config
   installCommand = do
@@ -102,7 +105,7 @@ execAt startDir = do
         dest <- strArgument (metavar "DEST" <> help "Destination of installed executable")
         pure (ModeInstall exe dest)
     let args = pure []
-    sharedOptions startDir LogQuiet args buildMode
+    sharedOptions LogQuiet args buildMode
 
   runCommand :: Parser Config
   runCommand = do
@@ -111,75 +114,75 @@ execAt startDir = do
         ps <- some (strArgument (metavar "PHONY+" <> help "Phony targets to build and run"))
         pure (ModeRun ps)
     let args = pure []
-    sharedOptions startDir LogNormal args buildMode
+    sharedOptions LogNormal args buildMode
 
   testCommand :: Parser Config
   testCommand = do
     let args = pure []
-    sharedOptions startDir LogNormal args (pure (ModeRun ["test"]))
+    sharedOptions LogNormal args (pure (ModeRun ["test"]))
 
-sharedOptions :: Dir -> LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
-sharedOptions startDir defaultLogMode args buildMode = do
+  sharedOptions :: LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
+  sharedOptions defaultLogMode args buildMode = do
 
-  args <- args
-  buildMode <- buildMode
+    args <- args
+    buildMode <- buildMode
 
-  let worker = False
+    let worker = False
 
-  jnum <-
-    option auto (short 'j'
-                 <> value 1
-                  <> metavar "NUM_PROCS"
-                  <> help "Number of parallel jenga processes to run")
+    jnum <-
+      option auto (short 'j'
+                   <> value 1
+                    <> metavar "NUM_PROCS"
+                    <> help "Number of parallel jenga processes to run")
 
-  seePid <-
-    switch (short 'p'
-             <> long "show-pid"
-             <> help "Prefix log lines with pid")
+    seePid <-
+      switch (short 'p'
+               <> long "show-pid"
+               <> help "Prefix log lines with pid")
 
-  cacheDirSpec <-
-    CacheDirChosen <$> strOption
-    (short 'c' <> long "cache" <> metavar "DIR"
-     <> help "Use .cache/jenga in DIR instead of $HOME"
-    )
-    <|>
-    flag' CacheDirTemp
-    (short 'f' <> long "temporary-cache"
-     <> help "Build using temporary cache to force build actions")
-    <|> pure CacheDirDefault
+    cacheDirSpec <-
+      CacheDirChosen <$> strOption
+      (short 'c' <> long "cache" <> metavar "DIR"
+       <> help "Use .cache/jenga in DIR instead of $HOME"
+      )
+      <|>
+      flag' CacheDirTemp
+      (short 'f' <> long "temporary-cache"
+       <> help "Build using temporary cache to force build actions")
+      <|> pure CacheDirDefault
 
-  logMode <-
-    flag' LogActions
-    (short 'a'
-     <> long "show-actions"
-      <> help "Build showing actions run")
-    <|>
-    flag' LogQuiet
-    (short 'q'
-     <> long "quiet"
-     <> help "Build quietly, except for errors")
-    <|>
-    pure defaultLogMode
+    logMode <-
+      flag' LogActions
+      (short 'a'
+       <> long "show-actions"
+        <> help "Build showing actions run")
+      <|>
+      flag' LogQuiet
+      (short 'q'
+       <> long "quiet"
+       <> help "Build quietly, except for errors")
+      <|>
+      pure defaultLogMode
 
-  debugDemand <- switch (long "debug-demand" <> help "Debug demanded build targets")
-  debugExternal <- switch (long "debug-external" <> help "Debug calls to md5sum")
-  debugInternal <- switch (long "debug-internal" <> help "Debug file system access")
-  debugLocking <- switch (long "debug-locking" <> help "Debug locking behaviour")
+    debugDemand <- switch (long "debug-demand" <> help "Debug demanded build targets")
+    debugExternal <- switch (long "debug-external" <> help "Debug calls to md5sum")
+    debugInternal <- switch (long "debug-internal" <> help "Debug file system access")
+    debugLocking <- switch (long "debug-locking" <> help "Debug locking behaviour")
 
-  materializeCommaJenga <-
-    switch (short 'm' <> long "materialize"
-            <> help "Materialize all build artifacts in ,jenga directory")
+    materializeCommaJenga <-
+      switch (short 'm' <> long "materialize"
+              <> help "Materialize all build artifacts in ,jenga directory")
 
-  withPromotion <-
-    switch (long "promote"
-            <> help "Promote test output to .expected files")
+    withPromotion <-
+      switch (long "promote"
+              <> help "Promote test output to .expected files")
 
-  strict <- not <$>
-    switch (long "sloppy" -- TODO kill
-            <> help "Run jenga actions with a sloppy environment")
+    strict <- not <$>
+      switch (long "sloppy" -- TODO kill
+              <> help "Run jenga actions with a sloppy environment")
 
-  reportRelative <-
-    switch (long "rel"
-            <> help "Report paths relative to starting directory")
+    reportRelative <-
+      switch (long "rel"
+              <> help "Report paths relative to starting directory")
 
-  pure $ Config { .. }
+    pure $ Config { .. }

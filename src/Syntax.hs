@@ -6,12 +6,13 @@ import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Text.Printf (printf)
 
+import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
 import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
-elaborate :: String -> Bool -> Key -> G ()
-elaborate homeDir withPromotion dotJengaFile0 = do
+elaborate :: Config -> Bool -> Key -> G ()
+elaborate Config{homeDir} withPromotion dotJengaFile0 = do
   when withPromotion $ promoteRule
   allFilesRule
   elabRuleFile dotJengaFile0
@@ -103,12 +104,9 @@ elaborate homeDir withPromotion dotJengaFile0 = do
         if b then DNeed key else pure ()
 
     makeKey :: String -> Key
-    makeKey str = Key (dir </> expandTildaSlash str)
-
-    expandTildaSlash :: String -> String
-    expandTildaSlash = \case
-      '~':'/':s -> homeDir ++ "/" ++ s
-      s -> s
+    makeKey = \case
+      '~':'/':str -> Key (homeDir </> str) -- expand tilda
+      str -> Key (dir </> str)
 
     -- hidden rule so user-rules can access the list of file names
     allFilesName = "all.files"

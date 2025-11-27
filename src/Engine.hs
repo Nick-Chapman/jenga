@@ -35,10 +35,11 @@ import WaitPid (waitpid)
 ----------------------------------------------------------------------
 -- UserMain
 
-main :: IO ()
-main = engineMain $ \startDir homeDir withPromotion args -> do
+main :: IO () -- TODO have engineMain call userMain directly
+main = engineMain $ \config withPromotion args -> do
+  let Config{startDir} = config
   dotJengas <- findDotJengas startDir args
-  sequence_ [ Syntax.elaborate homeDir withPromotion (Key dotJenga) | dotJenga <- dotJengas ]
+  sequence_ [ Syntax.elaborate config withPromotion (Key dotJenga) | dotJenga <- dotJengas ]
 
 findDotJengas :: Dir -> [String] -> G [Loc] -- TODO: take [Dir]
 findDotJengas dir args = do
@@ -77,11 +78,10 @@ blockName = \case
 
 type UserProg = [String] -> G ()
 
-engineMain :: (Dir -> String -> Bool -> UserProg) -> IO ()
+engineMain :: (Config -> Bool -> UserProg) -> IO ()
 engineMain mkUserProg = do
-  homeDir <- maybe "" id <$> lookupEnv "HOME" -- TODO: pass homeDir in config
-  config@Config{startDir,cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
-  let userProg = mkUserProg startDir homeDir withPromotion
+  config@Config{startDir,homeDir,cacheDirSpec,logMode,withPromotion} <- CommandLine.exec
+  let userProg = mkUserProg config withPromotion
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
@@ -92,7 +92,7 @@ engineMain mkUserProg = do
           Just cache -> do
             pure (makeAbsoluteDir cache </> "jenga")
           Nothing -> do
-            pure (makeAbsoluteDir homeDir </> ".cache/jenga")
+            pure (homeDir </> ".cache/jenga")
       CacheDirChosen dirString -> do
         pure (insistLocIsDir (startDir </> dirString) </> ".cache/jenga")
       CacheDirTemp -> do
@@ -192,9 +192,8 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
 
 runBuild :: Dir -> Config -> (Config -> B ()) -> IO ()
 runBuild cacheDir config f = do
-  homeDir <- maybe "" id <$> lookupEnv "HOME"
   nCopies config $ \config -> do
-    runX homeDir config $ do
+    runX config $ do
       runB cacheDir config (f config)
 
 nCopies :: Config -> (Config -> IO ()) -> IO ()
@@ -1050,8 +1049,8 @@ data X a where
   XUnLink :: Loc -> X ()
   XRemoveDirRecursive :: Dir -> X ()
 
-runX :: String -> Config -> X a -> IO a
-runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocking} = loop
+runX :: Config -> X a -> IO a
+runX config@Config{homeDir,strict,logMode,debugExternal,debugInternal,debugLocking} = loop
   where
 
     log mes = maybePrefixPid config mes >>= putOut
@@ -1063,7 +1062,7 @@ runX homeDir config@Config{strict,logMode,debugExternal,debugInternal,debugLocki
     shell s =
       if strict
       then (System.Process.shell s) { env = Just [ ("PATH","/usr/bin")
-                                                 , ("HOME",homeDir)
+                                                 , ("HOME",pathOfDir homeDir)
                                                  ] }
       else System.Process.shell s
 

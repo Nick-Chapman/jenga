@@ -21,7 +21,7 @@ fi
 JENGA_HOME=$(dirname $(readlink -f "$0"))
 
 # Run once to start...
-clear
+clear # TODO: bad form to clear the user's terminal?
 jenga.exe $args
 i=1
 

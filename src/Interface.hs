@@ -32,7 +32,7 @@ data What = Missing | File | Link | Directory { entries :: [String] }
 data Rule = Rule
   { rulename :: String
   , dir :: Dir
-  , hidden :: Bool
+  , hidden :: Bool -- TODO: remove this when all.files rule is reworked
   , target :: Target
   , depcom :: D Action
   }
@@ -45,8 +45,8 @@ data Artifact = Artifact
   }
 
 data Action = Action
-  { hidden :: Bool
-  , commands :: [String]
+  { hidden :: Bool -- TODO: remove?
+  , commands :: [String] -- TODO: can we revert back to Action == Single Command?
   }
 
 instance Functor D where fmap = liftM

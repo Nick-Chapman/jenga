@@ -1,6 +1,8 @@
 
 # Jenga tutorial
 
+_TODO: The tutorial is slightly out of date and needs updating._
+
 Each tutorial section includes example [source files](files) and a companion [cram test file](cram) that records the expected output from each step.
 
 If the tutorial diverges from the cram tests, then the cram file should be regarded as the source of truth.

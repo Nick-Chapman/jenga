@@ -8,6 +8,8 @@ Following a successful download and install of jenga, this tutorial will guide y
 
 ## Download, build and install jenga
 
+_TODO: Improve/simplify the installation story._
+
 The following steps will download and build `jenga` from source.
 ```
 rm -rf /tmp/jenga

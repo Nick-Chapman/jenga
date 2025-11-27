@@ -902,6 +902,7 @@ runB cacheDir config@Config{logMode} build0 = do
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
       let i = runCounter
+      -- TODO: show counts for #ran & #elided(reused) commands
       when (see && i>0) $ XLog (printf "ran %s" (pluralize i "command"))
       reportBuildRes config res
 
@@ -1086,6 +1087,7 @@ runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = l
       -- sandboxed execution of user's action; for now always a list of bash commands
       XRunActionInDir dir Action{hidden,commands} -> ActionRes <$> do
         forM commands $ \command -> do
+          -- TODO: perhaps on logAction (-a) we can also show the commands elided!
           let logAction = case logMode of LogActions -> True; _ -> False
           when (not hidden && logAction) $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-

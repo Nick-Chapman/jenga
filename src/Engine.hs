@@ -588,22 +588,15 @@ setupInputs sandbox (WitMap m1) = do
     [ do
         src <- cacheFile digest
         let dest = sandbox </> stringOfTag tag
-        Execute $ hardLinkRetry1 src dest
+        Execute $ hardLink src dest
     | (tag,digest) <- Map.toList m1
     ]
 
-hardLinkRetry1 :: Loc -> Loc -> X ()
-hardLinkRetry1 src dest =  do
+hardLink :: Loc -> Loc -> X ()
+hardLink src dest = do
   XTryHardLink src dest >>= \case
     Nothing -> pure ()
-    Just _e1 -> do
-      -- Sometimes the hardlink fails; but it works on retry. Why?
-      -- XLogErr _e1
-      XTryHardLink src dest >>= \case
-        Nothing -> pure ()
-        Just e2 ->
-          -- TODO: I don't think we can assume we only need a single retry
-          error e2 -- hard error for error on 2nd attempt
+    Just e -> error e
 
 cacheOutputs :: Config -> Dir -> Rule -> B WitMap
 cacheOutputs config sandbox Rule{rulename,target} = do

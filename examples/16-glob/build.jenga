@@ -1,0 +1,20 @@
+
+my.all : all.files
+  cp $^ $@
+
+new_my.all :
+  echo $glob:. > $@
+
+ball.tar: my.all @my.all
+  tar -cf $@ $(cat my.all)
+
+report: my.all new_my.all ball.tar
+  echo -------------------------------------------------- >> $@
+  echo my.all [ $(cat my.all) ] >> $@
+  echo new_my.all [ $(cat new_my.all) ] >> $@
+  echo TAR... >> $@
+  tar -tf ball.tar | sort >> $@
+  echo -------------------------------------------------- >> $@
+
+*view: report
+  cat report

@@ -249,8 +249,7 @@ gram = start
     -- traditional make syntax
     tradRule = do
       alts [nl,commentToEol]
-      let pred = \case [] -> False; _ -> True -- TODO: acoid this hack here?
-      filter pred <$> many indentedCommand
+      many indentedCommand
 
     indentedCommand = do
       space -- at least one space char to begin the action

@@ -1,4 +1,6 @@
 
+all.files : : echo '$glob' > $@
+
 hello.exe : o.files @o.files
   gcc -o $@ $(cat o.files)
 

@@ -5,6 +5,8 @@
 ## caller must also define: main-entry ghc-version
 ## caller may optionally define: ghc-options default-extensions packages xdepends
 
+all.files : : echo '$glob' > $@
+
 hs.files : all.files
   egrep '^[^#]+.hs$' all.files > hs.files # ignore filenames containing '#'
   echo main.hs >> hs.files

@@ -8,6 +8,7 @@
 Build:
 
   $ jenga build -a && jenga exec example/hello.exe
+  A: echo 'defs.h\nfib.c\nmain.c\nfib.h\nbuild.jenga' > all.files
   A: cat all.files | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
   A: cat all.files | grep '.h$' > h.files
@@ -16,8 +17,8 @@ Build:
   A: gcc -c -o fib.o fib.c
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
   A: gcc -o hello.exe $(cat o.files)
-  checked 8 targets
-  ran 8 commands
+  checked 9 targets
+  ran 9 commands
   Hello, 55 jenga. Discovered deps and generated rules.
 
 Change & rebuild:
@@ -27,7 +28,7 @@ Change & rebuild:
   A: gcc -MG -MM $(cat c.files) > depends
   A: gcc -c -o main.o main.c
   A: gcc -o hello.exe $(cat o.files)
-  checked 8 targets
+  checked 9 targets
   ran 3 commands
   $ jenga exec example/hello.exe
   Hello, 89 jenga. Discovered deps and generated rules.
@@ -44,6 +45,7 @@ Artifacts (materialize all)
   ,jenga/example/hello.exe
   ,jenga/example/o.files
   ,jenga/example/h.files
+  ,jenga/example/all.files
   ,jenga/example/main.o
 
 Targets:
@@ -57,6 +59,7 @@ Targets:
   example/o.files
   example/c.files
   example/hello.exe
+  example/all.files
 
 Rules:
 
@@ -84,3 +87,6 @@ Rules:
   
   example/hello.exe : example/o.files example/fib.o example/main.o
     gcc -o hello.exe $(cat o.files)
+  
+  example/all.files : 
+    echo 'defs.h\nfib.c\nmain.c\nfib.h\nbuild.jenga' > all.files

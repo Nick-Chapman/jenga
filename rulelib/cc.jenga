@@ -5,8 +5,8 @@ d.rules: c.files
 o.rules: c.files gcc.runner
   cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
 
-c.files : all.files
-  cat all.files | grep '.c$' > c.files
+c.files :
+  echo '$glob' | grep '.c$' > c.files
 
 link.rule : o.files
   echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule

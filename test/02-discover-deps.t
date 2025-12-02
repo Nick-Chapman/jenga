@@ -12,7 +12,7 @@ Get me the source code for the first example...
 
 Build from clean:
   $ jenga build -a
-  A: cat all.files | grep '.c$' > c.files
+  A: echo 'defs.h\nfib.c\nmain.c\nfib.h\ncc.jenga\nREADME\nbuild.jenga' | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
@@ -68,7 +68,7 @@ Change const value in defs.h
 Setup ALT defs file (causes no actions):
   $ echo '#define MY_CONST 12' > example/defsALT.h
   $ jenga build -a
-  A: cat all.files | grep '.c$' > c.files
+  A: echo 'defs.h\nfib.c\nmain.c\nfib.h\ncc.jenga\nREADME\nbuild.jenga\ndefsALT.h' | grep '.c$' > c.files
   checked 11 targets
   ran 1 command
 
@@ -103,7 +103,7 @@ Use feature of CC setup macro which is conditionally dependent on cflags key...
 Compile with -Wall:
   $ echo '-Wall' > example/cflags
   $ jenga build -a
-  A: cat all.files | grep '.c$' > c.files
+  A: echo 'defs.h\nfib.c\nmain.c\nfib.h\ncc.jenga\ncflags\nREADME\nbuild.jenga\ndefsALT.h' | grep '.c$' > c.files
   A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   A: gcc -Wall -c fib.c -o fib.o

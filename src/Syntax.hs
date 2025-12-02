@@ -14,7 +14,7 @@ import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 elaborate :: Config -> Key -> G ()
 elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
   when withPromotion $ promoteRule
-  allFilesRule -- TODO: rework globbing to avoid hidden rule for all.files
+  -- _allFilesRule -- TODO: rework globbing to avoid hidden rule for all.files
   elabRuleFile dotJengaFile0
   where
     dir = dirKey dotJengaFile0
@@ -85,7 +85,7 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
 
     -- hidden rule so user-rules can access the list of file names
     allFilesName = "all.files"
-    allFilesRule =  do
+    _allFilesRule =  do
       allFiles <- map Key <$> glob dir
       GRule (Rule { rulename = printf "glob-%s" (pathOfDir dir)
                   , dir

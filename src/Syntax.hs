@@ -145,8 +145,14 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
 glob :: Dir -> G [Loc]
 glob dir = do
   GWhat (locOfDir dir) >>= \case
-    Directory entries -> pure [ dir </> e | e <- entries ]
-    _what -> GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
+    Directory entries -> do
+      xs <- sequence
+        [ do exists <- GExistsKey (Key loc); pure (loc,exists)
+        | e <- entries, let loc = dir </> e
+        ]
+      pure [ loc | (loc,exists) <- xs, exists ]
+    _what ->
+      GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
 
 filterDepsFor :: [String] -> String -> [String]
 filterDepsFor artNames contents = do

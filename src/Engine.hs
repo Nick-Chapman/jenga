@@ -377,6 +377,11 @@ runElaboration config m =
         contents <- readKey config how key -- make cause building
         k system contents
 
+      GExistsKey key -> do
+        let System{how} = system
+        b <- existsKey how key
+        k system b
+
       GPar g1 g2 -> do -- TODO: actually work in parallel
         loop g1 system $ \system a1 -> do
           loop g2 system $ \system a2 -> do

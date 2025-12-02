@@ -25,6 +25,7 @@ data G a where
   GRule :: Rule -> G ()
   GWhat :: Loc -> G What
   GReadKey :: Key -> G String
+  GExistsKey :: Key -> G Bool
   GPar :: G a -> G b -> G (a,b)
 
 data What = Missing | File | Link | Directory { entries :: [String] }

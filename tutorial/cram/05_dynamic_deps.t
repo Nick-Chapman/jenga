@@ -60,16 +60,16 @@ See the targets and rules
 
   $ jenga build -a -r -c.
   example/depends : example/main.c example/fib.c
-    cd example ; gcc -MG -MM *.c > depends
+    gcc -MG -MM *.c > depends
   
   example/fib.o : example/fib.c example/fib.h
-    cd example ; gcc -Wall -c fib.c -o fib.o
+    gcc -Wall -c fib.c -o fib.o
   
   example/main.o : example/main.c example/fib.h
-    cd example ; gcc -Wall -c main.c -o main.o
+    gcc -Wall -c main.c -o main.o
   
   example/hello.exe : example/main.o example/fib.o
-    cd example ; gcc main.o fib.o -o hello.exe
+    gcc main.o fib.o -o hello.exe
 
   $ (cd example; ../jenga build -r -c..)
   depends : main.c fib.c

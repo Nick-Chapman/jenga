@@ -46,7 +46,7 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
               case ruleTarget of
                 MArtifacts xs -> [ name | (_,name) <- xs ]
                 MPhony{} -> []
-          let commands = map expandSpecial commands0
+          let commands = map (expandChunks dir ruleTarget deps) commands0
           GRule $ Rule
             { rulename
             , dir
@@ -62,31 +62,6 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
                 sequence_ [ makeDep artNames dep | dep <- deps ]
                 pure (bash commands)
             }
-            where
-              dollarAtReplacement =
-                case ruleTarget of
-                  MArtifacts xs ->
-                    intercalate " " [ stringOfTag (takeBase (dir </> name))
-                                    | (_,name) <- xs ]
-                  MPhony name -> name
-
-              -- very simplistic support for $$, $@, $^ and $<
-              dollarHatReplacement =
-                intercalate " " [ stringOfTag (takeBase (dir </> name))
-                                | DepPlain name <- deps ]
-              dollarLeftReplacement =
-                intercalate " " (take 1 [ stringOfTag (takeBase (dir </> name))
-                                        | DepPlain name <- deps])
-              expandSpecial :: String -> String
-              expandSpecial = loop
-                where
-                  loop = \case
-                    [] -> []
-                    '$':'$':rest -> '$' : loop rest
-                    '$':'@':rest -> dollarAtReplacement ++ loop rest
-                    '$':'^':rest -> dollarHatReplacement ++ loop rest
-                    '$':'<':rest -> dollarLeftReplacement ++ loop rest
-                    x:xs -> x : loop xs
 
     bash :: [String] -> Action
     bash commands = Action { hidden = False, commands }
@@ -141,6 +116,34 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
                                                   promoteName]
                                     })})
 
+expandChunks :: Dir -> MTarget -> [Dep] -> [ActChunk] -> String
+expandChunks dir ruleTarget deps chunks =
+  trimTrailingSpace $ concat (map expand1 chunks)
+  where
+    expand1 = \case
+      AC_String s -> s
+      AC_DollarAt -> dollarAtReplacement
+      AC_DollarHat -> dollarHatReplacement
+      AC_DollarLeft -> dollarLeftReplacement
+      AC_DollarGlob{} -> undefined
+
+    trimTrailingSpace = reverse . dropWhile (==' ') . reverse
+
+    dollarAtReplacement =
+      case ruleTarget of
+        MArtifacts xs ->
+          intercalate " " [ stringOfTag (takeBase (dir </> name))
+                          | (_,name) <- xs ]
+        MPhony name -> name
+
+    -- very simplistic support for $$, $@, $^ and $<
+    dollarHatReplacement =
+      intercalate " " [ stringOfTag (takeBase (dir </> name))
+                      | DepPlain name <- deps ]
+
+    dollarLeftReplacement =
+      intercalate " " (take 1 [ stringOfTag (takeBase (dir </> name))
+                              | DepPlain name <- deps])
 
 glob :: Dir -> G [Loc]
 glob dir = do
@@ -178,8 +181,15 @@ data Trip = Trip
   { pos :: Position
   , ruleTarget :: MTarget
   , deps :: [Dep]
-  , commands :: [String]
+  , commands :: [[ActChunk]]
   }
+
+data ActChunk
+  = AC_String String
+  | AC_DollarAt
+  | AC_DollarHat
+  | AC_DollarLeft
+  | AC_DollarGlob String
 
 data MTarget
   = MArtifacts [(Bool,String)] -- Bool indicates user materizalization (!)
@@ -238,7 +248,8 @@ gram = start
     -- traditional make syntax
     tradRule = do
       alts [nl,commentToEol]
-      (filter (\case "" -> False; _ -> True)) <$> many indentedCommand
+      let pred = \case [] -> False; _ -> True -- TODO: acoid this hack here?
+      filter pred <$> many indentedCommand
 
     indentedCommand = do
       space -- at least one space char to begin the action
@@ -273,13 +284,21 @@ gram = start
     specialChar = (`elem` " :#()\n!*")
 
     singleCommandLine = do
-      trimTrailingSpace <$> many actionChar
+      many actionChunk
+
+    actionChunk = alts
+      [ do Par4.key "$@"; pure AC_DollarAt
+      , do Par4.key "$^"; pure AC_DollarHat
+      , do Par4.key "$<"; pure AC_DollarLeft
+      , do Par4.key "$$"; pure (AC_String "$")
+      , do lit '$'; pure (AC_String "$") -- unescaped dollar
+      , do s <- some actionChar; pure (AC_String s)
+      ]
 
     actionChar = sat $ \case -- anything upto a NL (leaving #-comments for bash)
       '\n' -> False
+      '$' -> False
       _ -> True
-
-    trimTrailingSpace = reverse . dropWhile (==' ') . reverse
 
     space = lit ' '
     nl = lit '\n'

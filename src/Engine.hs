@@ -189,6 +189,7 @@ data StaticRule = StaticRule
 ppStaticRule :: Config -> StaticRule -> String
 ppStaticRule config@Config{startDir} StaticRule{dir,target,deps,action=Action{commands}} = do
   let cdPrefix = if dir == startDir then "" else printf "cd %s ; " (ppKey config (Key (locOfDir dir)))
+  --let cdPrefix = "" -- TODO: make this so! adapt cram tests
   let sep = printf "\n  %s" cdPrefix
   printf "%s : %s%s%s" (ppTarget config target) (ppKeys config deps) sep (intercalate sep commands)
 

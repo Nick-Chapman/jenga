@@ -8,7 +8,7 @@ import Text.Printf (printf)
 
 import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc)
+import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: Config -> Key -> G ()
@@ -46,7 +46,7 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
               case ruleTarget of
                 MArtifacts xs -> [ name | (_,name) <- xs ]
                 MPhony{} -> []
-          let commands = map (expandChunks dir ruleTarget deps) commands0
+          commands <- mapM (expandChunks dir ruleTarget deps) commands0
           GRule $ Rule
             { rulename
             , dir
@@ -99,10 +99,6 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
                                                   allFilesName]
                                     })})
 
-        where
-          baseKey :: Key -> String
-          baseKey (Key loc) = stringOfTag (takeBase loc)
-
     promoteName = ".promote"
     promoteRule =  do
       GRule (Rule { rulename = printf ".promote-%s" (pathOfDir dir)
@@ -116,16 +112,21 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
                                                   promoteName]
                                     })})
 
-expandChunks :: Dir -> MTarget -> [Dep] -> [ActChunk] -> String
+baseKey :: Key -> String
+baseKey (Key loc) = stringOfTag (takeBase loc)
+
+expandChunks :: Dir -> MTarget -> [Dep] -> [ActChunk] -> G String
 expandChunks dir ruleTarget deps chunks =
-  trimTrailingSpace $ concat (map expand1 chunks)
+  (trimTrailingSpace . concat) <$> mapM expand1 chunks
   where
     expand1 = \case
-      AC_String s -> s
-      AC_DollarAt -> dollarAtReplacement
-      AC_DollarHat -> dollarHatReplacement
-      AC_DollarLeft -> dollarLeftReplacement
-      AC_DollarGlob{} -> undefined
+      AC_String s -> pure s
+      AC_DollarAt -> pure dollarAtReplacement
+      AC_DollarHat -> pure dollarHatReplacement
+      AC_DollarLeft -> pure dollarLeftReplacement
+      AC_DollarGlob globSuffix -> do
+        allFiles <- map Key <$> glob (insistLocIsDir (dir </> globSuffix))
+        pure (intercalate "\\n" (map baseKey allFiles))
 
     trimTrailingSpace = reverse . dropWhile (==' ') . reverse
 
@@ -281,7 +282,7 @@ gram = start
 
     identifierChar = sat (not . specialChar)
 
-    specialChar = (`elem` " :#()\n!*")
+    specialChar = (`elem` " :#()\n!*'")
 
     singleCommandLine = do
       many actionChunk
@@ -291,6 +292,8 @@ gram = start
       , do Par4.key "$^"; pure AC_DollarHat
       , do Par4.key "$<"; pure AC_DollarLeft
       , do Par4.key "$$"; pure (AC_String "$")
+      , do Par4.key "$glob:"; dir <- identifier; pure (AC_DollarGlob dir)
+      , do Par4.key "$glob"; pure (AC_DollarGlob ".")
       , do lit '$'; pure (AC_String "$") -- unescaped dollar
       , do s <- some actionChar; pure (AC_String s)
       ]

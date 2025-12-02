@@ -11,19 +11,22 @@ Get example: tests globbing & use jenga actions (phony targets):
 
 Run the view action:
 
-  $ jenga run view
-  checked 4 targets
+  $ jenga run view -a
+  A: echo 'file1\nfile3\nyyy\nfile2\nbuild.jenga' > my.all
+  A: tar -cf ball.tar $(cat my.all)
+  A: echo -------------------- >> report
+  A: tar -tf ball.tar | sort >> report
+  A: echo -------------------- >> report
+  checked 3 targets
+  A: cat report
   (directory) .
   (rule) *view : report
   (command) $ cat report
-  --------------------------------------------------
-  my.all [ file1 file3 yyy file2 build.jenga ]
-  new_my.all [ :. ]
-  TAR...
+  --------------------
   build.jenga
   file1
   file2
   file3
   yyy
-  --------------------------------------------------
-  ran 10 commands
+  --------------------
+  ran 6 commands

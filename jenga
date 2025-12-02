@@ -21,7 +21,7 @@ fi
 JENGA_HOME=$(dirname $(readlink -f "$0"))
 
 # Run once to start...
-clear # TODO: bad form to clear the user's terminal?
+clear -x
 jenga.exe $args
 i=1
 
@@ -35,7 +35,7 @@ inotifywait -q -m -r . "$JENGA_HOME/rulelib" \
             --exclude '(\.git/|\.cache|,jenga)' |
 while read e; do
   i=$((i+1))
-  clear
+  clear -x
   #echo $i -- $e # show the counter and triggering event.
   jenga.exe $args
 done

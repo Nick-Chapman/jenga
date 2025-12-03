@@ -1,0 +1,20 @@
+
+expect.names :
+  echo 01 >> $@
+  echo 02 >> $@
+
+include ../rulelib/expect.jenga
+
+jenga.deps : : echo 'jenga ../src/jenga.exe' > $@
+
+01.files :
+  echo '$glob:../examples/01-two-files' | sed 's|^|../examples/01-two-files/|' > $@
+
+02.files :
+  echo '$glob:../examples/02-discover-deps' | sed 's|^|../examples/02-discover-deps/|' > $@
+
+01: @jenga.deps @01.files 01.sh
+  bash -v ./01.sh > $@ 2>&1
+
+02: @jenga.deps @02.files 02.sh
+  bash -v ./02.sh > $@ 2>&1

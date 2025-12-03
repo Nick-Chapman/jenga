@@ -1,0 +1,23 @@
+
+# Script of self-test jenga commands to be executed for example 01
+
+# Initial build...
+./jenga build -a
+A: gcc -c fib.c -o fib.o
+A: gcc -c main.c -o main.o
+A: gcc fib.o main.o -o main.exe
+checked 3 targets
+ran 3 commands
+
+# Exepected zero re-build...
+./jenga build -a
+checked 3 targets
+
+# Remove cache and build again
+rm -rf .cache
+./jenga build -a
+A: gcc -c fib.c -o fib.o
+A: gcc -c main.c -o main.o
+A: gcc fib.o main.o -o main.exe
+checked 3 targets
+ran 3 commands

@@ -12,8 +12,6 @@ import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: Config -> Key -> G ()
 elaborate config@Config{homeDir} dotJengaFile0 = do
-  -- when withPromotion $ _promoteRule -- TODO: remove/cleanup
-  -- _allFilesRule -- TODO: rework globbing to avoid hidden rule for all.files
   elabRuleFile dotJengaFile0
   where
     dir = dirKey dotJengaFile0
@@ -81,35 +79,6 @@ elaborate config@Config{homeDir} dotJengaFile0 = do
     makeKey = \case
       '~':'/':str -> Key (homeDir </> str) -- expand tilda
       str -> Key (dir </> str)
-
-    -- hidden rule so user-rules can access the list of file names
-    allFilesName = "all.files"
-    _allFilesRule =  do
-      allFiles <- map Key <$> glob dir
-      GRule (Rule { rulename = printf "glob-%s" (pathOfDir dir)
-                  , dir
-                  , hidden = True
-                  , target = Artifacts [ Artifact { materialize = False
-                                                  , key = makeKey allFilesName } ]
-                  , depcom = pure (Action
-                                    { hidden = True
-                                    , commands = [printf "echo -n '%s' > %s"
-                                                  (unlines (map baseKey allFiles))
-                                                  allFilesName]
-                                    })})
-
-    promoteName = ".promote"
-    _promoteRule =  do
-      GRule (Rule { rulename = printf ".promote-%s" (pathOfDir dir)
-                  , dir
-                  , hidden = True
-                  , target = Artifacts [ Artifact { materialize = False
-                                                  , key = makeKey promoteName } ]
-                  , depcom = pure (Action
-                                    { hidden = True
-                                    , commands = [printf "touch %s"
-                                                  promoteName]
-                                    })})
 
 baseKey :: Key -> String
 baseKey (Key loc) = stringOfTag (takeBase loc)

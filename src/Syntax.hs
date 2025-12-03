@@ -7,7 +7,7 @@ import Text.Printf (printf)
 
 import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
+import Locate (Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: Config -> Key -> G ()
@@ -80,9 +80,6 @@ elaborate config@Config{homeDir} dotJengaFile0 = do
       '~':'/':str -> Key (homeDir </> str) -- expand tilda
       str -> Key (dir </> str)
 
-baseKey :: Key -> String
-baseKey (Key loc) = stringOfTag (takeBase loc)
-
 expandChunks :: Config -> Dir -> MTarget -> [Dep] -> [ActChunk] -> G String
 expandChunks Config{withPromotion} dir ruleTarget deps chunks =
   (trimTrailingSpace . concat) <$> mapM expand1 chunks
@@ -93,8 +90,8 @@ expandChunks Config{withPromotion} dir ruleTarget deps chunks =
       AC_DollarHat -> pure dollarHatReplacement
       AC_DollarLeft -> pure dollarLeftReplacement
       AC_DollarGlob globSuffix -> do
-        allFiles <- map Key <$> glob (insistLocIsDir (dir </> globSuffix))
-        pure (intercalate "\\n" (map baseKey allFiles))
+        allFiles <- glob (insistLocIsDir (dir </> globSuffix))
+        pure (intercalate "\\n" (map stringOfTag allFiles))
 
       AC_DollarPromote ->
         pure (if withPromotion then "promote" else "")
@@ -117,7 +114,7 @@ expandChunks Config{withPromotion} dir ruleTarget deps chunks =
       intercalate " " (take 1 [ stringOfTag (takeBase (dir </> name))
                               | DepPlain name <- deps])
 
-glob :: Dir -> G [Loc]
+glob :: Dir -> G [Tag]
 glob dir = do
   GWhat (locOfDir dir) >>= \case
     Directory entries -> do
@@ -125,7 +122,7 @@ glob dir = do
         [ do exists <- GExistsKey (Key loc); pure (loc,exists)
         | e <- entries, let loc = dir </> e
         ]
-      pure [ loc | (loc,exists) <- xs, exists ]
+      pure [ takeBase loc | (loc,exists) <- xs, exists ]
     _what ->
       GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
 

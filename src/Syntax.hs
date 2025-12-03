@@ -1,7 +1,6 @@
 -- | Syntax and elaboration for build.jenga files
 module Syntax (elaborate) where
 
-import Control.Monad (when)
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Text.Printf (printf)
@@ -12,8 +11,8 @@ import Locate (Loc,Dir,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pat
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: Config -> Key -> G ()
-elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
-  when withPromotion $ promoteRule
+elaborate config@Config{homeDir} dotJengaFile0 = do
+  -- when withPromotion $ _promoteRule -- TODO: remove/cleanup
   -- _allFilesRule -- TODO: rework globbing to avoid hidden rule for all.files
   elabRuleFile dotJengaFile0
   where
@@ -46,7 +45,7 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
               case ruleTarget of
                 MArtifacts xs -> [ name | (_,name) <- xs ]
                 MPhony{} -> []
-          commands <- mapM (expandChunks dir ruleTarget deps) commands0
+          commands <- mapM (expandChunks config dir ruleTarget deps) commands0
           GRule $ Rule
             { rulename
             , dir
@@ -100,7 +99,7 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
                                     })})
 
     promoteName = ".promote"
-    promoteRule =  do
+    _promoteRule =  do
       GRule (Rule { rulename = printf ".promote-%s" (pathOfDir dir)
                   , dir
                   , hidden = True
@@ -115,8 +114,8 @@ elaborate Config{homeDir,withPromotion} dotJengaFile0 = do
 baseKey :: Key -> String
 baseKey (Key loc) = stringOfTag (takeBase loc)
 
-expandChunks :: Dir -> MTarget -> [Dep] -> [ActChunk] -> G String
-expandChunks dir ruleTarget deps chunks =
+expandChunks :: Config -> Dir -> MTarget -> [Dep] -> [ActChunk] -> G String
+expandChunks Config{withPromotion} dir ruleTarget deps chunks =
   (trimTrailingSpace . concat) <$> mapM expand1 chunks
   where
     expand1 = \case
@@ -127,6 +126,9 @@ expandChunks dir ruleTarget deps chunks =
       AC_DollarGlob globSuffix -> do
         allFiles <- map Key <$> glob (insistLocIsDir (dir </> globSuffix))
         pure (intercalate "\\n" (map baseKey allFiles))
+
+      AC_DollarPromote ->
+        pure (if withPromotion then "promote" else "")
 
     trimTrailingSpace = reverse . dropWhile (==' ') . reverse
 
@@ -191,6 +193,7 @@ data ActChunk
   | AC_DollarHat
   | AC_DollarLeft
   | AC_DollarGlob String
+  | AC_DollarPromote
 
 data MTarget
   = MArtifacts [(Bool,String)] -- Bool indicates user materizalization (!)
@@ -293,6 +296,7 @@ gram = start
       , do Par4.key "$$"; pure (AC_String "$")
       , do Par4.key "$glob:"; dir <- identifier; pure (AC_DollarGlob dir)
       , do Par4.key "$glob"; pure (AC_DollarGlob ".")
+      , do Par4.key "$promote"; pure AC_DollarPromote
       , do lit '$'; pure (AC_String "$") -- unescaped dollar
       , do s <- some actionChar; pure (AC_String s)
       ]

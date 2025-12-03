@@ -2,7 +2,7 @@
 # Example 02 : build and zero rebuild
 
 jenga build -a
-A: echo '.output\n02-discover-deps.sh\ndefs.h\njenga.exe\nfib.c\n.cache\nmain.c\nfib.h\ncc.jenga\njenga\nREADME\nbuild.jenga' | grep '.c$' > c.files
+A: echo '.output\n02-discover-deps.sh\ndefs.h\njenga.exe\nfib.c\n.cache\nmain.c\nfib.h\ncc.jenga\njenga\nREADME\nbuild.jenga' | grep '\.c$' > c.files
 A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
 A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
 A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules

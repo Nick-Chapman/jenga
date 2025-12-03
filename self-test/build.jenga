@@ -3,24 +3,13 @@ expect.names :
   echo 01-two-files >> $@
   echo 02-discover-deps >> $@
   echo 03-simple-make >> $@
+  echo 04-simple-make-plus-cc >> $@
 
 include ../rulelib/expect.jenga
 
 jenga.deps : : echo 'jenga ../src/jenga.exe' > $@
 
-01-two-files.files :
-  echo '$glob:../examples/01-two-files' | sed 's|^|../examples/01-two-files/|' > $@
+rules : rules.sh expect.names
+  ./rules.sh $(cat expect.names) > $@
 
-02-discover-deps.files :
-  echo '$glob:../examples/02-discover-deps' | sed 's|^|../examples/02-discover-deps/|' > $@
-
-03-simple-make.files :
-  echo '$glob:../examples/03-simple-make' | sed 's|^|../examples/03-simple-make/|' > $@
-
-01-two-files: @jenga.deps @01-two-files.files 01-two-files.sh
-  PATH=$PWD:$PATH bash -v ./01-two-files.sh > $@ 2>&1
-
-02-discover-deps: @jenga.deps @02-discover-deps.files 02-discover-deps.sh
-  PATH=$PWD:$PATH bash -v ./02-discover-deps.sh > $@ 2>&1
-
-03-simple-make: @jenga.deps @03-simple-make.files 03-simple-make.sh : PATH=$PWD:$PATH bash -v ./03-simple-make.sh > $@ 2>&1
+include rules

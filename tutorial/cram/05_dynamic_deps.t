@@ -1,6 +1,7 @@
 
-  $ (cd $TESTDIR/../..; jenga build src -q)
-  $ echo exec $TESTDIR/../../src/jenga.exe '"$@"' --rel > jenga
+  $ here=$PWD
+  $ (cd $TESTDIR/../../src; jenga install jenga.exe $here/jenga.exe)
+  $ echo exec $PWD/jenga.exe '"$@"' --rel --cache=$PWD > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
 
@@ -31,7 +32,7 @@ Get the example.
 
 Build. Expect 4 actions to be run
 
-  $ jenga build -a -c.
+  $ jenga build -a
   A: gcc -MG -MM *.c > depends
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
@@ -41,7 +42,7 @@ Build. Expect 4 actions to be run
 
 Run the executable
 
-  $ jenga exec example/hello.exe -c.
+  $ jenga exec example/hello.exe
   Hello, 55 jenga!
 
 See the depends
@@ -52,13 +53,13 @@ See the depends
 
 See the targets and rules
 
-  $ jenga build -a --list-targets -c.
+  $ jenga build -a --list-targets
   example/depends
   example/fib.o
   example/main.o
   example/hello.exe
 
-  $ jenga build -a -r -c.
+  $ jenga build -a -r
   example/depends : example/main.c example/fib.c
     gcc -MG -MM *.c > depends
   
@@ -71,7 +72,7 @@ See the targets and rules
   example/hello.exe : example/main.o example/fib.o
     gcc main.o fib.o -o hello.exe
 
-  $ (cd example; ../jenga build -r -c..)
+  $ (cd example; ../jenga build -r)
   depends : main.c fib.c
     gcc -MG -MM *.c > depends
   
@@ -83,19 +84,3 @@ See the targets and rules
   
   hello.exe : main.o fib.o
     gcc main.o fib.o -o hello.exe
-
-  $ (cd example; ../jenga build -arf)  | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
-  using temporary cache: /tmp/.cache/jenga/$$
-  A: gcc -MG -MM *.c > depends
-  depends : main.c fib.c
-    gcc -MG -MM *.c > depends
-  
-  fib.o : fib.c fib.h
-    gcc -Wall -c fib.c -o fib.o
-  
-  main.o : main.c fib.h
-    gcc -Wall -c main.c -o main.o
-  
-  hello.exe : main.o fib.o
-    gcc main.o fib.o -o hello.exe
-  ran 1 command

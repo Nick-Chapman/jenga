@@ -1,8 +1,10 @@
 
-  $ (cd $TESTDIR/..; jenga build src -q) && ln $TESTDIR/../src/jenga.exe jenga.exe
-  $ echo 'exec ./jenga.exe "$@" --rel --cache=.' > jenga
+  $ here=$PWD
+  $ (cd $TESTDIR/../src; jenga install jenga.exe $here/jenga.exe)
+  $ echo exec $PWD/jenga.exe '"$@"' --rel --cache=$PWD > jenga
   $ chmod +x jenga
-  $ export PATH=.:$PATH
+  $ export PATH=$PWD:$PATH
+
   $ cp -rp $TESTDIR/../examples/06-diamond example
 
   $ jenga build -a

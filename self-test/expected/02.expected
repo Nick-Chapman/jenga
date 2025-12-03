@@ -1,7 +1,7 @@
 
 # Example 02 : build and zero rebuild
 
-./jenga build -a
+jenga build -a
 A: echo '02.sh\ndefs.h\njenga.exe\nfib.c\n.cache\nmain.c\nfib.h\ncc.jenga\njenga\n02\nREADME\nbuild.jenga' | grep '.c$' > c.files
 A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
 A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
@@ -16,5 +16,5 @@ A: gcc fib.o main.o -o main.exe
 checked 11 targets
 ran 11 commands
 
-./jenga build -a
+jenga build -a
 checked 11 targets

@@ -4,6 +4,7 @@ expect.names :
   echo 02-discover-deps >> $@
   echo 03-simple-make >> $@
   echo 04-simple-make-plus-cc >> $@
+  echo 05-sudoku >> $@
 
 include ../rulelib/expect.jenga
 

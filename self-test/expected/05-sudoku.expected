@@ -1,0 +1,36 @@
+
+# Build
+jenga build -a
+A: echo 9.8.4 > version
+A: echo ~/.ghcup/bin/ghc-$(cat version) > ghc-path
+A: echo exec $(cat ghc-path) '"$@"' > ghc.exe
+A: chmod +x ghc.exe
+A: ./ghc.exe -c Sudoku.hs -XLambdaCase
+A: ./ghc.exe -c main.hs
+A: ./ghc.exe main.o Sudoku.o -package containers -o solver.exe
+checked 7 targets
+ran 7 commands
+
+# Solve a puzzle
+jenga exec solver.exe puzzle
+...3.9..5
+...475...
+......4..
+89.......
+.7..5..89
+56....3.4
+..7..492.
+....9.6.8
+2...31.4.
+
+428369715
+913475862
+756812493
+892743156
+374156289
+561928374
+637584921
+145297638
+289631547
+
+1

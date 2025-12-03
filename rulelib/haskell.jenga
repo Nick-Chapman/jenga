@@ -40,12 +40,8 @@ ghc.exe: ghc-version
 ghc.pkgdb : ghc-version
   echo ~/.ghcup/ghc/$(cat ghc-version)/lib/ghc-$(cat ghc-version)/lib/package.conf.d > ghc.pkgdb
 
-# TODO: discover the snapshot id automatically; per ghc-version
-snapshot:
-  echo 0c0e09a39c717a2ea362c88b471e2ca3bfed98555f446ae62de384c509723563 > snapshot
-
-pkgdb: snapshot ghc-version
-  echo ~/.stack/snapshots/x86_64-linux/$(cat snapshot)/$(cat ghc-version)/pkgdb >pkgdb
+pkgdb: ghc-version
+  ls -d ~/.stack/snapshots/*/*/$(cat ghc-version)/pkgdb | tail -1 > $@
 
 ghc.compiler : maybe.unbuffer ghc.exe pkgdb all.options
   echo $(cat ./maybe.unbuffer) $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$$@"' > ghc.compiler

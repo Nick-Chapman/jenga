@@ -1,7 +1,7 @@
 
 # Materialize the jenga.exe. Use by cram tests.
 
-!jenga.exe : jenga
+!jenga.exe : jenga # TODO: avoid materialization which plays havoc with watcher mode
   ln $< $@
 
 executable-name:

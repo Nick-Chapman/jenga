@@ -1,10 +1,6 @@
 
-expect.names :
-  echo 01-two-files >> $@
-  echo 02-discover-deps >> $@
-  echo 03-simple-make >> $@
-  echo 04-simple-make-plus-cc >> $@
-  echo 05-sudoku >> $@
+expect.names  :
+  echo '$glob' | grep -v rules.sh | grep \.sh | sed 's|\.sh$||' | sort > $@
 
 include ../rulelib/expect.jenga
 

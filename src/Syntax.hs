@@ -47,7 +47,6 @@ elaborate config@Config{homeDir} dotJengaFile0 = do
           GRule $ Rule
             { rulename
             , dir
-            , hidden = False
             , target =
               case ruleTarget of
                 MArtifacts xs ->
@@ -61,7 +60,7 @@ elaborate config@Config{homeDir} dotJengaFile0 = do
             }
 
     bash :: [String] -> Action
-    bash commands = Action { hidden = False, commands }
+    bash commands = Action { commands }
 
     makeDep artNames = \case
       DepPlain file -> DNeed (makeKey file)

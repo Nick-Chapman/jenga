@@ -94,8 +94,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         let System{rules} = system
         sequence_
           [ BLog t
-          | Rule{hidden,target} <- rules
-          , not hidden
+          | Rule{target} <- rules
           , t <-
               case target of
                 Artifacts arts -> [ ppKey config key | Artifact{key} <- arts ]
@@ -108,12 +107,10 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
         staticRules :: [StaticRule] <- concat <$>
-          sequence [ do (deps,action@Action{hidden=actionHidden}) <- gatherDeps config how depcom
+          sequence [ do (deps,action) <- gatherDeps config how depcom
                         pure [ StaticRule { rulename, dir, target, deps, action }
-                             | not actionHidden
                              ]
-                   | Rule{rulename,dir,hidden=ruleHidden,target,depcom} <- rules
-                   , not ruleHidden
+                   | Rule{rulename,dir,target,depcom} <- rules
                    ]
         BLog (intercalate "\n\n" (map (ppStaticRule config) staticRules))
 
@@ -171,8 +168,7 @@ buildEverythingInSystem config system = do
   let
     allArtifacts =
         [ art
-        | Rule{hidden,target} <- rules
-        , not hidden
+        | Rule{target} <- rules
         , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
         , art <- arts
         ]
@@ -204,8 +200,7 @@ reportSystem Config{logMode,worker} System{rules} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   let nTargets =
         sum [ length arts
-            | Rule{target,hidden} <- rules
-            , not hidden
+            | Rule{target} <- rules
             , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
             ]
   when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
@@ -920,9 +915,9 @@ runB cacheDir config@Config{logMode} build0 = do
         let BState{sandboxCounter=i} = s
         k s { sandboxCounter = 1 + i } (SUCC (insistLocIsDir (sandboxParent myPid </> show i)))
 
-      BRunActionInDir sandbox action@Action{hidden,commands} -> do
+      BRunActionInDir sandbox action@Action{commands} -> do
         res <- XRunActionInDir sandbox action
-        k s { runCounter = runCounter s + (if hidden then 0 else length commands)} (SUCC res)
+        k s { runCounter = runCounter s + length commands } (SUCC res)
 
       Execute x -> do a <- x; k s (SUCC a)
 
@@ -1006,7 +1001,7 @@ reportBuildRes Config{worker} res =
 
 data BState = BState
   { sandboxCounter :: Int
-  , runCounter :: Int -- less than sandboxCounter because of hidden actions
+  , runCounter :: Int
   , memoT :: Map Key (OrWIP (BuildRes Digest))
   , memoR :: Map [Key] (BuildRes WitMap)
   , jobs :: [BJob]
@@ -1082,11 +1077,11 @@ runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = l
       XLogErr mes -> maybePrefixPid config mes >>= putErr
 
       -- sandboxed execution of user's action; for now always a list of bash commands
-      XRunActionInDir dir Action{hidden,commands} -> ActionRes <$> do
+      XRunActionInDir dir Action{commands} -> ActionRes <$> do
         forM commands $ \command -> do
           -- TODO: perhaps on logAction (-a) we can also show the commands elided!
           let logAction = case logMode of LogActions -> True; _ -> False
-          when (not hidden && logAction) $ log $ printf "A: %s" command
+          when logAction $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-
             withCurrentDirectory (pathOfDir dir) (readCreateProcessWithExitCode (shell command) "")
           pure $ CommandRes { exitCode, stdout, stderr }

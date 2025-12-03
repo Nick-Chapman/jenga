@@ -1,0 +1,25 @@
+
+# Build; seeing the actions
+jenga build -a
+A: echo -n A > a
+A: echo -n B  > b
+A: cat a b > ab
+A: echo -n C > c
+A: cat b c > bc
+A: cat ab bc > top
+checked 6 targets
+ran 6 commands
+
+# Build quietly; materializaing; showing top output
+jenga build -mq && cat ,jenga/top; echo
+ABBC
+
+# Build with --debug-demand; memoization ensures no target is "Require"d more than once
+jenga build -a --debug-demand
+B: Require: top
+B: Require: ab
+B: Require: a
+B: Require: b
+B: Require: bc
+B: Require: c
+checked 6 targets

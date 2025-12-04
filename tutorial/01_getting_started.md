@@ -6,30 +6,6 @@ Following a successful download and install of jenga, this tutorial will guide y
 - [Here](files/01) are the files used in this section of the tutorial.
 - [Here](cram/01_getting_started.t) is the companion cram file.
 
-## Download, build and install jenga
-
-_TODO: Improve/simplify the installation story._
-
-The following steps will download and build `jenga` from source.
-```
-rm -rf /tmp/jenga
-git clone https://github.com/Nick-Chapman/jenga.git /tmp/jenga
-cd /tmp/jenga
-stack build
-```
-
-This tutorial assumes you have `jenga` available in your path.
-For example, you might choose to link a file `jenga`, in a directory picked up by your path, to the executable built by stack command above.
-```
-cd ~/.local/bin
-ln -s $(find /tmp/jenga/.stack-work/dist -type f -name jenga) jenga
-```
-
-Now we can display jenga's top level usage/help message.
-```
-jenga --help
-```
-
 ## First build
 
 Let's use jenga to build and run a simple C application.

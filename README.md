@@ -67,8 +67,40 @@ To build Jenga from source requires:
 - [unbuffer](https://command-not-found.com/unbuffer) (if installed) is used by the haskell rules to force `ghc` to show coloured output.
 - [inotifywait](https://linux.die.net/man/1/inotifywait) is needed for the jenga wrapper script to support watcher mode: `sudo apt install inotify-tools`.
 
+
+## Installation
+
+Choose a permanent directory into which the jenga sources will be cloned; perhaps: `~/jenga`.
+
+### Clone the jenga sources (first time only)
+```
+git clone git@github.com:Nick-Chapman/jenga.git ~/jenga
+```
+
+### Pull the latest jenga sources (subsequent times)
+```
+(cd ~/jenga; git pull)
+```
+
+Choose where to install the jenga executable and wrapper script; perhaps `~/.local/bin`.
+
+### Install with watcher mode support (`-w`); requires `inotifywait`
+```
+(cd ~/jenga/src; stack run -- install jenga.exe ~/.local/bin/jenga.exe)
+ln -sf ~/jenga/jenga ~/.local/bin/jenga
+```
+
+### Install without watcher mode support
+```
+(cd ~/jenga/src; stack run -- install jenga.exe ~/.local/bin/jenga.exe)
+ln -sf jenga.exe ~/.local/bin/jenga
+```
+
+Now we can display Jenga's help message.
+```
+jenga --help
+```
+
 ## Tutorial
 
-Once you have `ghc` and `stack` installed, please proceed to the
-[tutorial index](tutorial/README.md) to get `jenga` built and installed,
-and to learn how to setup and run jenga builds.
+[tutorial index](tutorial/README.md) to learn how to setup and run jenga builds.

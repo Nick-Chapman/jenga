@@ -1,7 +1,7 @@
 -- | Syntax and elaboration for build.jenga files
 module Syntax (elaborate) where
 
-import Data.List (intercalate)
+import Data.List (intercalate,sort)
 import Data.List.Split (splitOn)
 import Text.Printf (printf)
 
@@ -125,7 +125,7 @@ glob dir = do
         [ do isDir <- isDirectory loc; pure (loc,isDir)
         | (loc,exists) <- xs, exists
         ]
-      pure [ takeBase loc | (loc,isDir) <- ys, not isDir ]
+      pure (sort [ takeBase loc | (loc,isDir) <- ys, not isDir ])
     _what ->
       GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
 

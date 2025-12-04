@@ -1,7 +1,7 @@
 
 # Build
 jenga build -a
-A: echo '.output\ndefs.h.in\njenga.exe\nfib.c\nmain.c\nfib.h\ncc.jenga\njenga\nREADME\nbuild.jenga\n04-simple-make-plus-cc.sh' | grep '\.c$' > c.files
+A: echo '.output\n04-simple-make-plus-cc.sh\nREADME\nbuild.jenga\ncc.jenga\ndefs.h.in\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' | grep '\.c$' > c.files
 A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
 A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
 A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules

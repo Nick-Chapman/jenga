@@ -1,7 +1,7 @@
 
 # Build
 jenga build -a
-A: echo '.output\ndefs.h\njenga.exe\nfib.c\n12-generated-rules.sh\nmain.c\nfib.h\njenga\nbuild.jenga' > all.files
+A: echo '.output\n12-generated-rules.sh\nbuild.jenga\ndefs.h\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' > all.files
 A: cat all.files | grep '.c$' > c.files
 A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
 A: cat all.files | grep '.h$' > h.files
@@ -45,7 +45,7 @@ fib.o : fib.c fib.h
 c.rules : c.files
   cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
 
-depends : c.files fib.c main.c defs.h 12-generated-rules.sh fib.h
+depends : c.files fib.c main.c 12-generated-rules.sh defs.h fib.h
   gcc -MG -MM $(cat c.files) > depends
 
 h.files : all.files
@@ -61,4 +61,4 @@ hello.exe : o.files fib.o main.o
   gcc -o hello.exe $(cat o.files)
 
 all.files : 
-  echo '.output\ndefs.h\njenga.exe\nfib.c\n12-generated-rules.sh\nmain.c\nfib.h\njenga\nbuild.jenga' > all.files
+  echo '.output\n12-generated-rules.sh\nbuild.jenga\ndefs.h\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' > all.files

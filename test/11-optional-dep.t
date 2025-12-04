@@ -38,7 +38,7 @@ Change CFLAGS; rebuilds:
   (rule) example/main.o : example/main.c example/CFLAGS
   (command) $ gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   (stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
-  (stderr)     2 | void main() { //m ain ought to be declared as int. -Wall will detect this.
+  (stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
   (stderr)       |      ^~~~
   checked 2 targets
   ran 1 command

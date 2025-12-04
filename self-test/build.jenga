@@ -1,6 +1,6 @@
 
 expect.names  :
-  echo '$glob' | grep -v rules.sh | grep \.sh$ | sed 's|\.sh$||' | sort > $@
+  echo '$glob' | grep -v ^rules.sh$ | grep \.sh$ | sed 's|\.sh$||' | sort > $@
 
 include ../rulelib/expect.jenga
 

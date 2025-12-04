@@ -1,5 +1,5 @@
 
-# Initial build
+# Build
 jenga build -a
 A: gcc -MG -MM fib.c > fib.d
 A: gcc -c fib.c -o fib.o
@@ -9,14 +9,14 @@ A: gcc fib.o main.o -o main.exe
 checked 5 targets
 ran 5 commands
 
-# Run the executable
+# Run
 jenga exec main.exe
 hello, 55 world with scanner deps
 
 # Inspect the generated deps
-jenga build -mq && find ,jenga -name '*.d' | xargs cat
-main.o: main.c fib.h defs.h
-fib.o: fib.c fib.h
+jenga build -mq && find ,jenga -name '*.d' | xargs grep ^
+,jenga/main.d:main.o: main.c fib.h defs.h
+,jenga/fib.d:fib.o: fib.c fib.h
 
 # Make a change; rebuild
 rm defs.h && echo '#define MY_CONST 11' > defs.h
@@ -26,6 +26,6 @@ A: gcc fib.o main.o -o main.exe
 checked 5 targets
 ran 2 commands
 
-# And rerun
+# Rerun
 jenga exec main.exe
 hello, 89 world with scanner deps

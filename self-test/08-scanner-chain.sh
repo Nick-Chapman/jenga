@@ -1,8 +1,8 @@
 
-# Initial build
+# Build
 jenga build -a
 
-# Run the executable
+# Run
 jenga exec main.exe
 
 # Mod-A (change const value)

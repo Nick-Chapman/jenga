@@ -1,0 +1,38 @@
+
+# Build
+jenga build -a
+A: echo 9.8.4 > version
+A: echo ~/.ghcup/bin/ghc-$(cat version) > ghc-path
+A: echo exec $(cat ghc-path) '"$@"' > ghc.exe
+A: chmod +x ghc.exe
+A: ./ghc.exe -c A.hs
+A: ./ghc.exe -c B.hs
+A: ./ghc.exe -c C.hs
+A: ./ghc.exe -c Top.hs
+A: echo 'import Top' > main.hs
+A: ./ghc.exe -c main.hs
+A: ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
+checked 14 targets
+ran 11 commands
+
+# Run
+jenga exec diamond.exe
+Top[B[A],C[A]]
+
+# Debug demand
+jenga build --debug-demand
+B: Require: ghc.exe
+B: Require: ghc-path
+B: Require: version
+B: Require: Top.hi
+B: Require: B.hi
+B: Require: A.hi
+B: Require: C.hi
+B: Require: Top.o
+B: Require: C.o
+B: Require: B.o
+B: Require: A.o
+B: Require: main.hs
+B: Require: main.o
+B: Require: diamond.exe
+checked 14 targets

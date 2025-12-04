@@ -1,0 +1,64 @@
+
+# Build
+jenga build -a
+A: echo '.output\ndefs.h\njenga.exe\nfib.c\n12-generated-rules.sh\nmain.c\nfib.h\njenga\nbuild.jenga' > all.files
+A: cat all.files | grep '.c$' > c.files
+A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
+A: cat all.files | grep '.h$' > h.files
+A: gcc -MG -MM $(cat c.files) > depends
+A: gcc -c -o main.o main.c
+A: gcc -c -o fib.o fib.c
+A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
+A: gcc -o hello.exe $(cat o.files)
+checked 9 targets
+ran 9 commands
+
+# Run
+jenga exec hello.exe
+Hello, 55 jenga. Discovered deps and generated rules.
+
+# Change & rereun
+sed -i 's/10/11/' defs.h
+jenga exec hello.exe
+Hello, 89 jenga. Discovered deps and generated rules.
+
+# Targets
+jenga build --list-targets
+main.o
+fib.o
+c.rules
+depends
+h.files
+o.files
+c.files
+hello.exe
+all.files
+
+# Rules
+jenga build --list-rules
+main.o : main.c fib.h defs.h
+  gcc -c -o main.o main.c
+
+fib.o : fib.c fib.h
+  gcc -c -o fib.o fib.c
+
+c.rules : c.files
+  cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
+
+depends : c.files fib.c main.c defs.h 12-generated-rules.sh fib.h
+  gcc -MG -MM $(cat c.files) > depends
+
+h.files : all.files
+  cat all.files | grep '.h$' > h.files
+
+o.files : c.files
+  cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
+
+c.files : all.files
+  cat all.files | grep '.c$' > c.files
+
+hello.exe : o.files fib.o main.o
+  gcc -o hello.exe $(cat o.files)
+
+all.files : 
+  echo '.output\ndefs.h\njenga.exe\nfib.c\n12-generated-rules.sh\nmain.c\nfib.h\njenga\nbuild.jenga' > all.files

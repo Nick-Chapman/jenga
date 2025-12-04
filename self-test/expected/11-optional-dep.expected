@@ -1,0 +1,81 @@
+
+# Build
+jenga build -a
+A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+A: gcc -o main.exe main.o
+checked 2 targets
+ran 2 commands
+
+# Zero build
+jenga build -a
+checked 2 targets
+
+# Run (currently jenga exec doesn't like the exit 25)
+# jenga exec main.exe
+jenga install main.exe main.exe.MAT && ./main.exe.MAT
+hello, conditional world
+
+# Define CFLAGS; rebuilds
+echo '-O2' > CFLAGS
+jenga build -a
+A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+A: gcc -o main.exe main.o
+checked 2 targets
+ran 2 commands
+
+# Change CFLAGS; rebuilds; warning displayed
+echo '-Wall' > CFLAGS
+jenga build -a
+A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+(directory) .
+(rule) main.o : main.c CFLAGS
+(command) $ gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+(stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
+(stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
+(stderr)       |      ^~~~
+checked 2 targets
+ran 1 command
+
+# Try again: no actions; warning redisplayed
+jenga build -a
+(directory) .
+(rule) main.o : main.c CFLAGS
+(command) $ gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+(stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
+(stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
+(stderr)       |      ^~~~
+checked 2 targets
+
+# Change CFLAGS; rebuilds; error displayed; build failed
+echo '-Wall -Werror' > CFLAGS
+jenga build -a
+A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+(directory) .
+(rule) main.o : main.c CFLAGS
+(command) $ gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+(stderr) main.c:2:6: error: return type of 'main' is not 'int' [-Werror=main]
+(stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
+(stderr)       |      ^~~~
+(stderr) cc1: all warnings being treated as errors
+(exit-code) 1
+ran 1 command
+Build failed for 1 reasons:
+(1) action failed for rule targeting: main.o
+
+# Try again: no actions; error redisplayed; build still failed
+jenga build -a
+(directory) .
+(rule) main.o : main.c CFLAGS
+(command) $ gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+(stderr) main.c:2:6: error: return type of 'main' is not 'int' [-Werror=main]
+(stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
+(stderr)       |      ^~~~
+(stderr) cc1: all warnings being treated as errors
+(exit-code) 1
+Build failed for 1 reasons:
+(1) action failed for rule targeting: main.o
+
+# Remove CFLAGS; no actions; back to original build
+rm CFLAGS
+jenga build -a
+checked 2 targets

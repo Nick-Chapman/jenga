@@ -1,0 +1,25 @@
+
+# Run the view action (note that subdirs are excluded by glob)
+jenga run -a view
+A: echo 'file1\n.output\njenga.exe\n16-glob.sh\nfile3\nyyy\njenga\nfile2\nbuild.jenga' > my.all
+A: tar -cf ball.tar $(cat my.all)
+A: echo -------------------- >> report
+A: tar -tf ball.tar | sort >> report
+A: echo -------------------- >> report
+checked 3 targets
+A: cat report
+(directory) .
+(rule) *view : report
+(command) $ cat report
+--------------------
+.output
+16-glob.sh
+build.jenga
+file1
+file2
+file3
+jenga
+jenga.exe
+yyy
+--------------------
+ran 6 commands

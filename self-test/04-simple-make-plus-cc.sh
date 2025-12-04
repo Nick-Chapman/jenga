@@ -1,8 +1,6 @@
 
 # Build
-
 jenga build -a
 
-# Run the main executable
-
+# Run
 jenga exec main.exe

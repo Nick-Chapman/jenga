@@ -1,5 +1,5 @@
 
-# Build; seeing the actions
+# Build
 jenga build -a
 A: echo -n A > a
 A: echo -n B  > b
@@ -10,11 +10,11 @@ A: cat ab bc > top
 checked 6 targets
 ran 6 commands
 
-# Build quietly; materializaing; showing top output
-jenga build -mq && cat ,jenga/top; echo
+# Materialize and show top output
+jenga install top top.out; cat top.out; echo
 ABBC
 
-# Build with --debug-demand; memoization ensures no target is "Require"d more than once
+# See memoization when building; No target is "Require"d more than once
 jenga build -a --debug-demand
 B: Require: top
 B: Require: ab

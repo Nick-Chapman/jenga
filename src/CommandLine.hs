@@ -39,7 +39,7 @@ data BuildMode
   | ModeListRules
   | ModeBuild
   | ModeExec FilePath [FilePath]
-  | ModeInstall FilePath FilePath
+  | ModeInstall FilePath FilePath -- TODO: jenga cat
   | ModeRun [String]
 
 exec :: IO Config
@@ -169,7 +169,7 @@ execAt homeDir startDir = do
     debugLocking <- switch (long "debug-locking" <> help "Debug locking behaviour")
 
     materializeCommaJenga <-
-      switch (short 'm' <> long "materialize"
+      switch (short 'm' <> long "materialize" -- TODO: kill when we get "jenga cat"
               <> help "Materialize all build artifacts in ,jenga directory")
 
     withPromotion <-

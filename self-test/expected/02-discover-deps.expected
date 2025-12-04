@@ -1,20 +1,87 @@
 
-# Example 02 : build and zero rebuild
+# Allow source to be modifed during this test
+chmod +w defs.h main.c
 
-jenga build -a
-A: echo '.output\n02-discover-deps.sh\ndefs.h\njenga.exe\nfib.c\n.cache\nmain.c\nfib.h\ncc.jenga\njenga\nREADME\nbuild.jenga' | grep '\.c$' > c.files
-A: cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
-A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
-A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
-A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
-A: echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
-A: gcc -MG -MM fib.c -MF fib.d
-A: gcc -c fib.c -o fib.o
-A: gcc -MG -MM main.c -MF main.d
-A: gcc -c main.c -o main.o
-A: gcc fib.o main.o -o main.exe
+# Build from clean (output 55)
+jenga build && jenga exec main.exe
 checked 11 targets
 ran 11 commands
+hello, 55 world with auto discovery
 
-jenga build -a
+# Zero rebuild (no actions; no execution change)
+jenga build && jenga exec main.exe
 checked 11 targets
+hello, 55 world with auto discovery
+
+# Change main.c (one action; modified output 55)
+sed -i 's/world/UNIVERSE/g' main.c
+jenga build && jenga exec main.exe
+checked 11 targets
+ran 3 commands
+hello, 55 UNIVERSE with auto discovery
+
+# Whitespace change to fib.h (two actions; same output 55)
+sed -i 's/int fib/int      fib/g' fib.h
+jenga build && jenga exec main.exe
+checked 11 targets
+ran 2 commands
+hello, 55 UNIVERSE with auto discovery
+
+#  Change const value in defs.h (two actions; output 89))
+echo '#define MY_CONST 11' > defs.h
+jenga build && jenga exec main.exe
+checked 11 targets
+ran 2 commands
+hello, 89 UNIVERSE with auto discovery
+
+# Setup ALT defs file (one action to re-glob; same output 89)
+echo '#define MY_CONST 12' > defsALT.h
+jenga build -a && jenga exec main.exe
+A: echo '.output\n02-discover-deps.sh\ndefs.h\njenga.exe\nfib.c\nmain.c\nfib.h\ncc.jenga\njenga\nREADME\nbuild.jenga\ndefsALT.h' | grep '\.c$' > c.files
+checked 11 targets
+ran 1 command
+hello, 89 UNIVERSE with auto discovery
+
+# Switch main to use ALT defs (three actions; output 144)
+sed -i 's/defs/defsALT/g' main.c
+jenga build && jenga exec main.exe
+checked 11 targets
+ran 3 commands
+hello, 144 UNIVERSE with auto discovery
+
+# Modify defs file to original value (no actions; same output 144):
+echo '#define MY_CONST 10' > defs.h
+jenga build && jenga exec main.exe
+checked 11 targets
+hello, 144 UNIVERSE with auto discovery
+
+# Switch main back to origianl defs file (no actions; output 55)
+sed -i 's/defsALT/defs/g' main.c
+jenga build && jenga exec main.exe
+checked 11 targets
+hello, 55 UNIVERSE with auto discovery
+
+
+# Modify compile flags via optionally detected cflags file...
+
+# Compile with -Wall: causes recompile; but no link
+echo '-Wall' > cflags
+jenga build -a
+A: echo '.output\n02-discover-deps.sh\ndefs.h\njenga.exe\nfib.c\nmain.c\nfib.h\ncc.jenga\ncflags\njenga\nREADME\nbuild.jenga\ndefsALT.h' | grep '\.c$' > c.files
+A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
+A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
+A: gcc -Wall -c fib.c -o fib.o
+A: gcc -Wall -c main.c -o main.o
+checked 11 targets
+ran 5 commands
+
+# Compile with -O2 causes recompile and link
+echo '-O2' > cflags
+jenga build -a
+A: echo gcc $(test -f cflags && cat cflags) > gcc.runner
+A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
+A: gcc -O2 -c fib.c -o fib.o
+A: gcc -O2 -c main.c -o main.o
+A: gcc fib.o main.o -o main.exe
+checked 11 targets
+ran 5 commands

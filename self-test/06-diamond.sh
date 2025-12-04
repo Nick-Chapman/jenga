@@ -1,9 +1,9 @@
 
-# Build; seeing the actions
+# Build
 jenga build -a
 
-# Build quietly; materializaing; showing top output
-jenga build -mq && cat ,jenga/top; echo
+# Materialize and show top output
+jenga install top top.out; cat top.out; echo
 
-# Build with --debug-demand; memoization ensures no target is "Require"d more than once
+# See memoization when building; No target is "Require"d more than once
 jenga build -a --debug-demand

@@ -1,0 +1,23 @@
+
+# Build
+jenga build -a
+A: echo -n A > a
+A: echo -n B > b
+A: cat a b > ab
+checked 3 targets
+ran 3 commands
+
+# See Targets
+jenga build --list-targets
+ab
+b
+a
+
+# Materialize & view
+jenga build --materialize
+checked 3 targets
+find ,jenga | xargs grep ^
+grep: ,jenga: Is a directory
+,jenga/a:A
+,jenga/b:B
+,jenga/ab:AB

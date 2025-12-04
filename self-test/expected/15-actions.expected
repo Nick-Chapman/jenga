@@ -1,0 +1,43 @@
+
+# Remove the expectation file
+rm the.out.expected
+
+# Test; the.out.expected is missing, so failure
+jenga test
+checked 2 targets
+ran 2 commands
+Build failed for 1 reasons:
+(1) 'the.out.expected' : is not source and has no build rule
+
+# Promote
+jenga build -a --promote
+A: if [ ! -z "promote" ]; then echo '!the.out.expected : the.out : ln $< $@'; fi > promotion.rule
+A: ln the.out the.out.expected
+checked 3 targets
+ran 2 commands
+
+# Test (now passes)
+jenga test -a
+checked 2 targets
+A: diff the.out the.out.expected
+ran 1 command
+
+# Change expectation
+rm the.out.expected
+echo 'But I want to see this!' > the.out.expected
+
+# Rerun test; get failure
+jenga test -a
+checked 2 targets
+A: diff the.out the.out.expected
+(directory) .
+(rule) *test : the.out the.out.expected
+(command) $ diff the.out the.out.expected
+1c1
+< I am the output!
+---
+> But I want to see this!
+(exit-code) 1
+ran 1 command
+Build failed for 1 reasons:
+(1) action failed for rule targeting: *test

@@ -7,7 +7,7 @@ import Text.Printf (printf)
 
 import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
+import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: Config -> Key -> G ()
@@ -121,9 +121,19 @@ glob dir = do
         [ do exists <- GExistsKey (Key loc); pure (loc,exists)
         | e <- entries, let loc = dir </> e
         ]
-      pure [ takeBase loc | (loc,exists) <- xs, exists ]
+      ys <- sequence
+        [ do isDir <- isDirectory loc; pure (loc,isDir)
+        | (loc,exists) <- xs, exists
+        ]
+      pure [ takeBase loc | (loc,isDir) <- ys, not isDir ]
     _what ->
       GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
+
+isDirectory :: Loc -> G Bool
+isDirectory loc = do
+  GWhat loc >>= \case
+    Directory{} -> pure True
+    _ -> pure False
 
 filterDepsFor :: [String] -> String -> [String]
 filterDepsFor artNames contents = do

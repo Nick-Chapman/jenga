@@ -1,16 +1,16 @@
 
-# Initial build
+# Build
 jenga build -a
 
-# Run the executable
+# Run
 jenga exec main.exe
 
 # Inspect the generated deps
-jenga build -mq && find ,jenga -name '*.d' | xargs cat
+jenga build -mq && find ,jenga -name '*.d' | xargs grep ^
 
 # Make a change; rebuild
 rm defs.h && echo '#define MY_CONST 11' > defs.h
 jenga build -a
 
-# And rerun
+# Rerun
 jenga exec main.exe

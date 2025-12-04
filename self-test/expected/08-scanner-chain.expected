@@ -1,5 +1,5 @@
 
-# Initial build
+# Build
 jenga build -a
 A: gcc -MG -MM fib.c > fib.d
 A: gcc -c fib.c -o fib.o
@@ -10,7 +10,7 @@ A: gcc fib.o main.o -o main.exe
 checked 6 targets
 ran 6 commands
 
-# Run the executable
+# Run
 jenga exec main.exe
 hello, 55 world with #include chain
 

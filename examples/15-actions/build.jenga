@@ -8,7 +8,7 @@
 the.out : the.sh
   ./$< > $@
 
-promotion.rules :
-  echo '!the.out.expected : the.out : ln $$< $$@' > $@
+promotion.rule :
+  if [ ! -z "$promote" ]; then echo '!the.out.expected : the.out : ln $$< $$@'; fi > $@
 
-#include promotion.rules
+include promotion.rule

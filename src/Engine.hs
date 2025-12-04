@@ -128,6 +128,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         let System{how} = system
         digest <- buildArtifact config how (Key exe)
         cacheFile <- cacheFile digest
+        -- TODO: avoid haskell backtrace for non-zero exit code
         Execute (XIO (callProcess (pathOfLoc cacheFile) argsForExe))
 
     ModeInstall src0 dest0 -> do

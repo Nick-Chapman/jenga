@@ -141,7 +141,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         digest <- buildArtifact config how (Key src)
         installDigest digest dest
 
-    ModeRun names -> do
+    ModeRun names -> do -- TODO: exit code with #errors (also for jenga build)
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         buildEverythingInSystem config system

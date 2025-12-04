@@ -73,32 +73,32 @@ hello, 55 world
 # Materalize all targets in ,jenga; no actions run
 jenga build -a --materialize
 checked 6 targets
-find ,jenga
+find ,jenga | sort
 ,jenga
 ,jenga/ANOTHER
-,jenga/ANOTHER/fib.o
 ,jenga/ANOTHER/RENAMED.exe
+,jenga/ANOTHER/fib.o
 ,jenga/ANOTHER/main.o
 ,jenga/RELOCATED
-,jenga/RELOCATED/fib.o
 ,jenga/RELOCATED/RENAMED.exe
+,jenga/RELOCATED/fib.o
 ,jenga/RELOCATED/main.o
 
 # Remove one directory copy; materalize again in ,jenga
 rm -rf RELOCATED
 jenga build -a --materialize
 checked 3 targets
-find ,jenga
+find ,jenga | sort
 ,jenga
 ,jenga/ANOTHER
-,jenga/ANOTHER/fib.o
 ,jenga/ANOTHER/RENAMED.exe
+,jenga/ANOTHER/fib.o
 ,jenga/ANOTHER/main.o
 
 # Run build again without --materialize; ,jenga is removed
 jenga build -a
 checked 3 targets
-find ,jenga
+find ,jenga | sort
 find: ',jenga': No such file or directory
 
 # Mod some more, try -q

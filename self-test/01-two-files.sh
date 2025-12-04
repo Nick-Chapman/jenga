@@ -46,16 +46,16 @@ jenga exec ANOTHER/RENAMED.exe
 
 # Materalize all targets in ,jenga; no actions run
 jenga build -a --materialize
-find ,jenga
+find ,jenga | sort
 
 # Remove one directory copy; materalize again in ,jenga
 rm -rf RELOCATED
 jenga build -a --materialize
-find ,jenga
+find ,jenga | sort
 
 # Run build again without --materialize; ,jenga is removed
 jenga build -a
-find ,jenga
+find ,jenga | sort
 
 # Mod some more, try -q
 sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c

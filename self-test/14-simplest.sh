@@ -7,4 +7,4 @@ jenga build --list-targets
 
 # Materialize & view
 jenga build --materialize
-find ,jenga | xargs grep ^
+find ,jenga | sort | xargs grep ^

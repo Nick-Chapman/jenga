@@ -16,8 +16,8 @@ a
 # Materialize & view
 jenga build --materialize
 checked 3 targets
-find ,jenga | xargs grep ^
+find ,jenga | sort | xargs grep ^
 grep: ,jenga: Is a directory
 ,jenga/a:A
-,jenga/b:B
 ,jenga/ab:AB
+,jenga/b:B

@@ -39,7 +39,8 @@ data BuildMode
   | ModeListRules
   | ModeBuild
   | ModeExec FilePath [FilePath]
-  | ModeInstall FilePath FilePath -- TODO: jenga cat
+  | ModeCat FilePath
+  | ModeInstall FilePath FilePath
   | ModeRun [String]
 
 exec :: IO Config
@@ -62,6 +63,7 @@ execAt homeDir startDir = do
     -- TODO: fix "COMMAND" shown in usage message
     hsubparser (command "build" (info buildCommand (progDesc "Bring a build up to date"))) <|>
     hsubparser (command "exec" (info execCommand (progDesc "build; then run a single executable target"))) <|>
+    hsubparser (command "cat" (info catCommand (progDesc "build; then cat a single target"))) <|>
     hsubparser (command "install" (info installCommand (progDesc "build; then install a single executable"))) <|>
     hsubparser (command "run" (info runCommand (progDesc "build; then run a list of actions"))) <|>
     hsubparser (command "test" (info testCommand (progDesc "build; then run the 'test' action")))
@@ -93,6 +95,15 @@ execAt homeDir startDir = do
         exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
         exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
         pure (ModeExec exe exeArgs)
+    let args = pure []
+    sharedOptions LogQuiet args buildMode
+
+  catCommand :: Parser Config
+  catCommand = do
+    let
+      buildMode = do
+        target <- strArgument (metavar "TARGET" <> help "Executable to cat")
+        pure (ModeCat target)
     let args = pure []
     sharedOptions LogQuiet args buildMode
 

@@ -11,7 +11,7 @@ checked 6 targets
 ran 6 commands
 
 # Materialize and show top output
-jenga install top top.out; cat top.out; echo
+jenga cat top; echo
 ABBC
 
 # See memoization when building; No target is "Require"d more than once

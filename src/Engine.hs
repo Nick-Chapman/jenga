@@ -133,6 +133,18 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
           exitCode <- waitForProcess h
           putStr (seeFailureExit exitCode) -- TODO: better: propagate as my exit-code?
 
+    ModeCat src0 -> do
+      let src = startDir </> src0
+      runBuild cacheDir config $ \config -> do
+        system <- runElaboration config (userProg ["."])
+        buildEverythingInSystem config system
+        let System{how} = system
+        digest <- buildArtifact config how (Key src)
+        file <- cacheFile digest
+        Execute $ do
+          contents <- XReadFile file
+          XIO (putStr contents)
+
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
       let dest = startDir </> dest0

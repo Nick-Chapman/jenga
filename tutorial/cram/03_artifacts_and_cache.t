@@ -110,14 +110,14 @@ Specifying a build cache
   $ tmp/.cache/jenga/files/0fcce4811e995a71fe45c2826bb0868b
   Hello, 55 jenga!
 
-  $ find tmp/.cache/jenga/traces
-  tmp/.cache/jenga/traces
-  tmp/.cache/jenga/traces/571ae0d564e493fd56beaacd252dd266
-  tmp/.cache/jenga/traces/19fd421c88e4d287c7d85cd3b04fed7c
-  tmp/.cache/jenga/traces/b930308dbe676abf1eede649933346ce
+$ find tmp/.cache/jenga/traces
+tmp/.cache/jenga/traces
+tmp/.cache/jenga/traces/571ae0d564e493fd56beaacd252dd266
+tmp/.cache/jenga/traces/19fd421c88e4d287c7d85cd3b04fed7c
+tmp/.cache/jenga/traces/b930308dbe676abf1eede649933346ce
 
-  $ cat tmp/.cache/jenga/traces/19fd421c88e4d287c7d85cd3b04fed7c
-  TRACE [RUN {exitCode = ExitSuccess, stdout = "", stderr = ""}] (Just [("hello.exe","0fcce4811e995a71fe45c2826bb0868b")])
+$ cat tmp/.cache/jenga/traces/19fd421c88e4d287c7d85cd3b04fed7c
+TRACE [RUN {exitCode = ExitSuccess, stdout = "", stderr = ""}] (Just [("hello.exe","0fcce4811e995a71fe45c2826bb0868b")])
 
 
 Double build

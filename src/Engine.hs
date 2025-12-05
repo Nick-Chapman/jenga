@@ -21,7 +21,7 @@ import System.IO qualified as IO (stderr,stdout)
 import System.IO.SafeWrite (syncFile)
 import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,getSymbolicLinkStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory,isSymbolicLink)
 import System.Posix.Process (forkProcess)
-import System.Process (CreateProcess(env),shell,callProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
+import System.Process (ProcessHandle,waitForProcess,CreateProcess(env),shell,proc,createProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
@@ -47,7 +47,7 @@ engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
-  cacheDir :: Dir <- insistLocIsDir <$> -- TODO: pass cacheDir in COnfig
+  cacheDir :: Dir <- insistLocIsDir <$> -- TODO: pass cacheDir in Config
     case cacheDirSpec of
       CacheDirDefault -> do
         lookupEnv "XDG_CACHE_HOME" >>= \case
@@ -120,7 +120,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         buildEverythingInSystem config system
         reportSystem config system
 
-    ModeExec exe0 argsForExe -> do
+    ModeExec exe0 argsForExe -> do -- TODO: really do an exec here? (as in fork/exec)
       let exe = startDir </> exe0
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg ["."])
@@ -128,8 +128,10 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         let System{how} = system
         digest <- buildArtifact config how (Key exe)
         cacheFile <- cacheFile digest
-        -- TODO: avoid haskell backtrace for non-zero exit code
-        Execute (XIO (callProcess (pathOfLoc cacheFile) argsForExe))
+        Execute $ XIO $ do
+          (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
+          exitCode <- waitForProcess h
+          putStr (seeFailureExit exitCode) -- TODO: better: propagate as my exit-code?
 
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
@@ -824,10 +826,10 @@ seeCommandAndRes command CommandRes{exitCode,stdout,stderr} =
     seeOutput tag output = if output == "" then "" else
       concat [ printf "%s%s\n" tag line | line  <- lines output ]
 
-    seeFailureExit :: ExitCode -> String
-    seeFailureExit = \case
-      ExitFailure code -> "(exit-code) " ++ show code ++ "\n"
-      ExitSuccess -> ""
+seeFailureExit :: ExitCode -> String
+seeFailureExit = \case
+  ExitFailure code -> "(exit-code) " ++ show code ++ "\n"
+  ExitSuccess -> ""
 
 ----------------------------------------------------------------------
 -- B: build monad

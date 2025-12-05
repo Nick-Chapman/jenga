@@ -5,9 +5,8 @@ jenga build -a
 # Zero build
 jenga build -a
 
-# Run (currently jenga exec doesn't like the exit 25)
-# jenga exec main.exe
-jenga install main.exe main.exe.MAT && ./main.exe.MAT
+# Run (see exit code 25)
+jenga exec main.exe
 
 # Define CFLAGS; rebuilds
 echo '-O2' > CFLAGS

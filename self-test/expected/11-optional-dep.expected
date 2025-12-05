@@ -10,10 +10,10 @@ ran 2 commands
 jenga build -a
 checked 2 targets
 
-# Run (currently jenga exec doesn't like the exit 25)
-# jenga exec main.exe
-jenga install main.exe main.exe.MAT && ./main.exe.MAT
+# Run (see exit code 25)
+jenga exec main.exe
 hello, conditional world
+(exit-code) 25
 
 # Define CFLAGS; rebuilds
 echo '-O2' > CFLAGS

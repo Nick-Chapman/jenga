@@ -106,3 +106,20 @@ sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c
 jenga build -q
 jenga exec -a ANOTHER/RENAMED.exe
 hello, 89 world
+
+# Help
+jenga --help
+jenga: A build system
+
+Usage: jenga.exe (COMMAND | COMMAND | COMMAND | COMMAND | COMMAND | COMMAND)
+
+Available options:
+  -h,--help                Show this help text
+
+Available commands:
+  build                    Bring a build up to date
+  exec                     build; then run a single executable target
+  cat                      build; then cat a single target
+  install                  build; then install a single executable
+  run                      build; then run a list of actions
+  test                     build; then run the 'test' action

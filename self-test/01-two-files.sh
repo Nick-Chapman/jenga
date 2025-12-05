@@ -61,3 +61,6 @@ find ,jenga | sort
 sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c
 jenga build -q
 jenga exec -a ANOTHER/RENAMED.exe
+
+# Help
+jenga --help

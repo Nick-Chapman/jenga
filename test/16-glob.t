@@ -13,7 +13,7 @@ Get example: tests globbing & use jenga actions (phony targets):
 Run the view action:
 
   $ jenga run view -a
-  A: echo 'file1\nfile3\nyyy\nfile2\nbuild.jenga' > my.all
+  A: echo 'build.jenga\nfile1\nfile2\nfile3\nyyy' > my.all
   A: tar -cf ball.tar $(cat my.all)
   A: echo -------------------- >> report
   A: tar -tf ball.tar | sort >> report

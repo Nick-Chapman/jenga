@@ -10,7 +10,7 @@
 Build:
 
   $ jenga build -a && jenga exec example/hello.exe
-  A: echo 'defs.h\nfib.c\nmain.c\nfib.h\nbuild.jenga' > all.files
+  A: echo 'build.jenga\ndefs.h\nfib.c\nfib.h\nmain.c' > all.files
   A: cat all.files | grep '.c$' > c.files
   A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
   A: cat all.files | grep '.h$' > h.files
@@ -91,4 +91,4 @@ Rules:
     gcc -o hello.exe $(cat o.files)
   
   example/all.files : 
-    echo 'defs.h\nfib.c\nmain.c\nfib.h\nbuild.jenga' > all.files
+    echo 'build.jenga\ndefs.h\nfib.c\nfib.h\nmain.c' > all.files

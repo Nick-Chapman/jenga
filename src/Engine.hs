@@ -456,7 +456,7 @@ buildRule config@Config{debugLocking} how rule = do
     parallel [ do digest <- buildArtifact config how dep; pure (tagOfKey dep,digest)
              | dep <- deps
              ]
-  let witKey = WitnessKey { strict = True, targets = map tagOfKey targets, commands, wdeps }
+  let witKey = WitnessKey { targets = map tagOfKey targets, commands, wdeps }
   let wkd = digestWitnessKey witKey
   -- If the witness trace already exists, use it.
   when debugLocking $ Execute $ XLog (printf "L: looking for witness: %s" (show wkd))
@@ -675,8 +675,7 @@ data WitnessValue
   | WitnessFAIL ActionRes
 
 data WitnessKey = WitnessKey
-  { strict :: Bool -- always True; TODO: remove
-  , targets :: [Tag]
+  { targets :: [Tag]
   , commands :: [String]
   , wdeps :: WitMap
   } deriving Show

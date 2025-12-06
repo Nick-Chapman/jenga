@@ -246,11 +246,9 @@ installDigest digest destination = do
         False -> pure ()
       XUnLink destination
       XMakeDir (takeDir destination)
-      XTryHardLink cacheFile destination >>= \case
-        Nothing -> pure ()
-        Just{} -> do
-          XLog (printf "installDigest: nope! %s -> %s" (pathOfLoc cacheFile) (pathOfLoc destination))
-          pure ()
+      -- We must copy (rather than hard-link) the cacheFile to the destination.
+      -- Or else edits to the destination file will corrupt out cache file.
+      XCopyFile cacheFile destination
 
 materializeInCommaJenga :: Dir -> Digest -> Key -> B ()
 materializeInCommaJenga startDir digest key = do

@@ -11,8 +11,9 @@ jenga build -a --promote
 # Test (now passes)
 jenga test -a
 
-# Change expectation
-rm the.out.expected
+# Replace the expectation file in place.
+# This would provoke a bug if file materialization were implemented using "ln" instead of "cp".
+chmod +w the.out.expected
 echo 'But I want to see this!' > the.out.expected
 
 # Rerun test; get failure

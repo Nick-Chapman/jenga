@@ -22,8 +22,9 @@ checked 2 targets
 A: diff the.out the.out.expected
 ran 1 command
 
-# Change expectation
-rm the.out.expected
+# Replace the expectation file in place.
+# This would provoke a bug if file materialization were implemented using "ln" instead of "cp".
+chmod +w the.out.expected
 echo 'But I want to see this!' > the.out.expected
 
 # Rerun test; get failure

@@ -3,7 +3,7 @@ Get me a jenga executable and make a script to run it with a local cache
 
   $ here=$PWD
   $ (cd $TESTDIR/../src; jenga install jenga.exe $here/jenga.exe)
-  $ echo exec $PWD/jenga.exe '"$@"' --rel --cache=$PWD > jenga
+  $ echo exec $PWD/jenga.exe '"$@"' -j1 --rel --cache=$PWD > jenga
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
 

@@ -1,7 +1,7 @@
 
   $ here=$PWD
   $ (cd $TESTDIR/../../src; jenga install jenga.exe $here/jenga.exe)
-  $ echo exec $PWD/jenga.exe '"$@"' --rel > jenga                    # DIFFERENCE HERE; NO --cache
+  $ echo exec $PWD/jenga.exe '"$@"' -j1 --rel > jenga                    # DIFFERENCE HERE; NO --cache
   $ chmod +x jenga
   $ export PATH=$PWD:$PATH
 

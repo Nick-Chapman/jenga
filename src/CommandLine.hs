@@ -140,7 +140,7 @@ execAt homeDir startDir = do
     let worker = False
 
     jnum <- do
-      let jDefault = 1 -- TODO: make higher default (need fix cram tests to say -j1)
+      let jDefault = 3
       option auto (short 'j'
                     <> long "jobs"
                     <> value jDefault

@@ -168,16 +168,16 @@ Using a non-default cache (still get minimal builds)
 
 Using a temporary cache with -f. Forces run of all the actions
 
-  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
-  using temporary cache: /tmp/.cache/jenga/$$
+  $ jenga build -a -f | sed 's|/tmp/[0-9]*/.cache|/tmp/$$/.cache|'
+  using temporary cache: /tmp/$$/.cache/jenga
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
   checked 6 targets
   ran 3 commands
 
-  $ jenga build -a -f | sed 's|/tmp/.cache/jenga/[0-9]*|/tmp/.cache/jenga/$$|'
-  using temporary cache: /tmp/.cache/jenga/$$
+  $ jenga build -a -f | sed 's|/tmp/[0-9]*/.cache|/tmp/$$/.cache|'
+  using temporary cache: /tmp/$$/.cache/jenga
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe

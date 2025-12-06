@@ -58,7 +58,7 @@ engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
       CacheDirChosen dirString -> do
         pure (insistLocIsDir (startDir </> dirString) </> ".cache/jenga")
       CacheDirTemp -> do
-        let loc = locOfDir (makeAbsoluteDir (printf "/tmp/.cache/jenga/%s" (show myPid)))
+        let loc = locOfDir (makeAbsoluteDir (printf "/tmp/%s/.cache/jenga" (show myPid)))
         when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 

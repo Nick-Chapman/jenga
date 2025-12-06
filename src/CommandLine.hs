@@ -139,11 +139,13 @@ execAt homeDir startDir = do
 
     let worker = False
 
-    jnum <-
+    jnum <- do
+      let jDefault = 1 -- TODO: make higher default (need fix cram tests to say -j1)
       option auto (short 'j'
-                   <> value 1
-                    <> metavar "NUM_PROCS"
-                    <> help "Number of parallel jenga processes to run")
+                    <> long "jobs"
+                    <> value jDefault
+                    <> metavar "NUM"
+                    <> help ("Allow NUM jobs in parallel; default " ++ show jDefault))
 
     seePid <-
       switch (short 'p'

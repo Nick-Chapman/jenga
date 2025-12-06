@@ -2,4 +2,4 @@
 
 # "jenga" script to be used by self-test.scripts
 # - adds flags to run with local cache and relative paths
-exec ./jenga.exe "$@" --cache=. --rel
+exec ./jenga.exe "$@" --cache=. --rel -j1

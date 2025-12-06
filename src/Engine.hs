@@ -122,6 +122,8 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
 
     ModeExec exe0 argsForExe -> do -- TODO: really do an exec here? (as in fork/exec)
       let exe = startDir </> exe0
+      -- TODO: allow to build in parallel; only elide parallelism for the actual exec.
+      config <- pure config { jnum = 1 }
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system -- TODO: ???

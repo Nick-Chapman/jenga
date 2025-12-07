@@ -88,7 +88,7 @@ elaborateAndBuild :: Dir -> Config -> UserProg -> IO ()
 elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
   case buildMode of
 
-    ModeListTargets -> do
+    ModeListTargets -> do -- TODO: limit to -j1 (also list rules)
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{rules} = system

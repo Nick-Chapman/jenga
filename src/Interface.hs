@@ -31,8 +31,7 @@ data G a where
 data What = Missing | File | Link | Directory { entries :: [String] }
 
 data Rule = Rule
-  { rulename :: String
-  , dir :: Dir
+  { dir :: Dir
   , target :: Target
   , depcom :: D Action
   }

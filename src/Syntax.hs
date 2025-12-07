@@ -7,7 +7,7 @@ import Text.Printf (printf)
 
 import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
+import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,insistLocIsDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: (Key -> String) -> Config -> Key -> G ()
@@ -18,9 +18,6 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
 
     dirKey :: Key -> Dir
     dirKey (Key loc) = takeDir loc
-
-    pathOfKey :: Key -> String
-    pathOfKey (Key loc) = pathOfLoc loc
 
     elabRuleFile :: Key -> G ()
     elabRuleFile dotJengaFile  = do
@@ -39,8 +36,7 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
           ClauseInclude filename -> elabRuleFile (makeKey filename)
 
         elabTrip :: Trip -> G ()
-        elabTrip Trip{pos=Position{line},ruleTarget,deps,commands=commands0} = do
-          let rulename = printf "%s:%d" (pathOfKey dotJengaFile) line
+        elabTrip Trip{ruleTarget,deps,commands=commands0} = do
           let
             artNames =
               case ruleTarget of
@@ -48,8 +44,7 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
                 MPhony{} -> []
           commands <- mapM (expandChunks config dir ruleTarget deps) commands0
           GRule $ Rule
-            { rulename
-            , dir
+            { dir
             , target =
               case ruleTarget of
                 MArtifacts xs ->

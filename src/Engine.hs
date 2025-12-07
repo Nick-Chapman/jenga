@@ -108,9 +108,8 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         let System{how,rules} = system
         staticRules :: [StaticRule] <- concat <$>
           sequence [ do (deps,action) <- gatherDeps config how depcom
-                        pure [ StaticRule { rulename, dir, target, deps, action }
-                             ]
-                   | Rule{rulename,dir,target,depcom} <- rules
+                        pure [ StaticRule { dir, target, deps, action } ]
+                   | Rule{dir,target,depcom} <- rules
                    ]
         BLog (intercalate "\n\n" (map (ppStaticRule config) staticRules))
 
@@ -192,8 +191,7 @@ buildEverythingInSystem config system = do
   parallel_ [ buildAndMaterialize config how art | art <- allArtifacts ]
 
 data StaticRule = StaticRule
-  { rulename :: String
-  , dir :: Dir
+  { dir :: Dir
   , target :: Target
   , deps :: [Key]
   , action :: Action
@@ -449,11 +447,11 @@ buildArtifact config@Config{debugDemand} how@How{ahow} = do
 
 buildRule :: Config -> How -> Rule -> B WitMap
 buildRule config@Config{debugLocking} how rule = do
-  let Rule{rulename,dir,target,depcom} = rule
+  let Rule{dir,target,depcom} = rule
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
   (deps,action@Action{commands}) <- gatherDeps config how depcom
-  let sr = StaticRule { rulename, dir, target, deps, action } -- used for message context
+  let sr = StaticRule { dir, target, deps, action } -- used for message context
   wdeps <- (WitMap . Map.fromList) <$>
     parallel [ do digest <- buildArtifact config how dep; pure (tagOfKey dep,digest)
              | dep <- deps
@@ -609,7 +607,7 @@ hardLink src dest = do
     Just e -> error e
 
 cacheOutputs :: Config -> Dir -> Rule -> B WitMap
-cacheOutputs config sandbox Rule{rulename,target} = do
+cacheOutputs config sandbox Rule{target} = do
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
   WitMap . Map.fromList <$> sequence
@@ -618,7 +616,7 @@ cacheOutputs config sandbox Rule{rulename,target} = do
         let sandboxLoc = sandbox </> stringOfTag tag
         Execute (XFileExists sandboxLoc) >>= \case
           False -> do
-            bfail (printf "'%s' : not produced as declared by rule '%s'" (ppKey config target) rulename)
+            bfail (printf "'%s' : not produced as declared by rule" (ppKey config target))
           True -> do
             digest <- linkIntoCache sandboxLoc
             pure (tag,digest)

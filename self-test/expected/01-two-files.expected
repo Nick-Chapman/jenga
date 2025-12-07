@@ -79,6 +79,12 @@ RELOCATED/RENAMED.exe
 RELOCATED/fib.o
 RELOCATED/main.o
 
+# Corrupt one build.jenga; see parse error
+chmod +w RELOCATED/build.jenga && echo xxx >> RELOCATED/build.jenga
+jenga build -a
+Build failed for 1 reasons:
+(1) RELOCATED/build.jenga: failed to parse '\n' at 14'3
+
 # Remove one directory copy; view targets again
 rm -rf RELOCATED
 jenga build -t

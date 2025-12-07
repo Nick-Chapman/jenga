@@ -47,6 +47,10 @@ jenga exec ANOTHER/RENAMED.exe
 # View the targets
 jenga build -t
 
+# Corrupt one build.jenga; see parse error
+chmod +w RELOCATED/build.jenga && echo xxx >> RELOCATED/build.jenga
+jenga build -a
+
 # Remove one directory copy; view targets again
 rm -rf RELOCATED
 jenga build -t

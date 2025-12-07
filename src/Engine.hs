@@ -286,7 +286,7 @@ mkUserProg :: Config -> UserProg
 mkUserProg = \config args -> do
   let Config{startDir} = config
   dotJengas <- findDotJengas startDir args
-  sequence_ [ Syntax.elaborate config (Key dotJenga) | dotJenga <- dotJengas ]
+  sequence_ [ Syntax.elaborate (ppKey config) config (Key dotJenga) | dotJenga <- dotJengas ]
 
 findDotJengas :: Dir -> [String] -> G [Loc] -- TODO: take [Dir]
 findDotJengas dir args = do

@@ -10,8 +10,8 @@ import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..
 import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,pathOfLoc,insistLocIsDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
-elaborate :: Config -> Key -> G ()
-elaborate config@Config{homeDir} dotJengaFile0 = do
+elaborate :: (Key -> String) -> Config -> Key -> G ()
+elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
   elabRuleFile dotJengaFile0
   where
     dir = dirKey dotJengaFile0
@@ -19,15 +19,16 @@ elaborate config@Config{homeDir} dotJengaFile0 = do
     dirKey :: Key -> Dir
     dirKey (Key loc) = takeDir loc
 
-    pathOfKey :: Key -> FilePath
+    pathOfKey :: Key -> String
     pathOfKey (Key loc) = pathOfLoc loc
 
     elabRuleFile :: Key -> G ()
     elabRuleFile dotJengaFile  = do
       s <- GReadKey dotJengaFile
-      case Par4.parse (pathOfKey dotJengaFile) gram s of
+      let filename = ppKey dotJengaFile
+      case Par4.parse filename gram s of
         Left parseError ->
-          GFail parseError -- TODO: parse error messages should not refer to "jbox" filename
+          GFail parseError
         Right clauses ->
           mapM_ elabClause clauses
 

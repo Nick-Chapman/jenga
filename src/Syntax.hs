@@ -274,7 +274,6 @@ gram = start
       , do Par4.key "$glob:"; dir <- identifier; pure (AC_DollarGlob dir)
       , do Par4.key "$glob"; pure (AC_DollarGlob ".")
       , do Par4.key "$promote"; pure AC_DollarPromote
-      , do lit '$'; pure (AC_String "$") -- unescaped dollar -- TODO: remove support for this
       , do s <- some actionChar; pure (AC_String s)
       ]
 

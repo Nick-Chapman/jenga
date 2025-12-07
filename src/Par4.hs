@@ -79,16 +79,14 @@ parse :: FilePath -> Par a -> String -> Either String a
 parse filename parStart chars0  = do
 
   case (run 0 chars0 parStart kFinal) of
-    Left i -> Left $ printf "%s: failed to parse: %s" filename (report i)
+    Left i -> Left $ printf "%s: failed to parse %s" filename (report i)
     Right (a,i) -> do
       if i == length chars0 then Right a else
-        Left $ printf "%s: unparsed input from: %s" filename (report i)
+        Left $ printf "%s: unparsed input from %s" filename (report i)
 
   where
-    _seeall :: String = printf "\nContents:%s\n%s%s\n" bar chars0 bar
-    bar = "------------------------------"
     report :: Int -> String
-    report i = item ++ " at " ++ show (mkPosition i) -- ++ _seeall
+    report i = item ++ " at " ++ show (mkPosition i)
       where
         item = if i == length chars0 then "<EOF>" else show (chars0 !! i)
 

@@ -901,7 +901,7 @@ runB cacheDir config@Config{logMode} build0 = do
       initDirs config
       build0
 
-    sandboxParent pid = makeAbsoluteDir (printf "/tmp/.jbox/%s" (show pid))
+    sandboxParent pid = makeAbsoluteDir (printf "/tmp/jbox/%s" (show pid))
 
     kFinal :: BState -> BuildRes () -> X ()
     kFinal BState{runCounter,jobs} res = do

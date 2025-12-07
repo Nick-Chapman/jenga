@@ -8,14 +8,14 @@
 all.files : : echo '$glob' > $@
 
 hs.files : all.files
-  egrep '^[^#]+.hs$' all.files > hs.files # ignore filenames containing '#'
+  egrep '^[^#]+.hs$$' all.files > hs.files # ignore filenames containing '#'
   echo main.hs >> hs.files
 
 main.hs : main-entry
-  echo import $(cat main-entry) > main.hs
+  echo import $$(cat main-entry) > main.hs
 
 module.names : hs.files
-  cat hs.files | sed 's|\(.*\).hs$|\1|' > module.names
+  cat hs.files | sed 's|\(.*\).hs$$|\1|' > module.names
 
 hs.rules : module.names
   cat module.names | sed 's|.*|\0.o \0.hi: ghc.compiler @depends : ./ghc.compiler -c \0.hs|' > hs.rules
@@ -23,11 +23,11 @@ hs.rules : module.names
 include hs.rules
 
 link.rule : executable-name
-  echo $(cat executable-name) : ghc.linker @o.files main.o : ./ghc.linker *.o -o $(cat executable-name) > link.rule
+  echo $$(cat executable-name) : ghc.linker @o.files main.o : ./ghc.linker *.o -o $$(cat executable-name) > link.rule
 
 include link.rule
 
-o.files : module.names : cat module.names | sed 's|$|.o|' > o.files
+o.files : module.names : cat module.names | sed 's|$$|.o|' > o.files
 
 depends : ghc.compiler @hs.files ?xdepends
   ./ghc.compiler -M *.hs -dep-makefile depends
@@ -35,16 +35,16 @@ depends : ghc.compiler @hs.files ?xdepends
   cat xdepends >> depends
 
 ghc.exe: ghc-version
-  echo ~/.ghcup/bin/ghc-$(cat ghc-version) > ghc.exe
+  echo ~/.ghcup/bin/ghc-$$(cat ghc-version) > ghc.exe
 
 ghc.pkgdb : ghc-version
-  echo ~/.ghcup/ghc/$(cat ghc-version)/lib/ghc-$(cat ghc-version)/lib/package.conf.d > ghc.pkgdb
+  echo ~/.ghcup/ghc/$$(cat ghc-version)/lib/ghc-$$(cat ghc-version)/lib/package.conf.d > ghc.pkgdb
 
 pkgdb: ghc-version
-  ls -d ~/.stack/snapshots/*/*/$(cat ghc-version)/pkgdb | tail -1 > $@
+  ls -d ~/.stack/snapshots/*/*/$$(cat ghc-version)/pkgdb | tail -1 > $@
 
 ghc.compiler : maybe.unbuffer ghc.exe pkgdb all.options
-  echo $(cat ./maybe.unbuffer) $(cat ghc.exe) -package-db $(cat pkgdb) $(cat all.options) '"$$@"' > ghc.compiler
+  echo $$(cat ./maybe.unbuffer) $$(cat ghc.exe) -package-db $$(cat pkgdb) $$(cat all.options) '"$$@"' > ghc.compiler
   chmod +x ghc.compiler
 
 maybe.unbuffer : ?/usr/bin/unbuffer
@@ -55,16 +55,16 @@ all.options : ?ghc-options ?default-extensions
   (cat ghc-options ; cat default-extensions | sed 's|^|-X|') | sort > all.options
 
 ghc.linker : ghc.exe pkgdb package-id-flags
-  echo exec $(cat ghc.exe) -package-db $(cat pkgdb) $(cat package-id-flags) '"$$@"'  -package containers > ghc.linker
+  echo exec $$(cat ghc.exe) -package-db $$(cat pkgdb) $$(cat package-id-flags) '"$$@"'  -package containers > ghc.linker
   chmod +x ghc.linker
 
 package-id-flags: versioned-packages
   cat versioned-packages | sed 's|^|-package-id |' | sort | uniq > package-id-flags
 
 versioned-packages: ghc.pkgdb pkgdb packages-egrep-pattern
-  (cd $(cat ghc.pkgdb); ls) | egrep $(cat packages-egrep-pattern) | sed 's|.conf$||' >>versioned-packages
-  (cd $(cat pkgdb); ls) | egrep $(cat packages-egrep-pattern) | sed 's|.conf$||' >>versioned-packages
+  (cd $$(cat ghc.pkgdb); ls) | egrep $$(cat packages-egrep-pattern) | sed 's|.conf$$||' >>versioned-packages
+  (cd $$(cat pkgdb); ls) | egrep $$(cat packages-egrep-pattern) | sed 's|.conf$$||' >>versioned-packages
 
 packages-egrep-pattern: ?packages
   touch packages
-  echo '('$(echo $(echo NOMATCH; cat packages | sed 's|$|-.*-.*.conf$|') | tr ' ' '|')')' > packages-egrep-pattern
+  echo '('$$(echo $$(echo NOMATCH; cat packages | sed 's|$$|-.*-.*.conf$$|') | tr ' ' '|')')' > packages-egrep-pattern

@@ -220,6 +220,8 @@ reportSystem Config{logMode,worker} System{rules} = do
             | Rule{target} <- rules
             , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
             ]
+  -- TODO: perhaps "checked" message would be better counting #actions (aka commands)
+  -- TODO: sometimes when -jBIG: see worker "ran" message after the final "checked" message.
   when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
 buildAndMaterialize :: Config -> How -> Artifact -> B ()
@@ -908,7 +910,6 @@ runB cacheDir config@Config{logMode} build0 = do
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
       let i = runCounter
-      -- TODO: show counts for #ran & #elided(reused) commands
       when (see && i>0) $ XLog (printf "ran %s" (pluralize i "command"))
       reportBuildRes config res
 

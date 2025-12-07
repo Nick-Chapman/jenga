@@ -70,36 +70,21 @@ hello, 6765 world
 jenga exec ANOTHER/RENAMED.exe
 hello, 55 world
 
-# Materalize all targets in ,jenga; no actions run
-jenga build -a --materialize
-checked 6 targets
-find ,jenga | sort
-,jenga
-,jenga/ANOTHER
-,jenga/ANOTHER/RENAMED.exe
-,jenga/ANOTHER/fib.o
-,jenga/ANOTHER/main.o
-,jenga/RELOCATED
-,jenga/RELOCATED/RENAMED.exe
-,jenga/RELOCATED/fib.o
-,jenga/RELOCATED/main.o
+# View the targets
+jenga build -t
+ANOTHER/RENAMED.exe
+ANOTHER/fib.o
+ANOTHER/main.o
+RELOCATED/RENAMED.exe
+RELOCATED/fib.o
+RELOCATED/main.o
 
-# Remove one directory copy; materalize again in ,jenga
+# Remove one directory copy; view targets again
 rm -rf RELOCATED
-jenga build -a --materialize
-checked 3 targets
-find ,jenga | sort
-,jenga
-,jenga/ANOTHER
-,jenga/ANOTHER/RENAMED.exe
-,jenga/ANOTHER/fib.o
-,jenga/ANOTHER/main.o
-
-# Run build again without --materialize; ,jenga is removed
-jenga build -a
-checked 3 targets
-find ,jenga | sort
-find: ',jenga': No such file or directory
+jenga build -t
+ANOTHER/RENAMED.exe
+ANOTHER/fib.o
+ANOTHER/main.o
 
 # Mod some more, try -q
 sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c

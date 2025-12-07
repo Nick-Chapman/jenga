@@ -12,12 +12,3 @@ jenga build --list-targets
 ab
 b
 a
-
-# Materialize & view
-jenga build --materialize
-checked 3 targets
-find ,jenga | sort | xargs grep ^
-grep: ,jenga: Is a directory
-,jenga/a:A
-,jenga/ab:AB
-,jenga/b:B

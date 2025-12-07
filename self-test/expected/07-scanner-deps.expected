@@ -14,9 +14,10 @@ jenga exec main.exe
 hello, 55 world with scanner deps
 
 # Inspect the generated deps
-jenga build -mq && find ,jenga -name '*.d' | sort | xargs grep ^
-,jenga/fib.d:fib.o: fib.c fib.h
-,jenga/main.d:main.o: main.c fib.h defs.h
+jenga cat main.d
+main.o: main.c fib.h defs.h
+jenga cat fib.d
+fib.o: fib.c fib.h
 
 # Make a change; rebuild
 rm defs.h && echo '#define MY_CONST 11' > defs.h

@@ -1,21 +1,21 @@
 
 d.rules: c.files
-  cat c.files | sed 's|\(.*\).c$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
+  cat c.files | sed 's|\(.*\).c$$|\1.d : \1.c : gcc -MG -MM \1.c -MF \1.d|' > d.rules
 
 o.rules: c.files gcc.runner
-  cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
+  cat c.files | sed "s|\(.*\).c$$|\1.o : @\1.d : $$(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
 
 c.files :
-  echo '$glob' | grep '\.c$' > c.files
+  echo '$glob' | grep '\.c$$' > c.files
 
 link.rule : o.files
-  echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
+  echo main.exe : @o.files : gcc $$(cat o.files) -o main.exe > link.rule
 
 o.files : c.files
   cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
 
 gcc.runner: ?cflags
-  echo gcc $(test -f cflags && cat cflags) > gcc.runner
+  echo gcc $$(test -f cflags && cat cflags) > gcc.runner
 
 include d.rules
 include o.rules

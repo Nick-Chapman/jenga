@@ -8,7 +8,7 @@ report: ball.tar
   echo -------------------- >> $@
 
 ball.tar: my.all @my.all
-  tar -cf $@ $(cat my.all)
+  tar -cf $@ $$(cat my.all)
 
 my.all :
   echo '$glob:.' > $@

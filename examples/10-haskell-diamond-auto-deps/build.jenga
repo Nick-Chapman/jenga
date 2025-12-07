@@ -39,8 +39,8 @@ version:
   echo 9.8.4 > $@
 
 ghc-path: version
-  echo ~/.ghcup/bin/ghc-$(cat $<) > $@
+  echo ~/.ghcup/bin/ghc-$$(cat $<) > $@
 
 ghc.exe : ghc-path
-  echo exec $(cat $<) '"$$@"' > $@
+  echo exec $$(cat $<) '"$$@"' > $@
   chmod +x $@

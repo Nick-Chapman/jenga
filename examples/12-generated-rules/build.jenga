@@ -2,21 +2,21 @@
 all.files : : echo '$glob' > $@
 
 hello.exe : o.files @o.files
-  gcc -o $@ $(cat o.files)
+  gcc -o $@ $$(cat o.files)
 
 c.files : all.files
-  cat $< | grep '.c$' > $@
+  cat $< | grep '.c$$' > $@
 
 o.files : c.files
   cat $< | sed 's|\(.*\).c|\1.o|' > $@
 
 h.files : all.files
-  cat $< | grep '.h$' > $@
+  cat $< | grep '.h$$' > $@
 
 depends : c.files @c.files @h.files
-  gcc -MG -MM $(cat $<) > $@
+  gcc -MG -MM $$(cat $<) > $@
 
 c.rules : c.files
-  cat $< | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > $@
+  cat $< | sed 's|\(.*\).c$$|\1.o : @depends : gcc -c -o \1.o \1.c|' > $@
 
 include c.rules

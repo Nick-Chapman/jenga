@@ -6,4 +6,4 @@ main.exe : main.o
   gcc -o $@ $<
 
 main.o : main.c ?CFLAGS
-  gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
+  gcc -c $$(test -f CFLAGS && cat CFLAGS) main.c

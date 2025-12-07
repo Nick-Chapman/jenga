@@ -26,8 +26,10 @@ elaborate config@Config{homeDir} dotJengaFile0 = do
     elabRuleFile dotJengaFile  = do
       s <- GReadKey dotJengaFile
       case Par4.parse (pathOfKey dotJengaFile) gram s of
-        Left parseError -> GFail parseError
-        Right clauses -> mapM_ elabClause clauses
+        Left parseError ->
+          GFail parseError -- TODO: parse error messages should not refer to "jbox" filename
+        Right clauses ->
+          mapM_ elabClause clauses
 
       where
         elabClause :: Clause -> G ()
@@ -272,7 +274,7 @@ gram = start
       , do Par4.key "$glob:"; dir <- identifier; pure (AC_DollarGlob dir)
       , do Par4.key "$glob"; pure (AC_DollarGlob ".")
       , do Par4.key "$promote"; pure AC_DollarPromote
-      , do lit '$'; pure (AC_String "$") -- unescaped dollar
+      , do lit '$'; pure (AC_String "$") -- unescaped dollar -- TODO: remove support for this
       , do s <- some actionChar; pure (AC_String s)
       ]
 

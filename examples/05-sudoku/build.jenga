@@ -20,8 +20,8 @@ version:
   echo 9.8.4 > $@
 
 ghc-path: version
-  echo ~/.ghcup/bin/ghc-$(cat version) > $@
+  echo ~/.ghcup/bin/ghc-$$(cat version) > $@
 
 ghc.exe : ghc-path
-  echo exec $(cat ghc-path) '"$$@"' > $@
+  echo exec $$(cat ghc-path) '"$$@"' > $@
   chmod +x $@

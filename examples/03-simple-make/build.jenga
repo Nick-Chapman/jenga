@@ -16,4 +16,4 @@ main.exe : fib.o main.o
 # Preprocess defs.h to remove blank lines for better build cutoff!
 
 defs.h : defs.h.in
-  grep -v '^$' $< > $@
+  grep -v '^$$' $< > $@

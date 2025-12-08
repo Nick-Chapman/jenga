@@ -419,7 +419,7 @@ tagOfKey (Key loc) = takeBase loc
 -- Build
 
 buildPhony :: Config -> How -> String -> B ()
-buildPhony config@Config{debugDemand=_} how@How{phow} phonyName = do
+buildPhony config how@How{phow} phonyName = do
   case maybe [] id $ Map.lookup phonyName phow of
     [] ->
       bfail (printf "no rules for phony target '%s'" phonyName)
@@ -429,7 +429,7 @@ buildPhony config@Config{debugDemand=_} how@How{phow} phonyName = do
                 ]
 
 buildArtifact :: Config -> How -> Key -> B Digest
-buildArtifact config@Config{debugDemand} how@How{ahow} = do
+buildArtifact config@Config{worker,debugDemand} how@How{ahow} = do
   -- TODO: document this flow.
   -- TODO: check for cycles.
   BMemoKey $ \sought -> do
@@ -444,7 +444,7 @@ buildArtifact config@Config{debugDemand} how@How{ahow} = do
             pure digest
 
       Just rule -> do
-        when debugDemand $ BLog (printf "B: Require: %s" (ppKey config sought))
+        when (not worker && debugDemand) $ BLog (printf "B: Require: %s" (ppKey config sought))
         -- We only memoize the run of rule targeting artifacts (not phonys)
         wtargets <- BMemoRule (buildRule config how) rule
         let digest = lookWitMap (tagOfKey sought) wtargets

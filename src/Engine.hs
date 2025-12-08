@@ -69,7 +69,7 @@ dropPrefixChecked prefix str =
   if prefix == str then "." else
     case stripPrefix (prefix++"/") str of
       Just suffix -> suffix
-      Nothing -> error (show ("dropPrefixChecked",prefix,str)) -- TODO: comes "jenga build -r --rel"
+      Nothing -> str
 
 relppKey :: Dir -> Key -> String
 relppKey startDir (Key loc) =

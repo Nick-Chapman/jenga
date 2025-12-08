@@ -125,7 +125,7 @@ glob dir = do
         ]
       pure (sort [ takeBase loc | (loc,isDir) <- ys, not isDir ])
     _what ->
-      GFail (printf "glob: expected %s to be a directory" (pathOfDir dir))
+      GFail (printf "glob: expected %s to be a directory" (pathOfDir dir)) -- TODO respect --rel
 
 isDirectory :: Loc -> G Bool
 isDirectory loc = do

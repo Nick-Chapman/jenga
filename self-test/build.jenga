@@ -4,7 +4,7 @@ expect.names  :
 
 include ../rulelib/expect.jenga
 
-jenga.deps : : echo 'jenga ../src/jenga.exe' > $@
+self-test.deps : : echo 'jenga ../src/jenga.exe' > $@
 
 rules : rules.sh expect.names
   ./rules.sh $$(cat expect.names) > $@

@@ -1,0 +1,84 @@
+
+# Initial build is fine
+jenga build
+checked 8 targets
+ran 8 commands
+
+# Remove the rule for epsilon
+grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+jenga build # BAD
+Build failed for 1 reasons:
+(1) 'epsilon' : is not source and has no build rule
+
+# Duplicate rules for epsilon
+echo 'epsilon : : echo -n E1 > epsilon' >> build.jenga
+echo 'epsilon : : echo -n E2 > epsilon' >> build.jenga
+jenga build
+Build failed for 1 reasons:
+(1) rule targets defined by earlier rule :epsilon
+grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+
+# Define epsilon as a source
+echo E3 > epsilon
+jenga build # OK
+checked 7 targets
+ran 2 commands
+
+# Define epsilon as Source AND by a rule
+echo 'epsilon : : echo -n E4 > epsilon' >> build.jenga
+jenga build
+Build failed for 1 reasons:
+(1) rule targets clash with source :epsilon
+rm epsilon
+
+# Rule has a syntax error
+grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+echo 'epsilon' >> build.jenga
+jenga build
+Build failed for 1 reasons:
+(1) build.jenga: failed to parse '\n' at 17'7
+
+# Rule has a bad action
+grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+echo 'epsilon : : missing-command' >> build.jenga
+jenga build
+(directory) .
+(rule) epsilon : 
+(command) $ missing-command
+(stderr) /bin/sh: 1: missing-command: not found
+(exit-code) 127
+ran 1 command
+Build failed for 1 reasons:
+(1) action failed for rule targeting: epsilon
+
+# Rule action fails to create target
+grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+echo 'epsilon : :' >> build.jenga
+jenga build
+ran 1 command
+Build failed for 1 reasons:
+(1) 'epsilon' : not produced as declared by rule
+
+# Rule action has bad glob # TODO: fix --rel
+#grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+#echo 'epsilon : : echo '\''$glob:nowhere'\'' > epsilon' >> build.jenga
+#jenga build
+
+# Try run phony (but phony not defined)
+grep -v '^epsilon' build.jenga > xx & mv xx build.jenga
+echo 'epsilon : : echo E5 > epsilon' >> build.jenga
+jenga run run
+checked 8 targets
+ran 3 commands
+Build failed for 1 reasons:
+(1) no rules for phony target 'run'
+
+# Add the phony
+echo '*run : alpha : cat alpha' >> build.jenga
+jenga run run # OK
+checked 8 targets
+(directory) .
+(rule) *run : alpha
+(command) $ cat alpha
+[ [ D E5 ] [ Z H T ] ]
+ran 1 command

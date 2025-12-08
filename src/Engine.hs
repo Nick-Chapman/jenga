@@ -942,7 +942,10 @@ runB cacheDir config@Config{logMode} build0 = do
 
       BMemoKey f key -> do
         case Map.lookup key (memoT s) of
-          Just WIP -> yield s $ \s _ -> do loop m0 s k
+          Just WIP -> do
+            let mes = intercalate " " [ ppKey config k | (k,WIP) <- Map.toList (memoT s) ]
+            k s (FAIL [printf "CYCLE: %s" mes])
+
           Just (Ready res) -> k s (removeReasons res)
           Nothing -> do
             loop (f key) s { memoT = Map.insert key WIP (memoT s)} $ \s res -> do

@@ -89,6 +89,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do -- TODO: limit to -j1 (also list rules)
+      config <- pure config { jnum = 1 }
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{rules} = system
@@ -103,6 +104,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
           ]
 
     ModeListRules -> do
+      config <- pure config { jnum = 1 }
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
@@ -120,9 +122,9 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         reportSystem config system
 
     ModeExec exe0 argsForExe -> do -- TODO: really do an exec here? (as in fork/exec)
-      let exe = startDir </> exe0
       -- TODO: allow to build in parallel; only elide parallelism for the actual exec.
       config <- pure config { jnum = 1 }
+      let exe = startDir </> exe0
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system -- TODO: ???
@@ -135,6 +137,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
           putStr (seeFailureExit exitCode) -- TODO: better: propagate as my exit-code?
 
     ModeCat src0 -> do
+      config <- pure config { jnum = 1 }
       let src = startDir </> src0
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg ["."])
@@ -147,6 +150,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
           XIO (putStr contents)
 
     ModeInstall src0 dest0 -> do
+      config <- pure config { jnum = 1 }
       let src = startDir </> src0
       let dest = startDir </> dest0
       runBuild cacheDir config $ \config -> do
@@ -157,6 +161,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         installDigest digest dest
 
     ModeRun names -> do -- TODO: exit code with #errors (also for jenga build)
+      config <- pure config { jnum = 1 }
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
         buildEverythingInSystem config system

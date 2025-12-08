@@ -82,3 +82,10 @@ checked 8 targets
 (command) $ cat alpha
 [ [ D E5 ] [ Z H T ] ]
 ran 1 command
+
+# Create a cycle
+grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
+echo 'epsilon : alpha :' >> build.jenga
+jenga build
+Build failed for 1 reasons:
+(1) CYCLE: alpha beta epsilon

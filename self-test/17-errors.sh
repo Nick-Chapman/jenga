@@ -49,3 +49,8 @@ jenga run run
 # Add the phony
 echo '*run : alpha : cat alpha' >> build.jenga
 jenga run run # OK
+
+# Create a cycle
+grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
+echo 'epsilon : alpha :' >> build.jenga
+jenga build

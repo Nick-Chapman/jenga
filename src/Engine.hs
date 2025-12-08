@@ -127,10 +127,11 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
       let exe = startDir </> exe0
       runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg ["."])
-        buildEverythingInSystem config system -- TODO: ???
+        buildEverythingInSystem config system -- TODO: ??? -- how about no?!
         let System{how} = system
         digest <- buildArtifact config how (Key exe)
         cacheFile <- cacheFile digest
+        --BLog "launching..." -- TODO: but not when quiet
         Execute $ XIO $ do
           (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
           exitCode <- waitForProcess h

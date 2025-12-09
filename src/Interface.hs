@@ -59,4 +59,4 @@ data D a where
   DReadKey :: Key -> D String
   DExistsKey :: Key -> D Bool
 
-data Key = Key Loc deriving (Eq,Ord)
+data Key = Key Loc deriving (Eq,Ord) -- TODO: what does this Key/Loc distinction buy us?

@@ -47,7 +47,7 @@ engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
-  cacheDir :: Dir <- insistLocIsDir <$> -- TODO: pass cacheDir in Config
+  cacheDir :: Dir <- insistLocIsDir <$> -- TODO: move into CommandLine
     case cacheDirSpec of
       CacheDirDefault -> do
         lookupEnv "XDG_CACHE_HOME" >>= \case
@@ -62,7 +62,9 @@ engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
         when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 
-  elaborateAndBuild cacheDir config userProg
+  config <- pure $ config { cacheDir } -- override the initial undefined value for cacheDir
+
+  elaborateAndBuild config userProg
 
 dropPrefixChecked :: String -> String -> String
 dropPrefixChecked prefix str =
@@ -84,12 +86,12 @@ ppKey Config{reportRelative,startDir} (Key loc) =
 ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
-elaborateAndBuild :: Dir -> Config -> UserProg -> IO ()
-elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userProg = do
+elaborateAndBuild :: Config -> UserProg -> IO ()
+elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do
-      _fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+      _fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
          system <- runElaboration config (userProg args)
          let System{rules} = system
          when (not worker) $ do
@@ -104,7 +106,7 @@ elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userPr
       pure ()
 
     ModeListRules -> do
-      _fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+      _fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
         when (not worker) $ do
@@ -118,22 +120,34 @@ elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userPr
 
     ModeCat src0 -> do
       let src = startDir </> src0
-      fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg ["."])
         let System{how} = system
         digest <- buildArtifact emptyChain config how (Key src)
-        file <- cacheFile digest
+        -- TODO: disable cat before report
         when (not worker) $ do
           Execute $ do
-            contents <- XReadFile file
-            XIO (putStr contents)  -- TODO: move to after the report
+            let cacheFile = cacheFileLoc config digest
+            contents <- XReadFile cacheFile
+            XIO (putStr contents)
+        pure ()
+
       newReport config fbs
-      pure ()
+
+      -- TODO: enable cat post report
+      {-runX config $ do
+        case lookFBS fbs (Key src) of
+          Nothing -> pure () -- we can't cat what didn't get build
+          Just digest -> do
+            let cacheFile = cacheFileLoc config digest
+            contents <- XReadFile cacheFile
+            XIO $ putStr contents-}
+
 
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
       let dest = startDir </> dest0
-      fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg ["."])
         let System{how} = system
         digest <- buildArtifact emptyChain config how (Key src)
@@ -142,12 +156,12 @@ elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userPr
             let quiet = case logMode of LogQuiet -> True; _ -> False
             when (not quiet) $ do
               printf "installing %s\n" (ppKey config (Key dest))
-          installDigest digest dest
+          installDigest config digest dest
       newReport config fbs
       pure ()
 
     ModeRun names -> do -- including "test" == "run test"
-      fbs :: FBS <- runBuild cacheDir config $ \config -> do
+      fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{how} = system
         parallel_ [ buildPhony config how name | name <- names ]
@@ -155,7 +169,7 @@ elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userPr
       pure ()
 
     ModeBuild -> do
-      fbs :: FBS <- runBuild cacheDir config $ \config -> do
+      fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         buildEverythingInSystem config system
       newReport config fbs
@@ -163,11 +177,11 @@ elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userPr
 
     ModeExec exe0 argsForExe -> do -- TODO: can we really do an exec here? (as in fork/exec)
       let exe = startDir </> exe0
-      fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg ["."])
         let System{how} = system
         digest <- buildArtifact emptyChain config how (Key exe)
-        cacheFile <- cacheFile digest
+        let cacheFile = cacheFileLoc config digest
         when (not worker) $ do
           Execute $ XIO $ do -- TODO: exec should come after "newReport"
             (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
@@ -187,11 +201,11 @@ newReport Config{logMode,worker} FBS{countRules=nr,failures} = do
 pluralize :: Int -> String -> String
 pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
 
-runBuild :: Dir -> Config -> (Config -> B ()) -> IO FBS
-runBuild cacheDir config f = do
+runBuild :: Config -> (Config -> B ()) -> IO FBS
+runBuild config f = do
   nCopies config $ \config -> do
     runX config $ do
-      runB cacheDir config (f config)
+      runB config (f config)
 
 nCopies :: Config -> (Config -> IO a) -> IO a
 nCopies config@Config{jnum} f =
@@ -237,15 +251,15 @@ buildAndMaterialize :: Config -> How -> Artifact -> B ()
 buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = do
   let Artifact { materialize, key } = target
   digest <- buildArtifact emptyChain config how key
-  when materializeCommaJenga $ materializeInCommaJenga startDir digest key
+  when materializeCommaJenga $ materializeInCommaJenga config startDir digest key
   when materialize $ do
     let Key materializedFile = key
-    installDigest digest materializedFile
+    installDigest config digest materializedFile
   pure ()
 
-installDigest :: Digest -> Loc -> B ()
-installDigest digest destination = do
-  cacheFile <- cacheFile digest
+installDigest :: Config -> Digest -> Loc -> B ()
+installDigest config digest destination = do
+  let cacheFile = cacheFileLoc config digest
   Execute $ do
     needToLink <-
       XFileExists destination >>= \case
@@ -263,9 +277,9 @@ installDigest digest destination = do
       -- Or else edits to the destination file will corrupt out cache file.
       XCopyFile cacheFile destination
 
-materializeInCommaJenga :: Dir -> Digest -> Key -> B ()
-materializeInCommaJenga startDir digest key = do
-  cacheFile <- cacheFile digest
+materializeInCommaJenga :: Config -> Dir -> Digest -> Key -> B ()
+materializeInCommaJenga config startDir digest key = do
+  let cacheFile = cacheFileLoc config digest
   let commaJengaDir = insistLocIsDir (startDir </> ",jenga")
   let materializedFile = commaJengaDir </> relppKey startDir key
   Execute $ do
@@ -281,10 +295,14 @@ materializeInCommaJenga startDir digest key = do
 ----------------------------------------------------------------------
 -- locations for cache, sandbox etc
 
-cachedFilesDir,tracesDir :: B Dir
-cachedFilesDir = do cacheDir <- BCacheDir; pure (insistLocIsDir (cacheDir </> "files"))
-tracesDir = do cacheDir <- BCacheDir; pure (insistLocIsDir (cacheDir </> "traces"))
+cacheFileLoc :: Config -> Digest -> Loc
+cacheFileLoc config (Digest str) = cacheFilesDir config </> str
 
+cacheFilesDir :: Config -> Dir
+cacheFilesDir Config{cacheDir} = insistLocIsDir (cacheDir </> "files")
+
+tracesDir :: Config -> Dir
+tracesDir Config{cacheDir} = insistLocIsDir (cacheDir </> "traces")
 
 ----------------------------------------------------------------------
 -- mkUserProg: not really a sensible name anymore
@@ -445,7 +463,7 @@ buildArtifact chain config@Config{worker,debugDemand} how@How{ahow} = do
           False -> do
             bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
           True -> do
-            digest <- copyIntoCache loc
+            digest <- copyIntoCache config loc
             pure digest
 
       Just rule -> do
@@ -475,7 +493,7 @@ buildRule chain config@Config{debugLocking} how rule = do
     Nothing -> do
       -- If not, someone has to run the job...
       when debugLocking $ Execute $ XLog (printf "L: no witness; job must be run: %s" (show wkd))
-      tryGainingLock debugLocking wkd $ \case
+      tryGainingLock config debugLocking wkd $ \case
         True -> do
           -- We got the lock, check again for the trace...
           when debugLocking $ Execute $ XLog (printf "L: look again for witness: %s" (show wkd))
@@ -496,7 +514,7 @@ buildRule chain config@Config{debugLocking} how rule = do
 
 verifyWitness :: Config -> StaticRule -> WitKeyDigest -> B (Maybe WitMap)
 verifyWitness config sr wkd = do
-  lookupWitness wkd >>= \case
+  lookupWitness config wkd >>= \case
     Nothing -> pure Nothing
     Just wit -> do
       case wit of
@@ -505,27 +523,26 @@ verifyWitness config sr wkd = do
           actionFailed config sr
         WitnessSUCC{wtargets,ares} -> do
           let WitMap m = wtargets
-          ok <- all id <$> sequence [ existsCacheFile digest | (_,digest) <- Map.toList m ]
+          ok <- all id <$> sequence [ existsCacheFile config digest | (_,digest) <- Map.toList m ]
           if not ok then pure Nothing else do
             Execute (showActionRes config sr ares)
             pure (Just wtargets)
 
 awaitLockYielding :: Config -> WitKeyDigest -> B ()
-awaitLockYielding Config{debugLocking} wkd = loop 0
+awaitLockYielding config@Config{debugLocking} wkd = loop 0
   where
     loop :: Int -> B ()
     loop i = do
       BYield
-      tryGainingLock False wkd $ \case
+      tryGainingLock config False wkd $ \case
         False -> loop (i+1)
         True -> do
           when debugLocking $ Execute $ XLog (printf "L: spun (%d) awaiting lock %s" i (show wkd))
           pure ()
 
-tryGainingLock :: Bool -> WitKeyDigest -> (Bool -> B a) -> B a
-tryGainingLock debug wkd f = do
-  tracesDir <- tracesDir
-  let lockPath = tracesDir </> (show wkd ++ ".lock")
+tryGainingLock :: Config -> Bool -> WitKeyDigest -> (Bool -> B a) -> B a
+tryGainingLock config debug wkd f = do
+  let lockPath = tracesDir config </> (show wkd ++ ".lock")
   -- Try to gain the lock...
   Execute (XIO (tryLockFile (pathOfLoc lockPath) Exclusive)) >>= \case
     Just (lock::FileLock) -> do
@@ -565,8 +582,8 @@ gatherDeps chain config how d = loop d [] k0
 readKey :: Chain -> Config -> How -> Key -> B String
 readKey chain config how key = do
   digest <- buildArtifact chain config how key
-  file <- cacheFile digest
-  Execute (XReadFile file)
+  let cacheFile = cacheFileLoc config digest
+  Execute (XReadFile cacheFile)
 
 existsKey :: How -> Key -> B Bool
 existsKey How{ahow} key =
@@ -580,19 +597,19 @@ runActionSaveWitness :: Config -> StaticRule -> Action -> WitKeyDigest -> WitMap
 runActionSaveWitness config sr action wkd depWit rule = do
   sandbox <- BNewSandbox
   Execute (XMakeDir sandbox)
-  setupInputs sandbox depWit
+  setupInputs config sandbox depWit
   ares <- BRunActionInDir sandbox action
   Execute (showActionRes config sr ares)
   let ok = actionResIsOk ares
   case ok of
     False -> do
       let wit = WitnessFAIL ares
-      saveWitness wkd wit
+      saveWitness config wkd wit
       actionFailed config sr
     True -> do
       wtargets <- cacheOutputs config sandbox rule -- If this fails we dont write a witness. TODO: is that right?
       let wit = WitnessSUCC { wtargets, ares }
-      saveWitness wkd wit
+      saveWitness config wkd wit
       pure wtargets
 
 actionFailed :: Config -> StaticRule -> B a
@@ -600,11 +617,11 @@ actionFailed config StaticRule{target} = do
   bfail (printf "action failed for rule targeting: %s" (ppTarget config target))
 
 
-setupInputs :: Dir -> WitMap -> B ()
-setupInputs sandbox (WitMap m1) = do
+setupInputs :: Config -> Dir -> WitMap -> B ()
+setupInputs config sandbox (WitMap m1) = do
   sequence_
     [ do
-        src <- cacheFile digest
+        let src = cacheFileLoc config digest
         let dest = sandbox </> stringOfTag tag
         Execute $ hardLink src dest
     | (tag,digest) <- Map.toList m1
@@ -628,15 +645,15 @@ cacheOutputs config sandbox Rule{target} = do
           False -> do
             bfail (printf "'%s' : not produced as declared by rule" (ppKey config target))
           True -> do
-            digest <- linkIntoCache sandboxLoc
+            digest <- linkIntoCache config sandboxLoc
             pure (tag,digest)
     | target <- targets
     ]
 
-copyIntoCache :: Loc -> B Digest
-copyIntoCache loc = do
+copyIntoCache :: Config -> Loc -> B Digest
+copyIntoCache config loc = do
   digest <- Execute (XDigest loc)
-  file <- cacheFile digest
+  let file = cacheFileLoc config digest
   Execute (XFileExists file) >>= \case
     True -> pure ()
     False -> do
@@ -647,10 +664,10 @@ copyIntoCache loc = do
 
   pure digest
 
-linkIntoCache :: Loc -> B Digest
-linkIntoCache loc = do
+linkIntoCache :: Config -> Loc -> B Digest
+linkIntoCache config loc = do
   digest <- Execute (XDigest loc)
-  file <- cacheFile digest
+  let file = cacheFileLoc config digest
   Execute $ do
     XFileExists file >>= \case
       True -> XTransferFileMode loc file
@@ -664,11 +681,6 @@ linkIntoCache loc = do
                   )
     XMakeReadOnly file
   pure digest
-
-cacheFile :: Digest -> B Loc
-cacheFile (Digest str) = do
-  cachedFilesDir <- cachedFilesDir
-  pure (cachedFilesDir </> str)
 
 -- message digest of a file; computed by call to external md5sum
 data Digest = Digest String deriving (Eq)
@@ -705,9 +717,9 @@ lookWitMap tag (WitMap m) = maybe err id $ Map.lookup tag m
 digestWitnessKey :: WitnessKey -> WitKeyDigest
 digestWitnessKey wk = WitKeyDigest (MD5.md5s (MD5.Str (show wk)))
 
-lookupWitness :: WitKeyDigest -> B (Maybe Witness)
-lookupWitness wkd = do
-  witFile <- witnessFile wkd
+lookupWitness :: Config -> WitKeyDigest -> B (Maybe Witness)
+lookupWitness config wkd = do
+  let witFile = witnessFile config wkd
   Execute (XFileExists witFile) >>= \case
     False -> pure Nothing
     True -> Execute $ do
@@ -721,21 +733,19 @@ lookupWitness wkd = do
           XUnLink witFile
           pure Nothing
 
-existsCacheFile :: Digest -> B Bool
-existsCacheFile digest = do
-  file <- cacheFile digest
+existsCacheFile :: Config -> Digest -> B Bool
+existsCacheFile config digest = do
+  let file = cacheFileLoc config digest
   Execute (XFileExists file)
 
-saveWitness :: WitKeyDigest -> Witness -> B ()
-saveWitness wkd wit = do
-  witFile <- witnessFile wkd
+saveWitness :: Config -> WitKeyDigest -> Witness -> B ()
+saveWitness config wkd wit = do
+  let witFile = witnessFile config wkd
   Execute $ do
     XWriteFile (exportWitness wit ++ "\n") witFile
 
-witnessFile :: WitKeyDigest -> B Loc
-witnessFile wkd = do
-  tracesDir <- tracesDir
-  pure (tracesDir </> show wkd)
+witnessFile :: Config -> WitKeyDigest -> Loc
+witnessFile config wkd = tracesDir config </> show wkd
 
 ----------------------------------------------------------------------
 -- export Witnesses via flatter "Q" types (Q is a meaningless prefix)
@@ -892,7 +902,6 @@ data B a where
   BBind :: B a -> (a -> B b) -> B b
   BLog :: String -> B ()
   BCatch :: B a -> B (BuildRes a)
-  BCacheDir :: B Dir
   BNewSandbox :: B Dir
   BRunActionInDir :: Dir -> Action -> B ActionRes
   Execute :: X a -> B a
@@ -901,8 +910,8 @@ data B a where
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
 
-runB :: Dir -> Config -> B () -> X FBS
-runB cacheDir config@Config{logMode} build0 = do
+runB :: Config -> B () -> X FBS
+runB config@Config{logMode} build0 = do
   loop build bstate0 kFinal
   where
     build = do
@@ -931,8 +940,6 @@ runB cacheDir config@Config{logMode} build0 = do
         SUCC a -> loop (f a) s k
 
       BLog mes -> do XLog mes; k s (SUCC ())
-
-      BCacheDir -> k s (SUCC cacheDir)
 
       BNewSandbox -> do
         myPid <- XIO getCurrentPid
@@ -1007,13 +1014,11 @@ runB cacheDir config@Config{logMode} build0 = do
     resume (BJob p k) s = loop p s k
 
 initDirs :: Config -> B ()
-initDirs Config{startDir,materializeCommaJenga} = do
+initDirs config@Config{startDir,materializeCommaJenga} = do
   let commaJengaDir = insistLocIsDir (startDir </> ",jenga")
-  tracesDir <- tracesDir
-  cachedFilesDir <- cachedFilesDir
   Execute $ do
-    XMakeDir cachedFilesDir
-    XMakeDir tracesDir
+    XMakeDir (cacheFilesDir config)
+    XMakeDir (tracesDir config)
     XRemoveDirRecursive commaJengaDir
     when materializeCommaJenga $ XMakeDir commaJengaDir
 
@@ -1056,13 +1061,23 @@ data BJob where
 data FBS = FBS
   { countRules :: Int
   , failures :: [Reason]
+  , lookFBS :: Key -> Maybe Digest
   }
 
 makeFBS :: BuildRes () -> BState -> FBS
-makeFBS bres BState{memoR} =
+makeFBS bres BState{memoR,memoT} =
   FBS { countRules = Map.size memoR
       , failures = case bres of SUCC () -> []; FAIL reasons -> reasons
+      , lookFBS
       }
+  where
+    lookFBS :: Key -> Maybe Digest
+    lookFBS key =
+      case Map.lookup key memoT of
+        Nothing -> Nothing
+        Just WIP -> error "lookFBS/WIP" -- Nothing -- or is this possible?
+        Just (Ready (FAIL{})) -> Nothing
+        Just (Ready (SUCC digest)) -> Just digest
 
 ----------------------------------------------------------------------
 -- Chain -- dependency chain for detecting cycles

@@ -16,6 +16,7 @@ data LogMode = LogQuiet | LogNormal | LogActions
 data Config = Config
   { startDir :: Dir
   , homeDir :: Dir
+  , cacheDir :: Dir
   , worker :: Bool -- can't set on command line; but convenient to have in config
   , buildMode :: BuildMode
   , args :: [FilePath]
@@ -47,10 +48,11 @@ exec :: IO Config
 exec = do
   homeDir <- makeAbsoluteDir <$> maybe "/tmp" id <$> lookupEnv "HOME"
   startDir <- makeAbsoluteDir <$> getCurrentDirectory
-  execAt homeDir startDir
+  let cacheDir = undefined -- TODO: ahem!
+  execAt homeDir startDir cacheDir
 
-execAt :: Dir -> Dir -> IO Config
-execAt homeDir startDir = do
+execAt :: Dir -> Dir -> Dir -> IO Config
+execAt homeDir startDir cacheDir = do
   customExecParser
     -- TODO: fix digest-id shown in usage message when run by "jenga exec src/jenga.exe"
     (prefs (showHelpOnError <> showHelpOnEmpty))

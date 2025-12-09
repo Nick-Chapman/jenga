@@ -28,5 +28,5 @@ checked 5 targets
 ran 2 commands
 
 # Rerun
-jenga exec main.exe
+jenga exec -a main.exe
 hello, 89 world with scanner deps

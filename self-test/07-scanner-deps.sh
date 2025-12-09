@@ -14,4 +14,4 @@ rm defs.h && echo '#define MY_CONST 11' > defs.h
 jenga build -a
 
 # Rerun
-jenga exec main.exe
+jenga exec -a main.exe

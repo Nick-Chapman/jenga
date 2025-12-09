@@ -5,8 +5,8 @@ mv build.jenga fib.c main.c example
 
 # Build from clean
 jenga build -a
-A: gcc -c fib.c -o fib.o
 A: gcc -c main.c -o main.o
+A: gcc -c fib.c -o fib.o
 A: gcc fib.o main.o -o main.exe
 checked 3 targets
 ran 3 commands
@@ -72,12 +72,12 @@ hello, 55 world
 
 # View the targets
 jenga build -t
-ANOTHER/RENAMED.exe
-ANOTHER/fib.o
-ANOTHER/main.o
-RELOCATED/RENAMED.exe
-RELOCATED/fib.o
 RELOCATED/main.o
+RELOCATED/fib.o
+RELOCATED/RENAMED.exe
+ANOTHER/main.o
+ANOTHER/fib.o
+ANOTHER/RENAMED.exe
 
 # Corrupt one build.jenga; see parse error
 chmod +w RELOCATED/build.jenga && echo xxx >> RELOCATED/build.jenga
@@ -88,9 +88,9 @@ Build failed for 1 reasons:
 # Remove one directory copy; view targets again
 rm -rf RELOCATED
 jenga build -t
-ANOTHER/RENAMED.exe
-ANOTHER/fib.o
 ANOTHER/main.o
+ANOTHER/fib.o
+ANOTHER/RENAMED.exe
 
 # Mod some more, try -q
 sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c

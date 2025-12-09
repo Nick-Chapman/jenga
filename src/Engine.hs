@@ -337,8 +337,7 @@ runElaboration :: Config -> G () -> B System
 runElaboration config m =
   loop m system0 k0 >>= \case
     system@System{rules} -> do
-      pure system { rules = --reverse  -- TODO: reverse for less confusing cycles
-                            rules }
+      pure system { rules = reverse rules }
   where
     system0 :: System
     system0 = System { rules = [], how = How { ahow = Map.empty, phow = Map.empty } }

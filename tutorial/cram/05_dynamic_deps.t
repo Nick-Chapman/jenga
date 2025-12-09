@@ -34,8 +34,8 @@ Build. Expect 4 actions to be run
 
   $ jenga build -a
   A: gcc -MG -MM *.c > depends
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 4 targets
   ran 4 commands
@@ -54,33 +54,33 @@ See the depends
 See the targets and rules
 
   $ jenga build -a --list-targets
-  example/depends
-  example/fib.o
-  example/main.o
   example/hello.exe
+  example/main.o
+  example/fib.o
+  example/depends
 
   $ jenga build -a -r
-  example/depends : example/main.c example/fib.c
-    gcc -MG -MM *.c > depends
-  
-  example/fib.o : example/fib.c example/fib.h
-    gcc -Wall -c fib.c -o fib.o
+  example/hello.exe : example/main.o example/fib.o
+    gcc main.o fib.o -o hello.exe
   
   example/main.o : example/main.c example/fib.h
     gcc -Wall -c main.c -o main.o
   
-  example/hello.exe : example/main.o example/fib.o
-    gcc main.o fib.o -o hello.exe
+  example/fib.o : example/fib.c example/fib.h
+    gcc -Wall -c fib.c -o fib.o
+  
+  example/depends : example/main.c example/fib.c
+    gcc -MG -MM *.c > depends
 
   $ (cd example; ../jenga build -r)
-  depends : main.c fib.c
-    gcc -MG -MM *.c > depends
-  
-  fib.o : fib.c fib.h
-    gcc -Wall -c fib.c -o fib.o
+  hello.exe : main.o fib.o
+    gcc main.o fib.o -o hello.exe
   
   main.o : main.c fib.h
     gcc -Wall -c main.c -o main.o
   
-  hello.exe : main.o fib.o
-    gcc main.o fib.o -o hello.exe
+  fib.o : fib.c fib.h
+    gcc -Wall -c fib.c -o fib.o
+  
+  depends : main.c fib.c
+    gcc -MG -MM *.c > depends

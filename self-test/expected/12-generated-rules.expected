@@ -4,11 +4,11 @@ jenga build -a
 A: echo '.output\n12-generated-rules.sh\nbuild.jenga\ndefs.h\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' > all.files
 A: cat all.files | grep '.c$' > c.files
 A: cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
+A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
 A: cat all.files | grep '.h$' > h.files
 A: gcc -MG -MM $(cat c.files) > depends
-A: gcc -c -o main.o main.c
 A: gcc -c -o fib.o fib.c
-A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
+A: gcc -c -o main.o main.c
 A: gcc -o hello.exe $(cat o.files)
 checked 9 targets
 ran 9 commands
@@ -24,41 +24,41 @@ Hello, 89 jenga. Discovered deps and generated rules.
 
 # Targets
 jenga build --list-targets
-main.o
-fib.o
-c.rules
-depends
-h.files
-o.files
-c.files
-hello.exe
 all.files
+hello.exe
+c.files
+o.files
+h.files
+depends
+c.rules
+fib.o
+main.o
 
 # Rules
 jenga build --list-rules
-main.o : main.c fib.h defs.h
-  gcc -c -o main.o main.c
-
-fib.o : fib.c fib.h
-  gcc -c -o fib.o fib.c
-
-c.rules : c.files
-  cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
-
-depends : c.files fib.c main.c 12-generated-rules.sh defs.h fib.h
-  gcc -MG -MM $(cat c.files) > depends
-
-h.files : all.files
-  cat all.files | grep '.h$' > h.files
-
-o.files : c.files
-  cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
-
-c.files : all.files
-  cat all.files | grep '.c$' > c.files
+all.files : 
+  echo '.output\n12-generated-rules.sh\nbuild.jenga\ndefs.h\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' > all.files
 
 hello.exe : o.files fib.o main.o
   gcc -o hello.exe $(cat o.files)
 
-all.files : 
-  echo '.output\n12-generated-rules.sh\nbuild.jenga\ndefs.h\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' > all.files
+c.files : all.files
+  cat all.files | grep '.c$' > c.files
+
+o.files : c.files
+  cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
+
+h.files : all.files
+  cat all.files | grep '.h$' > h.files
+
+depends : c.files fib.c main.c 12-generated-rules.sh defs.h fib.h
+  gcc -MG -MM $(cat c.files) > depends
+
+c.rules : c.files
+  cat c.files | sed 's|\(.*\).c$|\1.o : @depends : gcc -c -o \1.o \1.c|' > c.rules
+
+fib.o : fib.c fib.h
+  gcc -c -o fib.o fib.c
+
+main.o : main.c fib.h defs.h
+  gcc -c -o main.o main.c

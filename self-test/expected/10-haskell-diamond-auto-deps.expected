@@ -22,9 +22,11 @@ Top[B[A],C[A]]
 
 # Debug demand
 jenga build --debug-demand
+B: Require: diamond.exe
 B: Require: ghc.exe
 B: Require: ghc-path
 B: Require: version
+B: Require: main.o
 B: Require: depends
 B: Require: main.hs
 B: Require: Top.hi
@@ -32,10 +34,8 @@ B: Require: C.hi
 B: Require: A.hi
 B: Require: B.hi
 B: Require: Top.o
-B: Require: C.o
 B: Require: B.o
+B: Require: C.o
 B: Require: A.o
 B: Require: main.hi
-B: Require: main.o
-B: Require: diamond.exe
 checked 16 targets

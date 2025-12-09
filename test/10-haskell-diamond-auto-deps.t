@@ -27,9 +27,11 @@
   Top[B[A],C[A]]
 
   $ jenga build -a --debug-demand
+  B: Require: example/diamond.exe
   B: Require: example/ghc.exe
   B: Require: example/ghc-path
   B: Require: example/version
+  B: Require: example/main.o
   B: Require: example/depends
   B: Require: example/main.hs
   B: Require: example/Top.hi
@@ -37,10 +39,8 @@
   B: Require: example/A.hi
   B: Require: example/B.hi
   B: Require: example/Top.o
-  B: Require: example/C.o
   B: Require: example/B.o
+  B: Require: example/C.o
   B: Require: example/A.o
   B: Require: example/main.hi
-  B: Require: example/main.o
-  B: Require: example/diamond.exe
   checked 16 targets

@@ -25,8 +25,8 @@ What have I got?
 Build from clean:
 
   $ jenga build -m -a
-  A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
+  A: gcc -c fib.c -o fib.o
   A: gcc fib.o main.o -o main.exe
   checked 3 targets
   ran 3 commands

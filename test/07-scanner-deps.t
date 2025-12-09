@@ -9,10 +9,10 @@
 
 Initial build
   $ jenga build -a
-  A: gcc -MG -MM fib.c > fib.d
-  A: gcc -c fib.c -o fib.o
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
+  A: gcc -MG -MM fib.c > fib.d
+  A: gcc -c fib.c -o fib.o
   A: gcc fib.o main.o -o main.exe
   checked 5 targets
   ran 5 commands

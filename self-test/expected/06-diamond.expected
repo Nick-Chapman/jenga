@@ -3,8 +3,8 @@
 jenga build -a
 A: echo -n A > a
 A: echo -n B  > b
-A: cat a b > ab
 A: echo -n C > c
+A: cat a b > ab
 A: cat b c > bc
 A: cat ab bc > top
 checked 6 targets
@@ -16,10 +16,10 @@ ABBC
 
 # See memoization when building; No target is "Require"d more than once
 jenga build -a --debug-demand
-B: Require: top
-B: Require: ab
 B: Require: a
 B: Require: b
-B: Require: bc
 B: Require: c
+B: Require: ab
+B: Require: bc
+B: Require: top
 checked 6 targets

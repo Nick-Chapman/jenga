@@ -88,4 +88,4 @@ grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 echo 'epsilon : alpha :' >> build.jenga
 jenga build
 Build failed for 1 reasons:
-(1) CYCLE: epsilon alpha beta epsilon
+(1) CYCLE: alpha beta epsilon alpha

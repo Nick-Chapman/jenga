@@ -20,8 +20,8 @@ Build from clean:
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
   A: echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
   A: gcc -MG -MM fib.c -MF fib.d
-  A: gcc -c fib.c -o fib.o
   A: gcc -MG -MM main.c -MF main.d
+  A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 11 targets

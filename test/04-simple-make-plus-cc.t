@@ -14,10 +14,10 @@
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   A: cat c.files | sed 's|\(.*\).c|\1.o|' > o.files
   A: echo main.exe : @o.files : gcc $(cat o.files) -o main.exe > link.rule
-  A: grep -v '^$' defs.h.in > defs.h
   A: gcc -MG -MM fib.c -MF fib.d
-  A: gcc -c fib.c -o fib.o
   A: gcc -MG -MM main.c -MF main.d
+  A: gcc -c fib.c -o fib.o
+  A: grep -v '^$' defs.h.in > defs.h
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
   checked 12 targets

@@ -48,8 +48,8 @@ See files
 Initial build. Expect 3 actions to be run
 
   $ jenga build -a -c.
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 3 targets
   ran 3 commands
@@ -79,8 +79,8 @@ Zero build
 Specifying a build cache
 
   $ jenga build -a --cache=tmp
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 3 targets
   ran 3 commands
@@ -129,12 +129,12 @@ Double build
 What are the targets?
 
   $ jenga build -a --list-targets -c.
-  copied/fib.o
-  copied/main.o
-  copied/hello.exe
-  example/fib.o
-  example/main.o
   example/hello.exe
+  example/main.o
+  example/fib.o
+  copied/hello.exe
+  copied/main.o
+  copied/fib.o
 
 Controlling the scope of what to build
 
@@ -142,9 +142,9 @@ Controlling the scope of what to build
   checked 3 targets
 
   $ jenga build -a --list-targets copied -c.
-  copied/fib.o
-  copied/main.o
   copied/hello.exe
+  copied/main.o
+  copied/fib.o
 
 Builds are relative
   $ cd copied
@@ -155,8 +155,8 @@ Builds are relative
 Using a non-default cache:
 
   $ jenga build -a --cache=my-cache
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 6 targets
   ran 3 commands
@@ -170,16 +170,16 @@ Using a temporary cache with -f. Forces run of all the actions
 
   $ jenga build -a -f | sed 's|/tmp/[0-9]*/.cache|/tmp/$$/.cache|'
   using temporary cache: /tmp/$$/.cache/jenga
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 6 targets
   ran 3 commands
 
   $ jenga build -a -f | sed 's|/tmp/[0-9]*/.cache|/tmp/$$/.cache|'
   using temporary cache: /tmp/$$/.cache/jenga
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 6 targets
   ran 3 commands
@@ -253,8 +253,8 @@ Hardlink counts of 1 -- example
 Rebuild, hardlink counts back to 2
 
   $ jenga build -m -a -c.
-  A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
+  A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
   checked 3 targets
   ran 3 commands

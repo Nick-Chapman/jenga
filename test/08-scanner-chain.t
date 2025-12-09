@@ -9,11 +9,11 @@
 
 Initial build
   $ jenga build -m -a
-  A: gcc -MG -MM fib.c > fib.d
-  A: gcc -c fib.c -o fib.o
   A: (echo -n 'main.d '; gcc -MG -MM main.c) > main.d2
   A: gcc -MG -MM main.c > main.d
   A: gcc -c main.c -o main.o
+  A: gcc -MG -MM fib.c > fib.d
+  A: gcc -c fib.c -o fib.o
   A: gcc fib.o main.o -o main.exe
   checked 6 targets
   ran 6 commands

@@ -85,7 +85,7 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Dir -> Config -> UserProg -> IO ()
-elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
+elaborateAndBuild cacheDir config@Config{logMode,startDir,buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do
@@ -139,7 +139,9 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         digest <- buildArtifact emptyChain config how (Key src)
         when (not worker) $ do
           Execute $ XIO $ do
-            printf "installing %s\n" (ppKey config (Key dest))
+            let quiet = case logMode of LogQuiet -> True; _ -> False
+            when (not quiet) $ do
+              printf "installing %s\n" (ppKey config (Key dest))
           installDigest digest dest
       newReport config fbs
       pure ()

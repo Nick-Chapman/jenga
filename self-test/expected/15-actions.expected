@@ -4,7 +4,6 @@ rm the.out.expected
 
 # Test; the.out.expected is missing, so failure
 jenga test
-checked 2 targets
 ran 2 commands
 Build failed for 1 reasons:
 (1) 'the.out.expected' : is not source and has no build rule
@@ -13,14 +12,14 @@ Build failed for 1 reasons:
 jenga build -a --promote
 A: if [ ! -z "promote" ]; then echo '!the.out.expected : the.out : ln $< $@'; fi > promotion.rule
 A: ln the.out the.out.expected
-checked 3 targets
 ran 2 commands
+checked 3 rules
 
 # Test (now passes)
 jenga test -a
-checked 2 targets
 A: diff the.out the.out.expected
 ran 1 command
+checked 2 rules
 
 # Replace the expectation file in place.
 # This would provoke a bug if file materialization were implemented using "ln" instead of "cp".
@@ -29,7 +28,6 @@ echo 'But I want to see this!' > the.out.expected
 
 # Rerun test; get failure
 jenga test -a
-checked 2 targets
 A: diff the.out the.out.expected
 (directory) .
 (rule) *test : the.out the.out.expected

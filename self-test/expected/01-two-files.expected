@@ -8,8 +8,8 @@ jenga build -a
 A: gcc -c main.c -o main.o
 A: gcc -c fib.c -o fib.o
 A: gcc fib.o main.o -o main.exe
-checked 3 targets
 ran 3 commands
+checked 3 rules
 
 # Run the built artifact
 jenga exec example/main.exe
@@ -17,7 +17,7 @@ hello, 55 world
 
 # Rebuild after no changes
 jenga build -a
-checked 3 targets
+checked 3 rules
 
 # Update main.c "world->UNIVERSE"; two compile actions run
 sed -i 's/world/UNIVERSE/g' example/main.c
@@ -26,18 +26,20 @@ A: gcc -c main.c -o main.o
 A: gcc fib.o main.o -o main.exe
 hello, 55 UNIVERSE
 ran 2 commands
+checked 3 rules
 
 # Reverting to previous state of main.c; no actions run
 sed -i 's/UNIVERSE/world/g' example/main.c
 jenga exec -a example/main.exe
 hello, 55 world
+checked 3 rules
 
 # Whitespace change to main.c; no link action run (early cutoff)
 sed -i 's/int main/int      main/g' example/main.c
 jenga build -a
 A: gcc -c main.c -o main.o
-checked 3 targets
 ran 1 command
+checked 3 rules
 
 # Update to link under a different name; new link action run
 sed -i 's/main.exe/RENAMED.exe/' example/build.jenga
@@ -45,24 +47,25 @@ jenga exec -a example/RENAMED.exe
 A: gcc fib.o main.o -o RENAMED.exe
 hello, 55 world
 ran 1 command
+checked 3 rules
 
 # Relocate the example to a new directory; no actions run
 mv example RELOCATED
 jenga build -a
-checked 3 targets
+checked 3 rules
 
 # Duplicate example dir; twice #targets; but no actions run
 cp -rp RELOCATED ANOTHER
 jenga build -a
-checked 6 targets
+checked 6 rules
 
 # Modify one of the example dirs; minimal rebuild as required
 sed -i 's/fib(10)/fib(20)/g' RELOCATED/main.c
 jenga build -a
 A: gcc -c main.c -o main.o
 A: gcc fib.o main.o -o RENAMED.exe
-checked 6 targets
 ran 2 commands
+checked 6 rules
 
 # Run the two co-existing executabls
 jenga exec RELOCATED/RENAMED.exe
@@ -97,6 +100,7 @@ sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c
 jenga build -q
 jenga exec -a ANOTHER/RENAMED.exe
 hello, 89 world
+checked 3 rules
 
 # Help
 jenga --help

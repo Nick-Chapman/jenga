@@ -9,8 +9,8 @@ A: tail -1 lots > t
 A: touch x
 A: exit 0
 A: cat h t > final
-checked 4 targets
 ran 8 commands
+checked 3 rules
 
 # Change the example to echo a warning before exiting
 sed -i 's|exit 0|echo WARNING; exit 0|' build.jenga
@@ -26,8 +26,8 @@ A: echo WARNING; exit 0
 (command) $ touch x
 (command) $ echo WARNING; exit 0
 WARNING
-checked 4 targets
 ran 4 commands
+checked 3 rules
 
 # And zero build (see warning even though no actions were run)
 jenga build -a
@@ -38,7 +38,7 @@ jenga build -a
 (command) $ touch x
 (command) $ echo WARNING; exit 0
 WARNING
-checked 4 targets
+checked 3 rules
 
 # Change the example to have a non-zero error code
 sed -i 's|exit 0|exit 42|' build.jenga

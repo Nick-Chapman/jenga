@@ -6,7 +6,6 @@ A: tar -cf ball.tar $(cat my.all)
 A: echo -------------------- >> report
 A: tar -tf ball.tar | sort >> report
 A: echo -------------------- >> report
-checked 3 targets
 A: cat report
 (directory) .
 (rule) *view : report
@@ -23,3 +22,4 @@ jenga.exe
 yyy
 --------------------
 ran 6 commands
+checked 3 rules

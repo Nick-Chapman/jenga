@@ -12,8 +12,8 @@ A: ./ghc.exe -c C.hs
 A: ./ghc.exe -c Top.hs
 A: ./ghc.exe -c main.hs
 A: ./ghc.exe -o diamond.exe main.o Top.o B.o C.o A.o
-checked 14 targets
 ran 11 commands
+checked 10 rules
 
 # Run
 jenga exec diamond.exe
@@ -35,4 +35,4 @@ B: Require: Top.o
 B: Require: B.o
 B: Require: C.o
 B: Require: A.o
-checked 14 targets
+checked 10 rules

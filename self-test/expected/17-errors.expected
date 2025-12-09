@@ -1,8 +1,8 @@
 
 # Initial build is fine
 jenga build
-checked 8 targets
 ran 8 commands
+checked 8 rules
 
 # Remove the rule for epsilon
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
@@ -21,8 +21,8 @@ grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 # Define epsilon as a source
 echo E3 > epsilon
 jenga build # OK
-checked 7 targets
 ran 2 commands
+checked 7 rules
 
 # Define epsilon as Source AND by a rule
 echo 'epsilon : : echo -n E4 > epsilon' >> build.jenga
@@ -68,20 +68,18 @@ Build failed for 1 reasons:
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 echo 'epsilon : : echo E5 > epsilon' >> build.jenga
 jenga run run
-checked 8 targets
-ran 3 commands
 Build failed for 1 reasons:
 (1) no rules for phony target 'run'
 
 # Add the phony
 echo '*run : alpha : cat alpha' >> build.jenga
 jenga run run # OK
-checked 8 targets
 (directory) .
 (rule) *run : alpha
 (command) $ cat alpha
 [ [ D E5 ] [ Z H T ] ]
-ran 1 command
+ran 4 commands
+checked 8 rules
 
 # Create a dependency cycle
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga

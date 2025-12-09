@@ -4,8 +4,8 @@ jenga build -a
 A: echo -n A > a
 A: echo -n B > b
 A: cat a b > ab
-checked 3 targets
 ran 3 commands
+checked 3 rules
 
 # See Targets
 jenga build --list-targets

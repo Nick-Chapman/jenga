@@ -8,8 +8,8 @@ A: chmod +x ghc.exe
 A: ./ghc.exe -c Sudoku.hs -XLambdaCase
 A: ./ghc.exe -c main.hs
 A: ./ghc.exe main.o Sudoku.o -package containers -o solver.exe
-checked 7 targets
 ran 7 commands
+checked 6 rules
 
 # Solve a puzzle
 jenga exec solver.exe puzzle

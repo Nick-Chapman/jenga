@@ -10,8 +10,8 @@ A: gcc -MG -MM $(cat c.files) > depends
 A: gcc -c -o fib.o fib.c
 A: gcc -c -o main.o main.c
 A: gcc -o hello.exe $(cat o.files)
-checked 9 targets
 ran 9 commands
+checked 9 rules
 
 # Run
 jenga exec hello.exe

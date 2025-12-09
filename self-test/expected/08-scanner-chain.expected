@@ -7,8 +7,8 @@ A: gcc -c main.c -o main.o
 A: gcc -MG -MM fib.c > fib.d
 A: gcc -c fib.c -o fib.o
 A: gcc fib.o main.o -o main.exe
-checked 6 targets
 ran 6 commands
+checked 6 rules
 
 # Run
 jenga exec main.exe

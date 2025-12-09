@@ -3,12 +3,12 @@
 jenga build -a
 A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
 A: gcc -o main.exe main.o
-checked 2 targets
 ran 2 commands
+checked 2 rules
 
 # Zero build
 jenga build -a
-checked 2 targets
+checked 2 rules
 
 # Run (see exit code 25)
 jenga exec main.exe
@@ -20,8 +20,8 @@ echo '-O2' > CFLAGS
 jenga build -a
 A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
 A: gcc -o main.exe main.o
-checked 2 targets
 ran 2 commands
+checked 2 rules
 
 # Change CFLAGS; rebuilds; warning displayed
 echo '-Wall' > CFLAGS
@@ -33,8 +33,8 @@ A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
 (stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
 (stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
 (stderr)       |      ^~~~
-checked 2 targets
 ran 1 command
+checked 2 rules
 
 # Try again: no actions; warning redisplayed
 jenga build -a
@@ -44,7 +44,7 @@ jenga build -a
 (stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
 (stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
 (stderr)       |      ^~~~
-checked 2 targets
+checked 2 rules
 
 # Change CFLAGS; rebuilds; error displayed; build failed
 echo '-Wall -Werror' > CFLAGS
@@ -78,4 +78,4 @@ Build failed for 1 reasons:
 # Remove CFLAGS; no actions; back to original build
 rm CFLAGS
 jenga build -a
-checked 2 targets
+checked 2 rules

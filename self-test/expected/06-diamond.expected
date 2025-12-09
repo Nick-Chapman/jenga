@@ -7,8 +7,8 @@ A: echo -n C > c
 A: cat a b > ab
 A: cat b c > bc
 A: cat ab bc > top
-checked 6 targets
 ran 6 commands
+checked 6 rules
 
 # Materialize and show top output
 jenga cat top; echo
@@ -22,4 +22,4 @@ B: Require: c
 B: Require: ab
 B: Require: bc
 B: Require: top
-checked 6 targets
+checked 6 rules

@@ -6,8 +6,8 @@ A: gcc -c main.c -o main.o
 A: gcc -MG -MM fib.c > fib.d
 A: gcc -c fib.c -o fib.o
 A: gcc fib.o main.o -o main.exe
-checked 5 targets
 ran 5 commands
+checked 5 rules
 
 # Run
 jenga exec main.exe
@@ -24,9 +24,10 @@ rm defs.h && echo '#define MY_CONST 11' > defs.h
 jenga build -a
 A: gcc -c main.c -o main.o
 A: gcc fib.o main.o -o main.exe
-checked 5 targets
 ran 2 commands
+checked 5 rules
 
 # Rerun
 jenga exec -a main.exe
 hello, 89 world with scanner deps
+checked 5 rules

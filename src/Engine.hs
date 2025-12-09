@@ -120,29 +120,19 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
 
     ModeCat src0 -> do
       let src = startDir </> src0
-      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg ["."])
         let System{how} = system
-        digest <- buildArtifact emptyChain config how (Key src)
-        -- TODO: disable cat before report
-        when (not worker) $ do
-          Execute $ do
-            let cacheFile = cacheFileLoc config digest
-            contents <- XReadFile cacheFile
-            XIO (putStr contents)
+        _digest <- buildArtifact emptyChain config how (Key src)
         pure ()
-
       newReport config fbs
-
-      -- TODO: enable cat post report
-      {-runX config $ do
+      runX config $ do
         case lookFBS fbs (Key src) of
-          Nothing -> pure () -- we can't cat what didn't get build
+          Nothing -> pure () -- we can't cat what didn't get built
           Just digest -> do
             let cacheFile = cacheFileLoc config digest
             contents <- XReadFile cacheFile
-            XIO $ putStr contents-}
-
+            XIO $ putStr contents
 
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0

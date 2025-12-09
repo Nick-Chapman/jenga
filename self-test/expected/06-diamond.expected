@@ -12,8 +12,8 @@ checked 6 rules
 
 # Materialize and show top output
 jenga cat -a top
-ABBC
 checked 6 rules
+ABBC
 
 # See memoization when building; No target is "Require"d more than once
 jenga build -a --debug-demand

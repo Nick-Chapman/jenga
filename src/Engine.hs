@@ -252,6 +252,7 @@ buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = d
   let Artifact { materialize, key } = target
   digest <- buildArtifact emptyChain config how key
   when materializeCommaJenga $ materializeInCommaJenga config startDir digest key
+  -- TODO: user materialization should happen when the artifact is demanded, not just when building everything. currently "jenga test --promote" is not working
   when materialize $ do
     let Key materializedFile = key
     installDigest config digest materializedFile

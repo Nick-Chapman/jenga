@@ -17,4 +17,4 @@ bc : b c
  cat b c > bc
 
 top : ab bc
-  cat ab bc > top
+  echo $$(cat ab bc) > top

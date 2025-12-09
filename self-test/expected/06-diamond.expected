@@ -6,13 +6,14 @@ A: echo -n B  > b
 A: echo -n C > c
 A: cat a b > ab
 A: cat b c > bc
-A: cat ab bc > top
+A: echo $(cat ab bc) > top
 ran 6 commands
 checked 6 rules
 
 # Materialize and show top output
-jenga cat top; echo
+jenga cat -a top
 ABBC
+checked 6 rules
 
 # See memoization when building; No target is "Require"d more than once
 jenga build -a --debug-demand

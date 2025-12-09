@@ -13,12 +13,12 @@
   A: echo -n C > c
   A: cat a b > ab
   A: cat b c > bc
-  A: cat ab bc > top
+  A: echo $(cat ab bc) > top
   ran 6 commands
   checked 6 rules
 
   $ jenga build -mq && cat ,jenga/example/top
-  ABBC (no-eol)
+  ABBC
 
 The example has a diamond dependency on target 'b', reached via 'ab' and 'bc'.
 During any build (incuding a zero-rebuild) we should require 'b' more than once.

@@ -432,7 +432,6 @@ buildPhony config how@How{phow} phonyName = do
 buildArtifact :: Chain -> Config -> How -> Key -> B Digest
 buildArtifact chain config@Config{worker,debugDemand} how@How{ahow} = do
   -- TODO: document this flow.
-  -- TODO: check for cycles.
   BMemoKey chain $ \sought -> do
     chain <- pure $ pushChain sought chain -- this is where we extend the dependency chain
     case Map.lookup sought ahow of

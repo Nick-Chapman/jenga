@@ -83,7 +83,9 @@ checked 8 targets
 [ [ D E5 ] [ Z H T ] ]
 ran 1 command
 
-# Create a cycle -- TODO enable when this works!
-#grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
-#echo 'epsilon : alpha :' >> build.jenga
-#jenga build
+# Create a dependency cycle
+grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
+echo 'epsilon : alpha :' >> build.jenga
+jenga build
+Build failed for 1 reasons:
+(1) CYCLE: epsilon alpha beta epsilon

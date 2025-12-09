@@ -88,101 +88,119 @@ elaborateAndBuild :: Dir -> Config -> UserProg -> IO ()
 elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
   case buildMode of
 
-    ModeListTargets -> do -- TODO: limit to -j1 (also list rules)
-      config <- pure config { jnum = 1 }
-      runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg args)
-        let System{rules} = system
-        sequence_
-          [ BLog t
-          | Rule{target} <- rules
-          , t <-
-              case target of
-                Artifacts arts -> [ ppKey config key | Artifact{key} <- arts ]
-                -- TODO: should "-t" show *actions as well?
-                Phony _name -> [] -- [ "*" ++ _name ]
-          ]
+    ModeListTargets -> do
+      _fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+         system <- runElaboration config (userProg args)
+         let System{rules} = system
+         when (not worker) $ do
+           sequence_
+             [ BLog t
+             | Rule{target} <- rules
+             , t <-
+                 case target of
+                   Artifacts arts -> [ ppKey config key | Artifact{key} <- arts ]
+                   Phony _name -> []
+             ]
+      pure ()
 
     ModeListRules -> do
-      config <- pure config { jnum = 1 }
-      runBuild cacheDir config $ \config -> do
+      _fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
-        staticRules :: [StaticRule] <- concat <$>
-          sequence [ do (deps,action) <- gatherDeps emptyChain config how depcom
-                        pure [ StaticRule { dir, target, deps, action } ]
-                   | Rule{dir,target,depcom} <- rules
-                   ]
-        BLog (intercalate "\n\n" (map (ppStaticRule config) staticRules))
-
-    ModeBuild -> do
-      runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg args)
-        buildEverythingInSystem config system
-        reportSystem config system
-
-    ModeExec exe0 argsForExe -> do -- TODO: really do an exec here? (as in fork/exec)
-      -- TODO: allow to build in parallel; only elide parallelism for the actual exec.
-      config <- pure config { jnum = 1 }
-      let exe = startDir </> exe0
-      runBuild cacheDir config $ \config -> do
-        system <- runElaboration config (userProg ["."])
-        buildEverythingInSystem config system -- TODO: ??? -- how about no?!
-        let System{how} = system
-        digest <- buildArtifact emptyChain config how (Key exe)
-        cacheFile <- cacheFile digest
-        --BLog "launching..." -- TODO: but not when quiet
-        Execute $ XIO $ do
-          (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
-          exitCode <- waitForProcess h
-          putStr (seeFailureExit exitCode) -- TODO: better: propagate as my exit-code?
+        when (not worker) $ do
+          staticRules :: [StaticRule] <- concat <$>
+            sequence [ do (deps,action) <- gatherDeps emptyChain config how depcom
+                          pure [ StaticRule { dir, target, deps, action } ]
+                     | Rule{dir,target,depcom} <- rules
+                     ]
+          BLog (intercalate "\n\n" (map (ppStaticRule config) staticRules))
+      pure ()
 
     ModeCat src0 -> do
-      config <- pure config { jnum = 1 }
       let src = startDir </> src0
-      runBuild cacheDir config $ \config -> do
+      fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg ["."])
-        buildEverythingInSystem config system
         let System{how} = system
         digest <- buildArtifact emptyChain config how (Key src)
         file <- cacheFile digest
-        Execute $ do
-          contents <- XReadFile file
-          XIO (putStr contents)
+        when (not worker) $ do
+          Execute $ do
+            contents <- XReadFile file
+            XIO (putStr contents)  -- TODO: move to after the report
+      newReport config fbs
+      pure ()
 
     ModeInstall src0 dest0 -> do
-      config <- pure config { jnum = 1 }
       let src = startDir </> src0
       let dest = startDir </> dest0
-      runBuild cacheDir config $ \config -> do
+      fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg ["."])
-        buildEverythingInSystem config system
         let System{how} = system
         digest <- buildArtifact emptyChain config how (Key src)
-        installDigest digest dest
+        when (not worker) $ do
+          Execute $ XIO $ do
+            printf "installing %s\n" (ppKey config (Key dest))
+          installDigest digest dest
+      newReport config fbs
+      pure ()
 
-    ModeRun names -> do -- TODO: exit code with #errors (also for jenga build)
-      config <- pure config { jnum = 1 }
-      runBuild cacheDir config $ \config -> do
+    ModeRun names -> do -- including "test" == "run test"
+      fbs :: FBS <- runBuild cacheDir config $ \config -> do
         system <- runElaboration config (userProg args)
-        buildEverythingInSystem config system
-        reportSystem config system
         let System{how} = system
         parallel_ [ buildPhony config how name | name <- names ]
+      newReport config fbs
+      pure ()
 
+    ModeBuild -> do
+      fbs :: FBS <- runBuild cacheDir config $ \config -> do
+        system <- runElaboration config (userProg args)
+        buildEverythingInSystem config system
+      newReport config fbs
+      pure ()  -- TODO: exit code with #errors
 
-runBuild :: Dir -> Config -> (Config -> B ()) -> IO ()
+    ModeExec exe0 argsForExe -> do -- TODO: can we really do an exec here? (as in fork/exec)
+      let exe = startDir </> exe0
+      fbs :: FBS <- runBuild cacheDir config $ \config@Config{worker} -> do
+        system <- runElaboration config (userProg ["."])
+        let System{how} = system
+        digest <- buildArtifact emptyChain config how (Key exe)
+        cacheFile <- cacheFile digest
+        when (not worker) $ do
+          Execute $ XIO $ do -- TODO: exec should come after "newReport"
+            (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
+            exitCode <- waitForProcess h
+            putStr (seeFailureExit exitCode) -- TODO: propagate exit-code instead of print
+      newReport config fbs
+      pure ()
+
+newReport :: Config -> FBS -> IO ()
+newReport Config{logMode,worker} FBS{countRules=nr,failures} = do
+  let quiet = case logMode of LogQuiet -> True; _ -> False
+  when (not quiet && not worker) $ do
+    when (length failures == 0) $ do
+      printf "checked %s\n"
+        (pluralize nr "rule")
+
+pluralize :: Int -> String -> String
+pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
+
+runBuild :: Dir -> Config -> (Config -> B ()) -> IO FBS
 runBuild cacheDir config f = do
   nCopies config $ \config -> do
     runX config $ do
       runB cacheDir config (f config)
 
-nCopies :: Config -> (Config -> IO ()) -> IO ()
+nCopies :: Config -> (Config -> IO a) -> IO a
 nCopies config@Config{jnum} f =
-  if jnum < 1 then error "nCopies<1" else do
-    children <- sequence $ replicate (jnum-1) $ forkProcess (f $ config { worker = True })
-    f config -- parent
+  if jnum < 1 then error "nCopies<1" else do -- TODO: improve messages: comes when user says: -j0
+    children <- sequence $ replicate (jnum-1) $ do
+      forkProcess $ do
+        _childRes <- f $ config { worker = True }
+        pure ()
+    parentRes <- f config
     mapM_ waitpid children
+    pure parentRes
 
 buildEverythingInSystem :: Config -> System -> B ()
 buildEverythingInSystem config system = do
@@ -212,21 +230,6 @@ ppTarget :: Config -> Target -> String
 ppTarget config = \case
   Artifacts arts -> ppKeys config [ key | Artifact { key } <- arts ]
   Phony phonyName -> "*" ++ phonyName
-
-pluralize :: Int -> String -> String
-pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
-
-reportSystem :: Config -> System -> B ()
-reportSystem Config{logMode,worker} System{rules} = do
-  let quiet = case logMode of LogQuiet -> True; _ -> False
-  let nTargets =
-        sum [ length arts
-            | Rule{target} <- rules
-            , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
-            ]
-  -- TODO: perhaps "checked" message would be better counting #actions (aka commands)
-  -- TODO: sometimes when -jBIG: see worker "ran" message after the final "checked" message.
-  when (not quiet && not worker) $ BLog $ printf "checked %s" (pluralize nTargets "target")
 
 buildAndMaterialize :: Config -> How -> Artifact -> B ()
 buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = do
@@ -896,7 +899,7 @@ data B a where
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
 
-runB :: Dir -> Config -> B () -> X ()
+runB :: Dir -> Config -> B () -> X FBS
 runB cacheDir config@Config{logMode} build0 = do
   loop build bstate0 kFinal
   where
@@ -906,17 +909,17 @@ runB cacheDir config@Config{logMode} build0 = do
 
     sandboxParent pid = makeAbsoluteDir (printf "/tmp/jbox/%s" (show pid))
 
-    kFinal :: BState -> BuildRes () -> X ()
-    kFinal BState{runCounter,jobs} res = do
+    kFinal :: BState -> BuildRes () -> X FBS
+    kFinal s@BState{runCounter,jobs} res = do
       when (length jobs /= 0) $ error "runB: unexpected left over jobs"
       myPid <- XIO getCurrentPid
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
-      let i = runCounter
-      when (see && i>0) $ XLog (printf "ran %s" (pluralize i "command"))
-      reportBuildRes config res
+      when (see && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
+      reportBuildRes config res -- TODO: move to caller?
+      pure (makeFBS res s)
 
-    loop :: B a -> BState -> (BState -> BuildRes a -> X ()) -> X ()
+    loop :: B a -> BState -> (BState -> BuildRes a -> X FBS) -> X FBS
     loop m0 s k = case m0 of
       BResult res -> k s res
       BCatch m -> loop m s $ \s res -> k s (SUCC res)
@@ -986,19 +989,19 @@ runB cacheDir config@Config{logMode} build0 = do
 
       BYield -> yield s k
 
-    yield :: BState -> (BState -> BuildRes () -> X ()) -> X ()
+    yield :: BState -> (BState -> BuildRes () -> X FBS) -> X FBS
     yield s k = do
       let BState{jobs} = s
       let me = BJob (pure ()) k
       next s { jobs = jobs ++ [me] }
 
-    next :: BState -> X ()
+    next :: BState -> X FBS
     next s@BState{jobs} = do
       case jobs of
         [] -> error "next: no more jobs"
         j:jobs -> resume j s { jobs }
 
-    resume :: BJob -> BState -> X ()
+    resume :: BJob -> BState -> X FBS
     resume (BJob p k) s = loop p s k
 
 initDirs :: Config -> B ()
@@ -1025,7 +1028,7 @@ reportBuildRes Config{worker} res =
 
 data BState = BState
   { sandboxCounter :: Int
-  , runCounter :: Int
+  , runCounter :: Int -- number of commands run
   , memoT :: Map Key (OrWIP (BuildRes Digest))
   , memoR :: Map [Key] (BuildRes WitMap)
   , jobs :: [BJob]
@@ -1043,7 +1046,21 @@ bstate0 = BState
   }
 
 data BJob where
-  BJob :: B a -> (BState -> BuildRes a -> X ()) -> BJob
+  BJob :: B a -> (BState -> BuildRes a -> X FBS) -> BJob
+
+----------------------------------------------------------------------
+-- FBS : FinalBuildState
+
+data FBS = FBS
+  { countRules :: Int
+  , failures :: [Reason]
+  }
+
+makeFBS :: BuildRes () -> BState -> FBS
+makeFBS bres BState{memoR} =
+  FBS { countRules = Map.size memoR
+      , failures = case bres of SUCC () -> []; FAIL reasons -> reasons
+      }
 
 ----------------------------------------------------------------------
 -- Chain -- dependency chain for detecting cycles
@@ -1120,7 +1137,6 @@ runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = l
       -- sandboxed execution of user's action; for now always a list of bash commands
       XRunActionInDir dir Action{commands} -> ActionRes <$> do
         forM commands $ \command -> do
-          -- TODO: perhaps on logAction (-a) we can also show the commands elided!
           let logAction = case logMode of LogActions -> True; _ -> False
           when logAction $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-

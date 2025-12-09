@@ -14,8 +14,8 @@ Initial build
   A: gcc -MG -MM fib.c > fib.d
   A: gcc -c fib.c -o fib.o
   A: gcc fib.o main.o -o main.exe
-  checked 5 targets
   ran 5 commands
+  checked 5 rules
 
 Run the executable
   $ jenga exec example/main.exe
@@ -30,7 +30,7 @@ Inspect the generated deps
   $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 5 targets
   ran 2 commands
+  checked 5 rules
   $ jenga exec example/main.exe
   hello, 89 world with scanner deps

@@ -19,8 +19,8 @@ Build:
   A: gcc -c -o fib.o fib.c
   A: gcc -c -o main.o main.c
   A: gcc -o hello.exe $(cat o.files)
-  checked 9 targets
   ran 9 commands
+  checked 9 rules
   Hello, 55 jenga. Discovered deps and generated rules.
 
 Change & rebuild:
@@ -30,8 +30,8 @@ Change & rebuild:
   A: gcc -MG -MM $(cat c.files) > depends
   A: gcc -c -o main.o main.c
   A: gcc -o hello.exe $(cat o.files)
-  checked 9 targets
   ran 3 commands
+  checked 9 rules
   $ jenga exec example/hello.exe
   Hello, 89 jenga. Discovered deps and generated rules.
 

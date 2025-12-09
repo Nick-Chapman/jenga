@@ -12,8 +12,8 @@
   A: gcc -c main.c -o main.o
   A: gcc -c fib.c -o fib.o
   A: gcc fib.o main.o -o main.exe
-  checked 4 targets
   ran 4 commands
+  checked 4 rules
 
 Run the materizalized executable
 

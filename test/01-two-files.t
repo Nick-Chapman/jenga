@@ -28,8 +28,8 @@ Build from clean:
   A: gcc -c main.c -o main.o
   A: gcc -c fib.c -o fib.o
   A: gcc fib.o main.o -o main.exe
-  checked 3 targets
   ran 3 commands
+  checked 3 rules
 
 See the artifacts:
 
@@ -48,7 +48,7 @@ Run the built artifact:
 Rebuild after no changes:
 
   $ jenga build -a
-  checked 3 targets
+  checked 3 rules
 
 Update main.c "world->UNIVERSE" and rerun:
 
@@ -56,8 +56,8 @@ Update main.c "world->UNIVERSE" and rerun:
   $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 3 targets
   ran 2 commands
+  checked 3 rules
   $ jenga exec example/main.exe
   hello, 55 UNIVERSE
 
@@ -65,7 +65,7 @@ Reverting to previous state of main.c causes no rebuilding:
 
   $ sed -i 's/UNIVERSE/world/g' example/main.c
   $ jenga build -a
-  checked 3 targets
+  checked 3 rules
   $ jenga exec example/main.exe
   hello, 55 world
 
@@ -74,16 +74,16 @@ Whitespace only change to main.c cause no link step (early cutoff):
   $ sed -i 's/int main/int      main/g' example/main.c
   $ jenga build -a
   A: gcc -c main.c -o main.o
-  checked 3 targets
   ran 1 command
+  checked 3 rules
 
 Update build rules to link executable under a different name:
 
   $ sed -i 's/main.exe/RENAMED.exe/' example/build.jenga
   $ jenga build -a
   A: gcc fib.o main.o -o RENAMED.exe
-  checked 3 targets
   ran 1 command
+  checked 3 rules
 
   $ jenga exec example/RENAMED.exe
   hello, 55 world
@@ -99,7 +99,7 @@ Relocate the example to a new directory; no rebuilds:
 
   $ mv example RELOCATED
   $ jenga build -m -a
-  checked 3 targets
+  checked 3 rules
 
   $ find ,jenga
   ,jenga
@@ -112,7 +112,7 @@ Duplicate the example directory; double elaborated rules; still no rebuilds:
 
   $ cp -rp RELOCATED ANOTHER
   $ jenga build -m -a
-  checked 6 targets
+  checked 6 rules
 
   $ find ,jenga
   ,jenga
@@ -131,8 +131,8 @@ Modify code in one of the example directories; minimal rebuild as required:
   $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o RENAMED.exe
-  checked 6 targets
   ran 2 commands
+  checked 6 rules
 
 Run the two versions:
 
@@ -144,7 +144,7 @@ Run the two versions:
 Materalize all targets:
 
   $ jenga build -m -a
-  checked 6 targets
+  checked 6 rules
 
   $ find ,jenga
   ,jenga
@@ -160,7 +160,7 @@ Materalize all targets:
 Materalize just artifacts:
 
   $ jenga build -m -a
-  checked 6 targets
+  checked 6 rules
 
   $ find ,jenga
   ,jenga
@@ -177,7 +177,7 @@ Remove one directory copy
 
   $ rm -rf RELOCATED
   $ jenga build -m -a
-  checked 3 targets
+  checked 3 rules
   $ find ,jenga
   ,jenga
   ,jenga/ANOTHER

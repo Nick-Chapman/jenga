@@ -14,8 +14,8 @@
   A: cat a b > ab
   A: cat b c > bc
   A: cat ab bc > top
-  checked 6 targets
   ran 6 commands
+  checked 6 rules
 
   $ jenga build -mq && cat ,jenga/example/top
   ABBC (no-eol)
@@ -30,4 +30,4 @@ During any build (incuding a zero-rebuild) we should require 'b' more than once.
   B: Require: example/ab
   B: Require: example/bc
   B: Require: example/top
-  checked 6 targets
+  checked 6 rules

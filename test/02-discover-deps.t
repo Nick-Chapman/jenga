@@ -24,14 +24,14 @@ Build from clean:
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 11 targets
   ran 11 commands
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 55 world with auto discovery
 
 Zero rebuild:
   $ jenga build -a
-  checked 11 targets
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 55 world with auto discovery
 
@@ -41,8 +41,8 @@ Change main.c
   A: gcc -MG -MM main.c -MF main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 11 targets
   ran 3 commands
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 55 UNIVERSE with auto discovery
 
@@ -51,8 +51,8 @@ Whitespace change to fib.h
   $ jenga build -a
   A: gcc -c fib.c -o fib.o
   A: gcc -c main.c -o main.o
-  checked 11 targets
   ran 2 commands
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 55 UNIVERSE with auto discovery
 
@@ -61,8 +61,8 @@ Change const value in defs.h
   $ jenga build -a
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 11 targets
   ran 2 commands
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 89 UNIVERSE with auto discovery
 
@@ -70,8 +70,8 @@ Setup ALT defs file (causes no actions):
   $ echo '#define MY_CONST 12' > example/defsALT.h
   $ jenga build -a
   A: echo 'README\nbuild.jenga\ncc.jenga\ndefs.h\ndefsALT.h\nfib.c\nfib.h\nmain.c' | grep '\.c$' > c.files
-  checked 11 targets
   ran 1 command
+  checked 11 rules
 
 Switch main to use ALT defs:
   $ sed -i 's/defs/defsALT/g' example/main.c
@@ -79,22 +79,22 @@ Switch main to use ALT defs:
   A: gcc -MG -MM main.c -MF main.d
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 11 targets
   ran 3 commands
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 144 UNIVERSE with auto discovery
 
 Modify original defs file back to original value (causes no action):
   $ echo '#define MY_CONST 10' > example/defs.h
   $ jenga build -a
-  checked 11 targets
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 144 UNIVERSE with auto discovery
 
 Switch main back to origianl defs file (causes no action)::
   $ sed -i 's/defsALT/defs/g' example/main.c
   $ jenga build -a
-  checked 11 targets
+  checked 11 rules
   $ jenga exec example/main.exe
   hello, 55 UNIVERSE with auto discovery
 
@@ -109,8 +109,8 @@ Compile with -Wall:
   A: cat c.files | sed "s|\(.*\).c$|\1.o : @\1.d : $(cat gcc.runner) -c \1.c -o \1.o|" > o.rules
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc -Wall -c main.c -o main.o
-  checked 11 targets
   ran 5 commands
+  checked 11 rules
 
 Compile with -O2 causes relink:
   $ echo '-O2' > example/cflags
@@ -120,5 +120,5 @@ Compile with -O2 causes relink:
   A: gcc -O2 -c fib.c -o fib.o
   A: gcc -O2 -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 11 targets
   ran 5 commands
+  checked 11 rules

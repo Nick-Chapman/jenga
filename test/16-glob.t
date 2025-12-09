@@ -18,7 +18,6 @@ Run the view action:
   A: echo -------------------- >> report
   A: tar -tf ball.tar | sort >> report
   A: echo -------------------- >> report
-  checked 3 targets
   A: cat report
   (directory) .
   (rule) *view : report
@@ -31,3 +30,4 @@ Run the view action:
   yyy
   --------------------
   ran 6 commands
+  checked 3 rules

@@ -18,8 +18,8 @@ $ jenga build -a --help
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 3 targets
   ran 3 commands
+  checked 3 rules
 
 $ jenga build -a -f
 
@@ -49,7 +49,7 @@ Double build
 
   $ cp -rp example copied
   $ jenga build -a
-  checked 6 targets
+  checked 6 rules
 
 What are the targets?
 
@@ -64,7 +64,7 @@ What are the targets?
 Controlling the scope of what to build
 
   $ jenga build -a copied
-  checked 3 targets
+  checked 3 rules
 
   $ jenga build -a --list-targets copied
   copied/hello.exe

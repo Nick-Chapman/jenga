@@ -37,8 +37,8 @@ Build. Expect 4 actions to be run
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 4 targets
   ran 4 commands
+  checked 4 rules
 
 Run the executable
 

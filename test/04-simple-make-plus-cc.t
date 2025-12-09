@@ -20,8 +20,8 @@
   A: grep -v '^$' defs.h.in > defs.h
   A: gcc -c main.c -o main.o
   A: gcc fib.o main.o -o main.exe
-  checked 12 targets
   ran 12 commands
+  checked 12 rules
 
   $ jenga exec example/main.exe
   hello, 55 world with combined cc and make configs

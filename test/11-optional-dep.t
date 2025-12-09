@@ -12,13 +12,13 @@ Build:
   $ jenga build -a
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   A: gcc -o main.exe main.o
-  checked 2 targets
   ran 2 commands
+  checked 2 rules
 
 Zero build:
 
   $ jenga build -a
-  checked 2 targets
+  checked 2 rules
 
 Define CFLAGS; rebuilds:
 
@@ -26,8 +26,8 @@ Define CFLAGS; rebuilds:
   $ jenga build -a
   A: gcc -c $(test -f CFLAGS && cat CFLAGS) main.c
   A: gcc -o main.exe main.o
-  checked 2 targets
   ran 2 commands
+  checked 2 rules
 
 Change CFLAGS; rebuilds:
 
@@ -40,11 +40,11 @@ Change CFLAGS; rebuilds:
   (stderr) main.c:2:6: warning: return type of 'main' is not 'int' [-Wmain]
   (stderr)     2 | void main() { //main ought to be declared as int. -Wall will detect this.
   (stderr)       |      ^~~~
-  checked 2 targets
   ran 1 command
+  checked 2 rules
 
 Remove CFLAGS; reuse original build:
 
   $ rm example/CFLAGS
   $ jenga build -a
-  checked 2 targets
+  checked 2 rules

@@ -17,8 +17,8 @@ Initial build. Expect 3 actions to be run
   A: gcc -c main.c -o main.o
   A: gcc -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 3 targets
   ran 3 commands
+  checked 3 rules
 
 Running executable returns exit code 17
 
@@ -48,8 +48,8 @@ Add -Wall to both compile rule. Two actions get rerun.
   (stderr)     3 | void main() { // Oops! main should be declared to return int.
   (stderr)       |      ^~~~
   A: gcc -Wall -c fib.c -o fib.o
-  checked 3 targets
   ran 2 commands
+  checked 3 rules
 
 Fix code. Compile of main.c and link are rerun
 
@@ -63,8 +63,8 @@ Fix code. Compile of main.c and link are rerun
   $ jenga build -a
   A: gcc -Wall -c main.c -o main.o
   A: gcc main.o fib.o -o hello.exe
-  checked 3 targets
   ran 2 commands
+  checked 3 rules
   $ jenga exec hello.exe
   Hello, 55 jenga!
 
@@ -127,5 +127,5 @@ Add missing dep to both compile rules
   $ jenga build -a
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
-  checked 3 targets
   ran 2 commands
+  checked 3 rules

@@ -18,12 +18,12 @@ Build:
   A: touch x
   A: exit 0
   A: cat h t > final
-  checked 4 targets
   ran 8 commands
+  checked 3 rules
 
 And zero
   $ jenga build -a
-  checked 4 targets
+  checked 3 rules
 
 Change the example to echo a warning before exiting
 
@@ -40,8 +40,8 @@ Change the example to echo a warning before exiting
   (command) $ touch x
   (command) $ echo WARNING; exit 0
   WARNING
-  checked 4 targets
   ran 4 commands
+  checked 3 rules
 
 And zero build (see warning even though no actions were run)
 
@@ -53,7 +53,7 @@ And zero build (see warning even though no actions were run)
   (command) $ touch x
   (command) $ echo WARNING; exit 0
   WARNING
-  checked 4 targets
+  checked 3 rules
 
 Change the example to have a non-zero error code
 

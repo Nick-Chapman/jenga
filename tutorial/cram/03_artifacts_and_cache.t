@@ -51,13 +51,13 @@ Initial build. Expect 3 actions to be run
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 3 targets
   ran 3 commands
+  checked 3 rules
 
 Zero build
 
   $ jenga build -a -c.
-  checked 3 targets
+  checked 3 rules
 
   $ jenga build -mq && find ,jenga
   ,jenga
@@ -68,7 +68,7 @@ Zero build
 
   $ cd example
   $ jenga build -a
-  checked 3 targets
+  checked 3 rules
   $ jenga build -mq && find ,jenga
   ,jenga
   ,jenga/fib.o
@@ -82,11 +82,11 @@ Specifying a build cache
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 3 targets
   ran 3 commands
+  checked 3 rules
 
   $ jenga build -m -a --cache=tmp
-  checked 3 targets
+  checked 3 rules
 
   $ find tmp/.cache/jenga/files
   tmp/.cache/jenga/files
@@ -124,7 +124,7 @@ Double build
 
   $ cp -rp example copied
   $ jenga build -a -c.
-  checked 6 targets
+  checked 6 rules
 
 What are the targets?
 
@@ -139,7 +139,7 @@ What are the targets?
 Controlling the scope of what to build
 
   $ jenga build -a copied -c.
-  checked 3 targets
+  checked 3 rules
 
   $ jenga build -a --list-targets copied -c.
   copied/hello.exe
@@ -149,7 +149,7 @@ Controlling the scope of what to build
 Builds are relative
   $ cd copied
   $ jenga build -a -c..
-  checked 3 targets
+  checked 3 rules
   $ cd ..
 
 Using a non-default cache:
@@ -158,13 +158,13 @@ Using a non-default cache:
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 6 targets
   ran 3 commands
+  checked 6 rules
 
 Using a non-default cache (still get minimal builds)
 
   $ jenga build -a --cache=my-cache
-  checked 6 targets
+  checked 6 rules
 
 Using a temporary cache with -f. Forces run of all the actions
 
@@ -173,21 +173,21 @@ Using a temporary cache with -f. Forces run of all the actions
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 6 targets
   ran 3 commands
+  checked 6 rules
 
   $ jenga build -a -f | sed 's|/tmp/[0-9]*/.cache|/tmp/$$/.cache|'
   using temporary cache: /tmp/$$/.cache/jenga
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 6 targets
   ran 3 commands
+  checked 6 rules
 
 Where are the targets? ,jenga dir is created relative to where the build started
 
   $ jenga build -m -a
-  checked 6 targets
+  checked 6 rules
   $ find ,jenga
   ,jenga
   ,jenga/example
@@ -200,7 +200,7 @@ Where are the targets? ,jenga dir is created relative to where the build started
   ,jenga/copied/main.o
 
   $ jenga build -m -a copied
-  checked 3 targets
+  checked 3 rules
   $ find ,jenga
   ,jenga
   ,jenga/copied
@@ -209,7 +209,7 @@ Where are the targets? ,jenga dir is created relative to where the build started
   ,jenga/copied/main.o
 
   $ (cd copied && jenga build -m)
-  checked 3 targets
+  checked 3 rules
   $ find copied/,jenga
   copied/,jenga
   copied/,jenga/fib.o
@@ -219,7 +219,7 @@ Where are the targets? ,jenga dir is created relative to where the build started
 Artifacts are hardlinked to files in the cache (and each other)
 
   $ jenga build -m -a -c.
-  checked 6 targets
+  checked 6 rules
 
 Hardlink counts of 3 -- example,copied,.cache
 
@@ -235,7 +235,7 @@ Hardlink counts of 2 -- example,.cache
 
   $ rm -rf copied
   $ jenga build -m -a -c.
-  checked 3 targets
+  checked 3 rules
 
   $ find ,jenga -type f | xargs stat -c "%h %n"
   2 ,jenga/example/fib.o
@@ -256,8 +256,8 @@ Rebuild, hardlink counts back to 2
   A: gcc -Wall -c main.c -o main.o
   A: gcc -Wall -c fib.c -o fib.o
   A: gcc main.o fib.o -o hello.exe
-  checked 3 targets
   ran 3 commands
+  checked 3 rules
 
   $ find ,jenga -type f | xargs stat -c "%h %n"
   2 ,jenga/example/fib.o

@@ -109,7 +109,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
         staticRules :: [StaticRule] <- concat <$>
-          sequence [ do (deps,action) <- gatherDeps config how depcom
+          sequence [ do (deps,action) <- gatherDeps emptyChain config how depcom
                         pure [ StaticRule { dir, target, deps, action } ]
                    | Rule{dir,target,depcom} <- rules
                    ]
@@ -129,7 +129,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system -- TODO: ??? -- how about no?!
         let System{how} = system
-        digest <- buildArtifact config how (Key exe)
+        digest <- buildArtifact emptyChain config how (Key exe)
         cacheFile <- cacheFile digest
         --BLog "launching..." -- TODO: but not when quiet
         Execute $ XIO $ do
@@ -144,7 +144,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system
         let System{how} = system
-        digest <- buildArtifact config how (Key src)
+        digest <- buildArtifact emptyChain config how (Key src)
         file <- cacheFile digest
         Execute $ do
           contents <- XReadFile file
@@ -158,7 +158,7 @@ elaborateAndBuild cacheDir config@Config{startDir,buildMode,args} userProg = do
         system <- runElaboration config (userProg ["."])
         buildEverythingInSystem config system
         let System{how} = system
-        digest <- buildArtifact config how (Key src)
+        digest <- buildArtifact emptyChain config how (Key src)
         installDigest digest dest
 
     ModeRun names -> do -- TODO: exit code with #errors (also for jenga build)
@@ -231,7 +231,7 @@ reportSystem Config{logMode,worker} System{rules} = do
 buildAndMaterialize :: Config -> How -> Artifact -> B ()
 buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = do
   let Artifact { materialize, key } = target
-  digest <- buildArtifact config how key
+  digest <- buildArtifact emptyChain config how key
   when materializeCommaJenga $ materializeInCommaJenga startDir digest key
   when materialize $ do
     let Key materializedFile = key
@@ -336,9 +336,9 @@ data How = How { ahow :: Map Key Rule -- map from (artifact)-key to rule
 runElaboration :: Config -> G () -> B System
 runElaboration config m =
   loop m system0 k0 >>= \case
-    system -> do
-      pure system
-
+    system@System{rules} -> do
+      pure system { rules = --reverse  -- TODO: reverse for less confusing cycles
+                            rules }
   where
     system0 :: System
     system0 = System { rules = [], how = How { ahow = Map.empty, phow = Map.empty } }
@@ -388,7 +388,7 @@ runElaboration config m =
 
       GReadKey key -> do
         let System{how} = system
-        contents <- readKey config how key -- make cause building
+        contents <- readKey emptyChain config how key -- make cause building
         k system contents
 
       GExistsKey key -> do
@@ -425,15 +425,16 @@ buildPhony config how@How{phow} phonyName = do
     [] ->
       bfail (printf "no rules for phony target '%s'" phonyName)
     rules ->
-      parallel_ [ do _ :: WitMap <- buildRule config how rule; pure ()
+      parallel_ [ do _ :: WitMap <- buildRule emptyChain config how rule; pure ()
                 | rule <- rules
                 ]
 
-buildArtifact :: Config -> How -> Key -> B Digest
-buildArtifact config@Config{worker,debugDemand} how@How{ahow} = do
+buildArtifact :: Chain -> Config -> How -> Key -> B Digest
+buildArtifact chain config@Config{worker,debugDemand} how@How{ahow} = do
   -- TODO: document this flow.
   -- TODO: check for cycles.
-  BMemoKey $ \sought -> do
+  BMemoKey chain $ \sought -> do
+    chain <- pure $ pushChain sought chain -- this is where we extend the dependency chain
     case Map.lookup sought ahow of
       Nothing -> do
         let Key loc = sought
@@ -447,19 +448,19 @@ buildArtifact config@Config{worker,debugDemand} how@How{ahow} = do
       Just rule -> do
         when (not worker && debugDemand) $ BLog (printf "B: Require: %s" (ppKey config sought))
         -- We only memoize the run of rule targeting artifacts (not phonys)
-        wtargets <- BMemoRule (buildRule config how) rule
+        wtargets <- BMemoRule (buildRule chain config how) rule
         let digest = lookWitMap (tagOfKey sought) wtargets
         pure digest
 
-buildRule :: Config -> How -> Rule -> B WitMap
-buildRule config@Config{debugLocking} how rule = do
+buildRule :: Chain -> Config -> How -> Rule -> B WitMap
+buildRule chain config@Config{debugLocking} how rule = do
   let Rule{dir,target,depcom} = rule
   let arts = case target of Artifacts arts -> arts ; Phony{} -> []
   let targets = [ key | Artifact { key } <- arts ]
-  (deps,action@Action{commands}) <- gatherDeps config how depcom
+  (deps,action@Action{commands}) <- gatherDeps chain config how depcom
   let sr = StaticRule { dir, target, deps, action } -- used for message context
   wdeps <- (WitMap . Map.fromList) <$>
-    parallel [ do digest <- buildArtifact config how dep; pure (tagOfKey dep,digest)
+    parallel [ do digest <- buildArtifact chain config how dep; pure (tagOfKey dep,digest)
              | dep <- deps
              ]
   let witKey = WitnessKey { targets = map tagOfKey targets, commands, wdeps }
@@ -539,8 +540,8 @@ tryGainingLock debug wkd f = do
       f False
 
 
-gatherDeps :: Config -> How -> D a -> B ([Key],a)
-gatherDeps config how d = loop d [] k0
+gatherDeps :: Chain -> Config -> How -> D a -> B ([Key],a)
+gatherDeps chain config how d = loop d [] k0
   where
     k0 xs a = pure (reverse xs,a)
     loop :: D a -> [Key] -> ([Key] -> a -> B ([Key],b)) -> B ([Key], b)
@@ -552,15 +553,15 @@ gatherDeps config how d = loop d [] k0
         k xs ()
       DNeed key -> k (key:xs) ()
       DReadKey key -> do
-        contents <- readKey config how key
+        contents <- readKey chain config how key
         k xs contents
       DExistsKey key -> do
         b <- existsKey how key
         k xs b
 
-readKey :: Config -> How -> Key -> B String
-readKey config how key = do
-  digest <- buildArtifact config how key
+readKey :: Chain -> Config -> How -> Key -> B String
+readKey chain config how key = do
+  digest <- buildArtifact chain config how key
   file <- cacheFile digest
   Execute (XReadFile file)
 
@@ -892,7 +893,7 @@ data B a where
   BNewSandbox :: B Dir
   BRunActionInDir :: Dir -> Action -> B ActionRes
   Execute :: X a -> B a
-  BMemoKey :: (Key -> B Digest) -> Key -> B Digest
+  BMemoKey :: Chain -> (Key -> B Digest) -> Key -> B Digest
   BMemoRule :: (Rule -> B WitMap) -> Rule -> B WitMap
   BPar :: B a -> B b -> B (a,b)
   BYield :: B ()
@@ -929,6 +930,7 @@ runB cacheDir config@Config{logMode} build0 = do
       BLog mes -> do XLog mes; k s (SUCC ())
 
       BCacheDir -> k s (SUCC cacheDir)
+
       BNewSandbox -> do
         myPid <- XIO getCurrentPid
         let BState{sandboxCounter=i} = s
@@ -940,13 +942,14 @@ runB cacheDir config@Config{logMode} build0 = do
 
       Execute x -> do a <- x; k s (SUCC a)
 
-      BMemoKey f key -> do
+      BMemoKey chain f key -> do
         case Map.lookup key (memoT s) of
-          -- TODO: Think abouut interaction of cycle checking and parallelism!
-          Just WIP -> yield s $ \s _ -> do loop m0 s k
-          {-Just WIP -> do
-            let mes = intercalate " " [ ppKey config k | (k,WIP) <- Map.toList (memoT s) ]
-            k s (FAIL [printf "CYCLE: %s" mes])-}
+          Just WIP -> do
+            case key `elemChain` chain of
+              True -> do
+                k s (FAIL [printf "CYCLE: %s" (ppChain config (pushChain key chain))])
+              False ->
+                yield s $ \s _ -> do loop m0 s k
 
           Just (Ready res) -> k s (removeReasons res)
           Nothing -> do
@@ -961,7 +964,6 @@ runB cacheDir config@Config{logMode} build0 = do
           Nothing -> do
             loop (f rule) s $ \s res -> do
               k s { memoR = Map.insert targets res (memoR s) } res
-
 
       BPar a b -> do
         -- continutation k is called only when both sides have completed (succ or fail)
@@ -1044,6 +1046,23 @@ bstate0 = BState
 
 data BJob where
   BJob :: B a -> (BState -> BuildRes a -> X ()) -> BJob
+
+----------------------------------------------------------------------
+-- Chain -- dependency chain for detecting cycles
+
+data Chain = XCHAIN [Key]
+
+emptyChain :: Chain
+emptyChain = XCHAIN []
+
+pushChain :: Key -> Chain -> Chain
+pushChain key (XCHAIN keys) = XCHAIN (key:keys)
+
+elemChain :: Key -> Chain -> Bool
+elemChain key (XCHAIN keys) = key `elem` keys
+
+ppChain :: Config -> Chain -> String
+ppChain config (XCHAIN keys) = intercalate " " [ ppKey config k | k <- reverse keys ]
 
 ----------------------------------------------------------------------
 -- X: execution monad

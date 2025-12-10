@@ -18,3 +18,9 @@ echo 'But I want to see this!' > the.out.expected
 
 # Rerun test; get failure
 jenga test -a
+
+# Fix again with --promote
+jenga test -a --promote
+
+# And see it fixed
+jenga test -a

@@ -509,7 +509,9 @@ buildRule chain config@Config{debugLocking} how rule = do
           -- Now it will have finished.
           verifyWitness config sr wkd >>= \case
             Just w -> pure w
-            Nothing -> BResult (FAIL [])
+            Nothing ->
+              -- TODO: create a actual reason here; even though we dont expect it to happen
+              BResult (FAIL []) -- TODO: can this ever happen? is it the cause of the "0 reasons"
 
 verifyWitness :: Config -> StaticRule -> WitKeyDigest -> B (Maybe WitMap)
 verifyWitness config sr wkd = do
@@ -864,7 +866,7 @@ seeFailureExit = \case
 ----------------------------------------------------------------------
 -- B: build monad
 
-data BuildRes a = FAIL [Reason] | SUCC a
+data BuildRes a = FAIL [Reason] | SUCC a -- TODO: wont need this with reworked failure reporting
 
 type Reason = String
 
@@ -877,9 +879,10 @@ mergeBuildRes = \case
 
 removeReasons :: BuildRes a -> BuildRes a -- TODO: remove when failure reporting is reworked
 removeReasons = \case
-  succ@SUCC{} -> succ -- TODO: is this even necessary now we have memoR/WIP fix
-  FAIL{}  -> FAIL[]
+  succ@SUCC{} -> succ
+  FAIL{} -> FAIL[] -- this is still required, even with the memoR/WIP fix.
 
+-- TODO: rework failure reporting to use new "BLogFail", which records reason in BState
 bfail :: Reason -> B a
 bfail r1 = BResult (FAIL [r1])
 
@@ -897,7 +900,7 @@ instance Applicative B where pure = BResult . SUCC; (<*>) = ap
 instance Monad B where (>>=) = BBind
 
 data B a where
-  BResult :: BuildRes a -> B a
+  BResult :: BuildRes a -> B a -- TODO: BuildRes will be replaced with Maybe
   BBind :: B a -> (a -> B b) -> B b
   BLog :: String -> B ()
   BCatch :: B a -> B (BuildRes a)
@@ -1025,10 +1028,12 @@ initDirs config@Config{startDir,materializeCommaJenga} = do
 
 reportBuildRes :: Config -> BuildRes () -> X ()
 reportBuildRes Config{worker} res =
+  -- TODO: get reasons from BState when failure reporting is reworked
   case res of
     FAIL reasons -> do
       when (not worker) $ do
         -- TODO: Sometimes see 0 reasons when use -j<NUM> -- Is this still true since memoR/WIP fix
+        -- perhaps because of the verifyWitness failure code above to return -- "BResult (FAIL [])"
         XLog (printf "Build failed for %d reasons:\n%s" (length reasons) -- TODO pluralise
               (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
     SUCC () ->
@@ -1040,6 +1045,7 @@ data BState = BState
   , memoT :: Map Key (OrWIP (BuildRes Digest))
   , memoR :: Map [Key] (OrWIP (BuildRes WitMap))
   , jobs :: [BJob]
+--  , fails :: [Reason] -- TODO: rework failure reporting
   }
 
 data OrWIP a = WIP | Ready a

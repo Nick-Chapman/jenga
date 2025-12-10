@@ -134,6 +134,25 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
             contents <- XReadFile cacheFile
             XIO $ putStr contents
 
+    ModeExec exe0 argsForExe -> do
+      let exe = startDir </> exe0
+      fbs :: FBS <- runBuild config $ \config -> do
+        system <- runElaboration config (userProg ["."])
+        let System{how} = system
+        _digest <- buildArtifact emptyChain config how (Key exe)
+        pure ()
+      newReport config fbs
+      runX config $ do
+        case lookFBS fbs (Key exe) of
+          Nothing -> pure () -- we can't exec what didn't get built
+          Just digest -> do
+            let cacheFile = cacheFileLoc config digest
+            XIO $ do
+              -- TODO: could/should we actually do an exec here? (as in fork/exec)
+              (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
+              exitCode <- waitForProcess h
+              putStr (seeFailureExit exitCode) -- TODO: propagate exit-code instead of print
+
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
       let dest = startDir </> dest0
@@ -165,21 +184,6 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
         buildEverythingInSystem config system
       newReport config fbs
       pure ()  -- TODO: exit code with #errors
-
-    ModeExec exe0 argsForExe -> do -- TODO: can we really do an exec here? (as in fork/exec)
-      let exe = startDir </> exe0
-      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
-        system <- runElaboration config (userProg ["."])
-        let System{how} = system
-        digest <- buildArtifact emptyChain config how (Key exe)
-        let cacheFile = cacheFileLoc config digest
-        when (not worker) $ do
-          Execute $ XIO $ do -- TODO: exec should come after "newReport"
-            (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
-            exitCode <- waitForProcess h
-            putStr (seeFailureExit exitCode) -- TODO: propagate exit-code instead of print
-      newReport config fbs
-      pure ()
 
 newReport :: Config -> FBS -> IO ()
 newReport Config{logMode,worker} FBS{countRules=nr,failures} = do

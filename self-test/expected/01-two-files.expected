@@ -24,8 +24,8 @@ sed -i 's/world/UNIVERSE/g' example/main.c
 jenga exec -a example/main.exe
 A: gcc -c main.c -o main.o
 A: gcc fib.o main.o -o main.exe
-hello, 55 UNIVERSE
 ran 2 commands
+hello, 55 UNIVERSE
 checked 3 rules
 
 # Reverting to previous state of main.c; no actions run
@@ -45,8 +45,8 @@ checked 3 rules
 sed -i 's/main.exe/RENAMED.exe/' example/build.jenga
 jenga exec -a example/RENAMED.exe
 A: gcc fib.o main.o -o RENAMED.exe
-hello, 55 world
 ran 1 command
+hello, 55 world
 checked 3 rules
 
 # Relocate the example to a new directory; no actions run

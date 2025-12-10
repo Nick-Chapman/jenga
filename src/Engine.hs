@@ -210,7 +210,7 @@ runBuild config f = do
 
 nCopies :: Config -> (Config -> IO a) -> IO a
 nCopies config@Config{jnum} f =
-  if jnum < 1 then error "nCopies<1" else do -- TODO: improve messages: comes when user says: -j0
+  if jnum < 1 then error "nCopies<1" else do
     children <- sequence $ replicate (jnum-1) $ do
       forkProcess $ do
         _childRes <- f $ config { worker = True }

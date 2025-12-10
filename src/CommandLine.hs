@@ -5,7 +5,8 @@ module CommandLine
   , exec
   ) where
 
-import Options.Applicative
+import Control.Monad (when)
+import Options.Applicative -- fully opened
 import System.Directory (getCurrentDirectory)
 import System.Environment (lookupEnv)
 
@@ -141,13 +142,20 @@ execAt homeDir startDir cacheDir = do
 
     let worker = False
 
+    let
+      positive :: ReadM Int  = do
+        i <- auto
+        when (i < 1) $ readerError "Value must be at least 1"
+        pure i
+
     jnum <- do
-      let jDefault = 3
-      option auto (short 'j'
-                    <> long "jobs"
-                    <> value jDefault
-                    <> metavar "NUM"
-                    <> help ("Allow NUM jobs in parallel; default " ++ show jDefault))
+      option positive $
+        short 'j'
+        <> long "jobs"
+        <> value 3
+        <> metavar "NUM"
+        <> showDefault
+        <> help "Allow NUM jobs in parallel"
 
     seePid <-
       switch (short 'p'

@@ -4,7 +4,6 @@
 Following a successful download and install of jenga, this tutorial will guide you through your first steps in writing jenga rules and running jenga builds.
 
 - [Here](files/01) are the files used in this section of the tutorial.
-- [Here](cram/01_getting_started.t) is the companion cram file.
 
 ## First build
 

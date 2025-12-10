@@ -4,7 +4,6 @@
 This section explores how Jenga manages build artifacts and its cache of previous builds.
 
 - [Here](files/03) are the files used in this section of the tutorial.
-- [Here](cram/03_artifacts_and_cache.t) is the companion cram file.
 
 The examples continues from where we reached at the end of section 2.
 We have 3 source files.

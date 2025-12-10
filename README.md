@@ -62,7 +62,6 @@ Other command line arguments are handled by the core `jenga.exe` executable.
 To build Jenga from source requires:
 - [Haskell](https://www.haskell.org)
 - [Stack](https://docs.haskellstack.org/en/stable/)
-- [Cram](https://bitheap.org/cram/) Optional for testing.
 - [ghcup](https://www.haskell.org/ghcup/) The easiest way to get Haskell and Stack is via Ghcup. Also the [haskell rules](rulelib/haskell.jenga) which allow jenga to build itelf require that `ghcup` was used to install `ghc`.
 - [unbuffer](https://command-not-found.com/unbuffer) (if installed) is used by the haskell rules to force `ghc` to show coloured output.
 - [inotifywait](https://linux.die.net/man/1/inotifywait) is needed for the jenga wrapper script to support watcher mode: `sudo apt install inotify-tools`.

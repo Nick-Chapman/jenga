@@ -4,7 +4,6 @@
 This section explores the use of dynamic dependencies in jenga rules.
 
 - [Here](files/05) are the files used in this section of the tutorial.
-- [Here](cram/05_dynamic_deps.t) is the companion cram file.
 
 In our running example, here was the previous state of `build.jenga`
 ```

@@ -4,7 +4,6 @@
 This tutorial section works through an example with multiple build rules and multiple source files.
 
 - [Here](files/02) are the files used in this section of the tutorial.
-- [Here](cram/02_more_rules.t) is the companion cram file.
 
 This example starts with two `.c` files and a `build.jenga` file containing three rules.
 To follow along, work in a fresh directory, typing or copying in the example files as directed.

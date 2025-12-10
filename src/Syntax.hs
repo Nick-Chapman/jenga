@@ -7,11 +7,11 @@ import Text.Printf (printf)
 
 import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
-import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,pathOfDir,insistLocIsDir)
+import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,insistLocIsDir)
 import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: (Key -> String) -> Config -> Key -> G ()
-elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
+elaborate ppKey config@Config{homeDir} dotJengaFile0 = do -- TODO: pass ppKey in config?
   elabRuleFile dotJengaFile0
   where
     dir = dirKey dotJengaFile0
@@ -42,7 +42,7 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
               case ruleTarget of
                 MArtifacts xs -> [ name | (_,name) <- xs ]
                 MPhony{} -> []
-          commands <- mapM (expandChunks config dir ruleTarget deps) commands0
+          commands <- mapM (expandChunks ppKey config dir ruleTarget deps) commands0
           GRule $ Rule
             { dir
             , target =
@@ -77,8 +77,8 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do
       '~':'/':str -> Key (homeDir </> str) -- expand tilda
       str -> Key (dir </> str)
 
-expandChunks :: Config -> Dir -> MTarget -> [Dep] -> [ActChunk] -> G String
-expandChunks Config{withPromotion} dir ruleTarget deps chunks =
+expandChunks :: (Key -> String) -> Config -> Dir -> MTarget -> [Dep] -> [ActChunk] -> G String
+expandChunks ppKey Config{withPromotion} dir ruleTarget deps chunks =
   (trimTrailingSpace . concat) <$> mapM expand1 chunks
   where
     expand1 = \case
@@ -87,7 +87,7 @@ expandChunks Config{withPromotion} dir ruleTarget deps chunks =
       AC_DollarHat -> pure dollarHatReplacement
       AC_DollarLeft -> pure dollarLeftReplacement
       AC_DollarGlob globSuffix -> do
-        allFiles <- glob (insistLocIsDir (dir </> globSuffix))
+        allFiles <- glob ppKey (insistLocIsDir (dir </> globSuffix))
         pure (intercalate "\\n" (map stringOfTag allFiles))
 
       AC_DollarPromote ->
@@ -111,8 +111,8 @@ expandChunks Config{withPromotion} dir ruleTarget deps chunks =
       intercalate " " (take 1 [ stringOfTag (takeBase (dir </> name))
                               | DepPlain name <- deps])
 
-glob :: Dir -> G [Tag]
-glob dir = do
+glob :: (Key -> String) -> Dir -> G [Tag]
+glob ppKey dir = do
   GWhat (locOfDir dir) >>= \case
     Directory entries -> do
       xs <- sequence
@@ -124,8 +124,8 @@ glob dir = do
         | (loc,exists) <- xs, exists
         ]
       pure (sort [ takeBase loc | (loc,isDir) <- ys, not isDir ])
-    _what ->
-      GFail (printf "glob: expected %s to be a directory" (pathOfDir dir)) -- TODO respect --rel
+    _what -> do
+      GFail $ printf "glob: expected '%s' to be a directory" (ppKey (Key (locOfDir dir)))
 
 isDirectory :: Loc -> G Bool
 isDirectory loc = do

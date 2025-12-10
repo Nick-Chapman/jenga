@@ -36,10 +36,10 @@ grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 echo 'epsilon : :' >> build.jenga
 jenga build
 
-# Rule action has bad glob # TODO: fix --rel
-#grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
-#echo 'epsilon : : echo '\''$glob:nowhere'\'' > epsilon' >> build.jenga
-#jenga build
+# Rule action has bad glob
+grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
+echo 'epsilon : : echo '\''$glob:nowhere'\'' > epsilon' >> build.jenga
+jenga build
 
 # Try run phony (but phony not defined)
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga

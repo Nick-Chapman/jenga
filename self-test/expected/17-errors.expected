@@ -59,10 +59,12 @@ ran 1 command
 Build failed for 1 reasons:
 (1) 'epsilon' : not produced as declared by rule
 
-# Rule action has bad glob # TODO: fix --rel
-#grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
-#echo 'epsilon : : echo '\''$glob:nowhere'\'' > epsilon' >> build.jenga
-#jenga build
+# Rule action has bad glob
+grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
+echo 'epsilon : : echo '\''$glob:nowhere'\'' > epsilon' >> build.jenga
+jenga build
+Build failed for 1 reasons:
+(1) glob: expected 'nowhere' to be a directory
 
 # Try run phony (but phony not defined)
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga

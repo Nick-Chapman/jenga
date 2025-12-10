@@ -18,8 +18,8 @@ hello, 55 world
 
 # Install the artifact
 jenga install -a example/main.exe as.exe
-installing as.exe
 checked 3 rules
+installed as.exe
 
 # And run that
 ./as.exe

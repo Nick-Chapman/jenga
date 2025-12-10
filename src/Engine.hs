@@ -155,19 +155,22 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
 
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
-      let dest = startDir </> dest0
-      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg ["."])
         let System{how} = system
-        digest <- buildArtifact emptyChain config how (Key src)
-        when (not worker) $ do
-          Execute $ XIO $ do
-            let quiet = case logMode of LogQuiet -> True; _ -> False
-            when (not quiet) $ do
-              printf "installing %s\n" (ppKey config (Key dest))
-          installDigest config digest dest
+        _digest <- buildArtifact emptyChain config how (Key src)
+        pure ()
       newReport config fbs
-      pure ()
+      runX config $ do
+        case lookFBS fbs (Key src) of
+          Nothing -> pure () -- we can't install what didn't get built
+          Just digest -> do
+            let dest = startDir </> dest0
+            installDigest config digest dest
+            XIO $ do
+              let quiet = case logMode of LogQuiet -> True; _ -> False
+              when (not quiet) $ do
+                printf "installed %s\n" (ppKey config (Key dest))
 
     ModeRun names -> do -- including "test" == "run test"
       fbs :: FBS <- runBuild config $ \config -> do
@@ -250,13 +253,13 @@ buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = d
   -- TODO: user materialization should happen when the artifact is demanded, not just when building everything. currently "jenga test --promote" is not working
   when materialize $ do
     let Key materializedFile = key
-    installDigest config digest materializedFile
+    Execute $ installDigest config digest materializedFile
   pure ()
 
-installDigest :: Config -> Digest -> Loc -> B ()
+installDigest :: Config -> Digest -> Loc -> X ()
 installDigest config digest destination = do
   let cacheFile = cacheFileLoc config digest
-  Execute $ do
+  do
     needToLink <-
       XFileExists destination >>= \case
         False -> pure True

@@ -141,7 +141,7 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key exe)
         pure ()
-      newReport config fbs -- TODO: somehow this is being printed after the exec still -- see self-test 01 ?!?
+      newReport config fbs
       runX config $ do
         case lookFBS fbs (Key exe) of
           Nothing -> pure () -- we can't exec what didn't get built
@@ -190,8 +190,8 @@ newReport Config{logMode,worker} FBS{countRules=nr,failures} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   when (not quiet && not worker) $ do
     when (length failures == 0) $ do
-      printf "checked %s\n"
-        (pluralize nr "rule")
+      -- We flush this report to be sure is proceeds whatever follows the build; i.e. cat, exec
+      putOut $ printf "checked %s" (pluralize nr "rule")
 
 pluralize :: Int -> String -> String
 pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")
@@ -1225,7 +1225,9 @@ writeFileFlush :: FilePath -> String -> IO ()
 writeFileFlush fp str = do
   withFile fp WriteMode $ \h -> do hPutStr h str; hFlush h
   -- Enabling this prevents lock racing & duplicate actions. But it is a big slow sledgehammer!
-  when False $ syncFile fp
+  -- But anyway the lock racing is now fixed. Has been for a while.
+  -- So might as well just remove this disabled syncFile call.
+  when False $ syncFile fp -- TODO: remove
   pure ()
 
 safeFileExist :: FilePath -> IO Bool

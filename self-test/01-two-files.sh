@@ -7,7 +7,7 @@ mv build.jenga fib.c main.c example
 jenga build -a
 
 # Run the built artifact
-jenga exec example/main.exe
+jenga exec -a example/main.exe
 
 # Rebuild after no changes
 jenga build -a

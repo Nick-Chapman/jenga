@@ -32,5 +32,5 @@ checked 5 rules
 
 # Rerun
 jenga exec -a main.exe
-hello, 233 world with scanner deps
 checked 5 rules
+hello, 233 world with scanner deps

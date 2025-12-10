@@ -141,7 +141,7 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key exe)
         pure ()
-      newReport config fbs
+      newReport config fbs -- TODO: somehow this is being printed after the exec still -- see self-test 01 ?!?
       runX config $ do
         case lookFBS fbs (Key exe) of
           Nothing -> pure () -- we can't exec what didn't get built

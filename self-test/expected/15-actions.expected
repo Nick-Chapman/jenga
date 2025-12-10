@@ -5,7 +5,7 @@ rm the.out.expected
 # Test; the.out.expected is missing, so failure
 jenga test
 ran 2 commands
-Build failed for 1 reasons:
+Build failed for 1 reason:
 (1) 'the.out.expected' : is not source and has no build rule
 
 # Promote
@@ -38,5 +38,5 @@ A: diff the.out the.out.expected
 > But I want to see this!
 (exit-code) 1
 ran 1 command
-Build failed for 1 reasons:
+Build failed for 1 reason:
 (1) action failed for rule targeting: *test

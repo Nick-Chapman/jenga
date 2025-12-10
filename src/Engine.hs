@@ -192,7 +192,7 @@ newReport :: Config -> FBS -> IO ()
 newReport Config{logMode,worker} FBS{countRules=nr,failures} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
   when (not worker && length failures > 0) $ do
-    printf "Build failed for %d reasons:\n%s\n" (length failures) -- TODO pluralise
+    printf "Build failed for %s:\n%s\n" (pluralize (length failures) "reason")
       (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] failures ])
   when (not quiet && not worker) $ do
     when (length failures == 0) $ do

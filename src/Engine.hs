@@ -191,6 +191,9 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
 newReport :: Config -> FBS -> IO ()
 newReport Config{logMode,worker} FBS{countRules=nr,failures} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
+  when (not worker && length failures > 0) $ do
+    printf "Build failed for %d reasons:\n%s\n" (length failures) -- TODO pluralise
+      (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] failures ])
   when (not quiet && not worker) $ do
     when (length failures == 0) $ do
       -- We flush this report to be sure is proceeds whatever follows the build; i.e. cat, exec
@@ -509,9 +512,7 @@ buildRule chain config@Config{debugLocking} how rule = do
           -- Now it will have finished.
           verifyWitness config sr wkd >>= \case
             Just w -> pure w
-            Nothing ->
-              -- TODO: create a actual reason here; even though we dont expect it to happen
-              BResult (FAIL []) -- TODO: can this ever happen? is it the cause of the "0 reasons"
+            Nothing -> bfail "failed to verify witness" -- add more info if/when I see this
 
 verifyWitness :: Config -> StaticRule -> WitKeyDigest -> B (Maybe WitMap)
 verifyWitness config sr wkd = do
@@ -866,25 +867,19 @@ seeFailureExit = \case
 ----------------------------------------------------------------------
 -- B: build monad
 
-data BuildRes a = FAIL [Reason] | SUCC a -- TODO: wont need this with reworked failure reporting
+data BuildRes a = FAIL | SUCC a -- isomorphic to Maybe
 
 type Reason = String
 
 mergeBuildRes :: (BuildRes a, BuildRes b) -> BuildRes (a,b)
 mergeBuildRes = \case
   (SUCC a, SUCC b) -> SUCC (a,b)
-  (FAIL reasons1, FAIL reasons2) -> FAIL (reasons1 ++ reasons2)
-  (FAIL reasons, SUCC{}) -> FAIL reasons
-  (SUCC{}, FAIL reasons) -> FAIL reasons
+  (FAIL, FAIL) -> FAIL
+  (FAIL, SUCC{}) -> FAIL
+  (SUCC{}, FAIL) -> FAIL
 
-removeReasons :: BuildRes a -> BuildRes a -- TODO: remove when failure reporting is reworked
-removeReasons = \case
-  succ@SUCC{} -> succ
-  FAIL{} -> FAIL[] -- this is still required, even with the memoR/WIP fix.
-
--- TODO: rework failure reporting to use new "BLogFail", which records reason in BState
 bfail :: Reason -> B a
-bfail r1 = BResult (FAIL [r1])
+bfail = BFail
 
 parallel_ :: [B ()] -> B ()
 parallel_ xs = do _ :: [()] <- parallel xs; pure ()
@@ -900,10 +895,11 @@ instance Applicative B where pure = BResult . SUCC; (<*>) = ap
 instance Monad B where (>>=) = BBind
 
 data B a where
-  BResult :: BuildRes a -> B a -- TODO: BuildRes will be replaced with Maybe
+  BResult :: BuildRes a -> B a
   BBind :: B a -> (a -> B b) -> B b
   BLog :: String -> B ()
   BCatch :: B a -> B (BuildRes a)
+  BFail :: Reason -> B a
   BNewSandbox :: B Dir
   BRunActionInDir :: Dir -> Action -> B ActionRes
   Execute :: X a -> B a
@@ -923,23 +919,24 @@ runB config@Config{logMode} build0 = do
     sandboxParent pid = makeAbsoluteDir (printf "/tmp/jbox/%s" (show pid))
 
     kFinal :: BState -> BuildRes () -> X FBS
-    kFinal s@BState{runCounter,jobs} res = do
+    kFinal s@BState{runCounter,jobs} _res = do
       when (length jobs /= 0) $ error "runB: unexpected left over jobs"
       myPid <- XIO getCurrentPid
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
       when (see && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
-
-      reportBuildRes config res -- TODO: move to caller; to be sure comes after the worker "ran" messages
-      pure (makeFBS res s)
+      pure (makeFBS s)
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X FBS) -> X FBS
     loop m0 s k = case m0 of
       BResult res -> k s res
       BCatch m -> loop m s $ \s res -> k s (SUCC res)
 
+      BFail reason -> do
+        k s { fails = reason : fails s } FAIL
+
       BBind m f -> loop m s $ \s -> \case
-        FAIL reasons -> k s (FAIL reasons) -- cant continue; rhs 'f' ignored
+        FAIL -> k s FAIL -- cant continue; rhs 'f' ignored
         SUCC a -> loop (f a) s k
 
       BLog mes -> do XLog mes; k s (SUCC ())
@@ -960,11 +957,11 @@ runB config@Config{logMode} build0 = do
           Just WIP -> do
             case key `elemChain` chain of
               True -> do
-                k s (FAIL [printf "CYCLE: %s" (ppChain config (pushChain key chain))])
+                loop (bfail (printf "CYCLE: %s" (ppChain config (pushChain key chain)))) s k
               False ->
                 yield s $ \s _ -> do loop m0 s k
 
-          Just (Ready res) -> k s (removeReasons res)
+          Just (Ready res) -> k s res
           Nothing -> do
             loop (f key) s { memoT = Map.insert key WIP (memoT s)} $ \s res -> do
               k s { memoT = Map.insert key (Ready res) (memoT s) } res
@@ -974,7 +971,7 @@ runB config@Config{logMode} build0 = do
         let targets = [ key | Artifact { key } <- arts ]
         case Map.lookup targets (memoR s) of
           Just WIP -> yield s $ \s _ -> do loop m0 s k
-          Just (Ready res) -> k s (removeReasons res)
+          Just (Ready res) -> k s res
           Nothing -> do
             loop (f rule) s { memoR = Map.insert targets WIP (memoR s)} $ \s res -> do
               k s { memoR = Map.insert targets (Ready res) (memoR s) } res
@@ -1026,26 +1023,13 @@ initDirs config@Config{startDir,materializeCommaJenga} = do
     XRemoveDirRecursive commaJengaDir
     when materializeCommaJenga $ XMakeDir commaJengaDir
 
-reportBuildRes :: Config -> BuildRes () -> X ()
-reportBuildRes Config{worker} res =
-  -- TODO: get reasons from BState when failure reporting is reworked
-  case res of
-    FAIL reasons -> do
-      when (not worker) $ do
-        -- TODO: Sometimes see 0 reasons when use -j<NUM> -- Is this still true since memoR/WIP fix
-        -- perhaps because of the verifyWitness failure code above to return -- "BResult (FAIL [])"
-        XLog (printf "Build failed for %d reasons:\n%s" (length reasons) -- TODO pluralise
-              (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
-    SUCC () ->
-      pure ()
-
 data BState = BState
   { sandboxCounter :: Int
   , runCounter :: Int -- number of commands run
   , memoT :: Map Key (OrWIP (BuildRes Digest))
   , memoR :: Map [Key] (OrWIP (BuildRes WitMap))
   , jobs :: [BJob]
---  , fails :: [Reason] -- TODO: rework failure reporting
+  , fails :: [Reason]
   }
 
 data OrWIP a = WIP | Ready a
@@ -1057,6 +1041,7 @@ bstate0 = BState
   , memoT = Map.empty
   , memoR = Map.empty
   , jobs = []
+  , fails = []
   }
 
 data BJob where
@@ -1071,10 +1056,10 @@ data FBS = FBS
   , lookFBS :: Key -> Maybe Digest
   }
 
-makeFBS :: BuildRes () -> BState -> FBS
-makeFBS bres BState{memoR,memoT} =
+makeFBS :: BState -> FBS
+makeFBS BState{memoR,memoT,fails} =
   FBS { countRules = Map.size memoR
-      , failures = case bres of SUCC () -> []; FAIL reasons -> reasons
+      , failures = fails
       , lookFBS
       }
   where

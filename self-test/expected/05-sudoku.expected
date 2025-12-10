@@ -44,6 +44,7 @@ mv x Sudoku.hs
 # We used to have a bug where the compile error was somtimes reported twice for -j2 and higher.
 jenga.exe build --cache=. --rel -j3 -a
 A: ./ghc.exe -c Sudoku.hs -XLambdaCase
+ran 1 command
 (directory) .
 (rule) Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
 (command) $ ./ghc.exe -c Sudoku.hs -XLambdaCase
@@ -57,7 +58,6 @@ A: ./ghc.exe -c Sudoku.hs -XLambdaCase
 (exit-code) 1
 Build failed for 1 reasons:
 (1) action failed for rule targeting: Sudoku.hi Sudoku.o
-ran 1 command
 
 # On rebuild we correctly get just a single report
 jenga.exe build --cache=. --rel -j3 -a

@@ -154,6 +154,7 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{how} = system
+        buildEverythingInSystem config system -- TODO hack fix "jenga test --promote"; cause is user-materialiation bug
         parallel_ [ buildPhony config how name | name <- names ]
       newReport config fbs
       pure ()

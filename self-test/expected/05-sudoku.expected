@@ -42,8 +42,7 @@ mv x Sudoku.hs
 
 # Try build; expect ghc error
 # We used to have a bug where the compile error was somtimes reported twice for -j2 and higher.
-jenga.exe build --cache=. --rel -j3 -a
-A: ./ghc.exe -c Sudoku.hs -XLambdaCase
+jenga.exe build --cache=. --rel -j3
 ran 1 command
 (directory) .
 (rule) Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
@@ -60,7 +59,7 @@ Build failed for 1 reason:
 (1) action failed for rule targeting: Sudoku.hi Sudoku.o
 
 # On rebuild we correctly get just a single report
-jenga.exe build --cache=. --rel -j3 -a
+jenga.exe build --cache=. --rel -j3
 (directory) .
 (rule) Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
 (command) $ ./ghc.exe -c Sudoku.hs -XLambdaCase

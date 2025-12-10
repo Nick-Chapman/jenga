@@ -12,7 +12,7 @@ mv x Sudoku.hs
 
 # Try build; expect ghc error
 # We used to have a bug where the compile error was somtimes reported twice for -j2 and higher.
-jenga.exe build --cache=. --rel -j3 -a
+jenga.exe build --cache=. --rel -j3
 
 # On rebuild we correctly get just a single report
-jenga.exe build --cache=. --rel -j3 -a
+jenga.exe build --cache=. --rel -j3

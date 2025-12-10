@@ -877,7 +877,7 @@ mergeBuildRes = \case
 
 removeReasons :: BuildRes a -> BuildRes a -- TODO: remove when failure reporting is reworked
 removeReasons = \case
-  succ@SUCC{} -> succ
+  succ@SUCC{} -> succ -- TODO: is this even necessary now we have memoR/WIP fix
   FAIL{}  -> FAIL[]
 
 bfail :: Reason -> B a
@@ -927,12 +927,7 @@ runB config@Config{logMode} build0 = do
       let see = case logMode of LogQuiet -> False; _ -> True
       when (see && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
 
-      -- TODO: rework the failure reporting...
-      -- Collect the set of fail reasons (as they are first registered) in the build state
-      -- Rather than in the BuildRes which is threaded through the build computation.
-
-      reportBuildRes config res -- TODO: move to caller
-
+      reportBuildRes config res -- TODO: move to caller; to be sure comes after the worker "ran" messages
       pure (makeFBS res s)
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X FBS) -> X FBS
@@ -975,10 +970,11 @@ runB config@Config{logMode} build0 = do
         let arts = case target of Artifacts arts -> arts ; Phony{} -> error "BMemoRule/Phony"
         let targets = [ key | Artifact { key } <- arts ]
         case Map.lookup targets (memoR s) of
-          Just res -> k s (removeReasons res)
+          Just WIP -> yield s $ \s _ -> do loop m0 s k
+          Just (Ready res) -> k s (removeReasons res)
           Nothing -> do
-            loop (f rule) s $ \s res -> do
-              k s { memoR = Map.insert targets res (memoR s) } res
+            loop (f rule) s { memoR = Map.insert targets WIP (memoR s)} $ \s res -> do
+              k s { memoR = Map.insert targets (Ready res) (memoR s) } res
 
       BPar a b -> do
         -- continutation k is called only when both sides have completed (succ or fail)
@@ -1032,8 +1028,8 @@ reportBuildRes Config{worker} res =
   case res of
     FAIL reasons -> do
       when (not worker) $ do
-        -- TODO: Sometimes see 0 reasons when use -j<NUM>
-        XLog (printf "Build failed for %d reasons:\n%s" (length reasons)
+        -- TODO: Sometimes see 0 reasons when use -j<NUM> -- Is this still true since memoR/WIP fix
+        XLog (printf "Build failed for %d reasons:\n%s" (length reasons) -- TODO pluralise
               (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] reasons ]))
     SUCC () ->
       pure ()
@@ -1042,7 +1038,7 @@ data BState = BState
   { sandboxCounter :: Int
   , runCounter :: Int -- number of commands run
   , memoT :: Map Key (OrWIP (BuildRes Digest))
-  , memoR :: Map [Key] (BuildRes WitMap)
+  , memoR :: Map [Key] (OrWIP (BuildRes WitMap))
   , jobs :: [BJob]
   }
 

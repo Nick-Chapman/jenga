@@ -41,8 +41,7 @@ echo xxx >> x
 mv x Sudoku.hs
 
 # Try build; expect ghc error
-# BUG: the compile error is reported twice!
-# We need -j2 to get the bug; and even then it is not guarenteed. perhaps -j3 is better
+# We used to have a bug where the compile error was somtimes reported twice for -j2 and higher.
 jenga.exe build --cache=. --rel -j3 -a
 A: ./ghc.exe -c Sudoku.hs -XLambdaCase
 (directory) .
@@ -56,20 +55,8 @@ A: ./ghc.exe -c Sudoku.hs -XLambdaCase
 (stderr) 161 | xxx
 (stderr)     | ^^^
 (exit-code) 1
-(directory) .
-(rule) Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
-(command) $ ./ghc.exe -c Sudoku.hs -XLambdaCase
-(stderr) 
-(stderr) Sudoku.hs:161:1: error: [GHC-25277]
-(stderr)     Parse error: module header, import declaration
-(stderr)     or top-level declaration expected.
-(stderr)     |
-(stderr) 161 | xxx
-(stderr)     | ^^^
-(exit-code) 1
-Build failed for 2 reasons:
+Build failed for 1 reasons:
 (1) action failed for rule targeting: Sudoku.hi Sudoku.o
-(2) action failed for rule targeting: Sudoku.hi Sudoku.o
 ran 1 command
 
 # On rebuild we correctly get just a single report

@@ -29,7 +29,6 @@ data Config = Config
   , debugExternal :: Bool
   , debugInternal :: Bool
   , debugLocking :: Bool
-  , materializeCommaJenga :: Bool
   , withPromotion :: Bool
   , reportRelative :: Bool
   }
@@ -190,10 +189,6 @@ execAt homeDir startDir cacheDir = do
     debugExternal <- switch (long "debug-external" <> help "Debug calls to md5sum")
     debugInternal <- switch (long "debug-internal" <> help "Debug file system access")
     debugLocking <- switch (long "debug-locking" <> help "Debug locking behaviour")
-
-    materializeCommaJenga <-
-      switch (short 'm' <> long "materialize" -- TODO: kill when we get "jenga cat"
-              <> help "Materialize all build artifacts in ,jenga directory")
 
     withPromotion <-
       switch (long "promote"

@@ -227,7 +227,10 @@ buildEverythingInSystem config system = do
         , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
         , art <- arts
         ]
-  parallel_ [ buildAndMaterialize config how art | art <- allArtifacts ]
+  parallel_
+    [ do _ <- buildArtifact emptyChain config how key; pure ()
+    | Artifact { key } <- allArtifacts
+    ]
 
 data StaticRule = StaticRule
   { dir :: Dir
@@ -245,12 +248,6 @@ ppTarget :: Config -> Target -> String
 ppTarget config = \case
   Artifacts arts -> ppKeys config [ key | Artifact { key } <- arts ]
   Phony phonyName -> "*" ++ phonyName
-
-buildAndMaterialize :: Config -> How -> Artifact -> B ()
-buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = do
-  let Artifact { key } = target
-  digest <- buildArtifact emptyChain config how key
-  when materializeCommaJenga $ materializeInCommaJenga config startDir digest key
 
 installDigest :: Config -> Digest -> Loc -> X ()
 installDigest config digest destination = do
@@ -271,21 +268,6 @@ installDigest config digest destination = do
       -- We must copy (rather than hard-link) the cacheFile to the destination.
       -- Or else edits to the destination file will corrupt out cache file.
       XCopyFile cacheFile destination
-
-materializeInCommaJenga :: Config -> Dir -> Digest -> Key -> B ()
-materializeInCommaJenga config startDir digest key = do
-  let cacheFile = cacheFileLoc config digest
-  let commaJengaDir = insistLocIsDir (startDir </> ",jenga")
-  let materializedFile = commaJengaDir </> relppKey startDir key
-  Execute $ do
-    XMakeDir (takeDir materializedFile)
-    XTryHardLink cacheFile materializedFile >>= \case
-      Nothing -> pure ()
-      Just{} -> do
-        -- Likely from concurrently runnning jenga
-        -- If we do materialization when (just after) the action is run, this wont happen.
-        -- XLog (printf "Materialize/HardLink: we lost the race: %s -> %s" (show cacheFile) (show materializedFile))
-        pure ()
 
 ----------------------------------------------------------------------
 -- locations for cache, sandbox etc
@@ -338,7 +320,6 @@ blockName = \case
   ".git" -> True
   ".stack-work" -> True
   ".cache" -> True
-  ",jenga" -> True
   "_build" -> True -- dune
   _ -> False
 
@@ -1024,13 +1005,10 @@ runB config@Config{logMode} build0 = do
     resume (BJob p k) s = loop p s k
 
 initDirs :: Config -> B ()
-initDirs config@Config{startDir,materializeCommaJenga} = do
-  let commaJengaDir = insistLocIsDir (startDir </> ",jenga")
+initDirs config = do
   Execute $ do
     XMakeDir (cacheFilesDir config)
     XMakeDir (tracesDir config)
-    XRemoveDirRecursive commaJengaDir
-    when materializeCommaJenga $ XMakeDir commaJengaDir
 
 data BState = BState
   { sandboxCounter :: Int

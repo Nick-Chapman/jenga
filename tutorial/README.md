@@ -1,7 +1,9 @@
 
 # Jenga tutorial
 
-_TODO: The tutorial is slightly out of date and needs updating._
+_TODO: The tutorial is out of date and needs updating._
+
+In particular, we no longer materialize artifacts in a `,jenga` directory.
 
 Each tutorial section includes example [source files](files).
 

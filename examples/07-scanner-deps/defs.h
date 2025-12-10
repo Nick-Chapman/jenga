@@ -1,1 +1,1 @@
-#define MY_CONST 10
+#define MY_CONST 12

@@ -11,7 +11,7 @@ checked 5 rules
 
 # Run
 jenga exec main.exe
-hello, 55 world with scanner deps
+hello, 144 world with scanner deps
 
 # Inspect the generated deps
 jenga cat main.d
@@ -19,8 +19,11 @@ main.o: main.c fib.h defs.h
 jenga cat fib.d
 fib.o: fib.c fib.h
 
-# Make a change; rebuild
-rm defs.h && echo '#define MY_CONST 11' > defs.h
+# Make a change
+rm defs.h
+echo '#define MY_CONST 13' > defs.h
+
+# rebuild
 jenga build -a
 A: gcc -c main.c -o main.o
 A: gcc fib.o main.o -o main.exe
@@ -29,5 +32,5 @@ checked 5 rules
 
 # Rerun
 jenga exec -a main.exe
-hello, 89 world with scanner deps
+hello, 233 world with scanner deps
 checked 5 rules

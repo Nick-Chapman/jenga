@@ -19,7 +19,7 @@ Initial build
 
 Run the executable
   $ jenga exec example/main.exe
-  hello, 55 world with scanner deps
+  hello, 144 world with scanner deps
 
 Inspect the generated deps
   $ jenga build -mq && find ,jenga -name '*.d' | xargs cat

@@ -867,7 +867,7 @@ mergeBuildRes = \case
   (FAIL reasons, SUCC{}) -> FAIL reasons
   (SUCC{}, FAIL reasons) -> FAIL reasons
 
-removeReasons :: BuildRes a -> BuildRes a -- TODO: think
+removeReasons :: BuildRes a -> BuildRes a -- TODO: remove when failure reporting is reworked
 removeReasons = \case
   succ@SUCC{} -> succ
   FAIL{}  -> FAIL[]
@@ -918,7 +918,13 @@ runB config@Config{logMode} build0 = do
       XRemoveDirRecursive (sandboxParent myPid)
       let see = case logMode of LogQuiet -> False; _ -> True
       when (see && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
-      reportBuildRes config res -- TODO: move to caller?
+
+      -- TODO: rework the failure reporting...
+      -- Collect the set of fail reasons (as they are first registered) in the build state
+      -- Rather than in the BuildRes which is threaded through the build computation.
+
+      reportBuildRes config res -- TODO: move to caller
+
       pure (makeFBS res s)
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X FBS) -> X FBS

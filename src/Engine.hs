@@ -18,7 +18,6 @@ import System.Exit(ExitCode(..))
 import System.FileLock (FileLock,tryLockFile,SharedExclusive(Exclusive),unlockFile)
 import System.IO (hFlush,hPutStrLn,withFile,IOMode(WriteMode),hPutStr)
 import System.IO qualified as IO (stderr,stdout)
-import System.IO.SafeWrite (syncFile)
 import System.Posix.Files (fileExist,createLink,removeLink,getFileStatus,getSymbolicLinkStatus,fileMode,intersectFileModes,setFileMode,getFileStatus,isDirectory,isSymbolicLink)
 import System.Posix.Process (forkProcess)
 import System.Process (ProcessHandle,waitForProcess,CreateProcess(env),shell,proc,createProcess,readCreateProcess,readCreateProcessWithExitCode,getCurrentPid)
@@ -1214,11 +1213,6 @@ runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = l
 writeFileFlush :: FilePath -> String -> IO ()
 writeFileFlush fp str = do
   withFile fp WriteMode $ \h -> do hPutStr h str; hFlush h
-  -- Enabling this prevents lock racing & duplicate actions. But it is a big slow sledgehammer!
-  -- But anyway the lock racing is now fixed. Has been for a while.
-  -- So might as well just remove this disabled syncFile call.
-  when False $ syncFile fp -- TODO: remove
-  pure ()
 
 safeFileExist :: FilePath -> IO Bool
 safeFileExist fp0 = do

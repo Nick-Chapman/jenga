@@ -1196,7 +1196,7 @@ runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = l
         logI $ printf "cp %s %s" (pathOfLoc src) (pathOfLoc dest)
         copyFile (pathOfLoc src) (pathOfLoc dest)
       XTransferFileMode src dest -> do
-        -- TODO: no logging here?
+        logI $ printf "cp-perms %s %s" (pathOfLoc src) (pathOfLoc dest)
         mode <- fileMode <$> getFileStatus (pathOfLoc src)
         setFileMode (pathOfLoc dest) mode
       XMakeReadOnly loc -> do

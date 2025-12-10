@@ -175,7 +175,6 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{how} = system
-        buildEverythingInSystem config system -- TODO hack fix "jenga test --promote"; cause is user-materialiation bug
         parallel_ [ buildPhony config how name | name <- names ]
       newReport config fbs
       pure ()
@@ -249,14 +248,9 @@ ppTarget config = \case
 
 buildAndMaterialize :: Config -> How -> Artifact -> B ()
 buildAndMaterialize config@Config{startDir,materializeCommaJenga} how target = do
-  let Artifact { materialize, key } = target
+  let Artifact { key } = target
   digest <- buildArtifact emptyChain config how key
   when materializeCommaJenga $ materializeInCommaJenga config startDir digest key
-  -- TODO: user materialization should happen when the artifact is demanded, not just when building everything. currently "jenga test --promote" is not working
-  when materialize $ do
-    let Key materializedFile = key
-    Execute $ installDigest config digest materializedFile
-  pure ()
 
 installDigest :: Config -> Digest -> Loc -> X ()
 installDigest config digest destination = do
@@ -470,9 +464,24 @@ buildArtifact chain config@Config{worker,debugDemand} how@How{ahow} = do
       Just rule -> do
         when (not worker && debugDemand) $ BLog (printf "B: Require: %s" (ppKey config sought))
         -- We only memoize the run of rule targeting artifacts (not phonys)
-        wtargets <- BMemoRule (buildRule chain config how) rule
+        wtargets <- BMemoRule (buildRuleMat chain config how) rule
         let digest = lookWitMap (tagOfKey sought) wtargets
         pure digest
+
+-- build a rule; then do user materialization ("!") if specified
+buildRuleMat :: Chain -> Config -> How -> Rule -> B WitMap
+buildRuleMat chain config how rule = do
+  wtargets <- buildRule chain config how rule
+  let Rule{target} = rule
+  case target of
+    Phony{} -> pure ()
+    Artifacts arts -> do
+      sequence_ [ do Execute $ installDigest config digest loc
+                | Artifact {materialize,key = key@(Key loc)} <- arts
+                , materialize
+                , let digest = lookWitMap (tagOfKey key) wtargets
+                ]
+  pure wtargets
 
 buildRule :: Chain -> Config -> How -> Rule -> B WitMap
 buildRule chain config@Config{debugLocking} how rule = do

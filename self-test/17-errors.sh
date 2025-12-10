@@ -44,12 +44,10 @@ jenga build
 # Try run phony (but phony not defined)
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 echo 'epsilon : : echo E5 > epsilon' >> build.jenga
-# Small bug: see 3 commands here
 jenga run run
 
 # Add the phony
 echo '*run : alpha : cat alpha' >> build.jenga
-# Small bug: and then see 1 instead of 4 commands here
 jenga run run # OK
 
 # Create a dependency cycle

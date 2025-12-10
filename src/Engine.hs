@@ -520,7 +520,8 @@ buildRule chain config@Config{debugLocking} how rule = do
           -- Now it will have finished.
           verifyWitness config sr wkd >>= \case
             Just w -> pure w
-            Nothing -> bfail "failed to verify witness" -- add more info if/when I see this
+            Nothing ->
+              bfail (printf "failed to verify witness for rule targeting: %s" (ppTarget config target))
 
 verifyWitness :: Config -> StaticRule -> WitKeyDigest -> B (Maybe WitMap)
 verifyWitness config sr wkd = do

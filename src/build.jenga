@@ -25,4 +25,4 @@ packages:
   echo data-ordlist >> $@
   echo filelock >> $@
   echo optparse-applicative >> $@
-  echo safeio >> $@
+  echo split >> $@

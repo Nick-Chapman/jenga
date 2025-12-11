@@ -7,17 +7,16 @@ maintainer:          nic@amadido.co.uk
 github:              Nick-Chapman/jenga.git
 
 dependencies:
-- MissingH
+- MissingH # TODO avoid dep
 - base >= 4.7 && < 5
 - containers
-- data-ordlist
+- data-ordlist # TODO avoid dep
 - directory
 - filelock
 - filepath
 - optparse-applicative
 - process
-- safeio
-- split
+- split # TODO Avoid dep
 - unix
 
 default-extensions:

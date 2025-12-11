@@ -1,0 +1,21 @@
+
+# Fibonacci example based on Samir's blog post:
+# https://functional.computer/blog/build-systems-are-spreadsheets
+# Try: jenga cat fib-40.txt
+
+numbers:
+  seq 2 100 > $@
+
+fib-0.txt:
+  echo 0 > $@
+
+fib-1.txt:
+  echo 1 > $@
+
+FIB: numbers
+  cat $< | while read n; do echo fib-$$n.txt: fib-$$(expr $$n - 1).txt plus fib-$$(expr $$n - 2).txt : echo '$$$$(cat $$^) | bc >> $$@' ; done > $@
+
+include FIB
+
+plus:
+  echo + > $@

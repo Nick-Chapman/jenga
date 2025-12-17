@@ -102,7 +102,6 @@ expandChunks ppKey Config{withPromotion} dir ruleTarget deps chunks =
                           | (_,name) <- xs ]
         MPhony name -> name
 
-    -- very simplistic support for $$, $@, $^ and $<
     dollarHatReplacement =
       intercalate " " [ stringOfTag (takeBase (dir </> name))
                       | DepPlain name <- deps ]
@@ -267,6 +266,9 @@ gram = start
       , do Par4.key "$^"; pure AC_DollarHat
       , do Par4.key "$<"; pure AC_DollarLeft
       , do Par4.key "$$"; pure (AC_String "$")
+      , do Par4.key "$out"; pure AC_DollarAt
+      , do Par4.key "$ins"; pure AC_DollarHat
+      , do Par4.key "$in"; pure AC_DollarLeft
       , do Par4.key "$glob:"; dir <- identifier; pure (AC_DollarGlob dir)
       , do Par4.key "$glob"; pure (AC_DollarGlob ".")
       , do Par4.key "$promote"; pure AC_DollarPromote

@@ -2,18 +2,18 @@
 # Compile C...
 
 main.o : main.c fib.h defs.h
-  gcc -c $< -o $@
+  gcc -c $in -o $out
 
 fib.o : fib.c fib.h
-  gcc -c $< -o $@
+  gcc -c $in -o $out
 
 # Link...
 
 main.exe : fib.o main.o
-  gcc $^ -o $@
+  gcc $ins -o $out
 
 
 # Preprocess defs.h to remove blank lines for better build cutoff!
 
 defs.h : defs.h.in
-  grep -v '^$$' $< > $@
+  grep -v '^$$' $in > $out

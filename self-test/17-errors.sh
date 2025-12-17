@@ -1,10 +1,12 @@
 
 # Initial build is fine
 jenga build
+echo $?
 
 # Remove the rule for epsilon
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 jenga build # BAD
+echo $?
 
 # Duplicate rules for epsilon
 echo 'epsilon : : echo -n E1 > epsilon' >> build.jenga

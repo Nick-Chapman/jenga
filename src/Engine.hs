@@ -14,7 +14,7 @@ import Data.Map (Map)
 import Data.Map qualified as Map
 import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile)
 import System.Environment (lookupEnv)
-import System.Exit(ExitCode(..))
+import System.Exit(ExitCode(..),exitWith)
 import System.FileLock (FileLock,tryLockFile,SharedExclusive(Exclusive),unlockFile)
 import System.IO (hFlush,hPutStrLn,withFile,IOMode(WriteMode),hPutStr)
 import System.IO qualified as IO (stderr,stdout)
@@ -34,12 +34,13 @@ import WaitPid (waitpid)
 main :: IO ()
 main = do
   config <- CommandLine.exec
-  engineMain config
+  ec <- engineMain config
+  exitWith ec
 
 ----------------------------------------------------------------------
 -- Engine main
 
-engineMain :: Config -> IO ()
+engineMain :: Config -> IO ExitCode
 engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
 
   let userProg = mkUserProg config
@@ -85,12 +86,12 @@ ppKey Config{reportRelative,startDir} (Key loc) =
 ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
-elaborateAndBuild :: Config -> UserProg -> IO ()
+elaborateAndBuild :: Config -> UserProg -> IO ExitCode
 elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
   case buildMode of
 
     ModeListTargets -> do
-      _fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
          system <- runElaboration config (userProg args)
          let System{rules} = system
          when (not worker) $ do
@@ -102,10 +103,11 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
                    Artifacts arts -> [ ppKey config key | Artifact{key} <- arts ]
                    Phony _name -> []
              ]
-      pure ()
+      ec <- newReport config fbs
+      pure ec
 
     ModeListRules -> do
-      _fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
+      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
         when (not worker) $ do
@@ -115,7 +117,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
                      | Rule{dir,target,depcom} <- rules
                      ]
           BLog (intercalate "\n\n" (map (ppStaticRule config) staticRules))
-      pure ()
+      ec <- newReport config fbs
+      pure ec
 
     ModeCat src0 -> do
       let src = startDir </> src0
@@ -124,7 +127,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key src)
         pure ()
-      newReport config fbs
+      ec <- newReport config fbs
+      -- TODO: should we even try to cat if the exit-code is failure?
       runX config $ do
         case lookFBS fbs (Key src) of
           Nothing -> pure () -- we can't cat what didn't get built
@@ -132,6 +136,7 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
             let cacheFile = cacheFileLoc config digest
             contents <- XReadFile cacheFile
             XIO $ putStr contents
+      pure ec
 
     ModeExec exe0 argsForExe -> do
       let exe = startDir </> exe0
@@ -140,7 +145,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key exe)
         pure ()
-      newReport config fbs
+      ec <- newReport config fbs
+      -- TODO: should we even try to exec if the exit-code is failure?
       runX config $ do
         case lookFBS fbs (Key exe) of
           Nothing -> pure () -- we can't exec what didn't get built
@@ -151,6 +157,7 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
               (_,_,_,h :: ProcessHandle) <- createProcess (proc (pathOfLoc cacheFile) argsForExe)
               exitCode <- waitForProcess h
               putStr (seeFailureExit exitCode) -- TODO: propagate exit-code instead of print
+      pure ec
 
     ModeInstall src0 dest0 -> do
       let src = startDir </> src0
@@ -159,7 +166,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key src)
         pure ()
-      newReport config fbs
+      ec <- newReport config fbs
+      -- TODO: should we even try to install if the exit-code is failure?
       runX config $ do
         case lookFBS fbs (Key src) of
           Nothing -> pure () -- we can't install what didn't get built
@@ -170,32 +178,37 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
               let quiet = case logMode of LogQuiet -> True; _ -> False
               when (not quiet) $ do
                 printf "installed %s\n" (ppKey config (Key dest))
+      pure ec
 
     ModeRun names -> do -- including "test" == "run test"
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{how} = system
         parallel_ [ buildPhony config how name | name <- names ]
-      newReport config fbs
-      pure ()
+      ec <- newReport config fbs
+      pure ec
 
     ModeBuild -> do
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         buildEverythingInSystem config system
-      newReport config fbs
-      pure ()  -- TODO: exit code with #errors
+      ec <- newReport config fbs
+      pure ec
 
-newReport :: Config -> FBS -> IO ()
-newReport Config{logMode,worker} FBS{countRules=nr,failures} = do
+newReport :: Config -> FBS -> IO ExitCode
+newReport Config{buildMode,logMode,worker} FBS{countRules=nr,failures} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
-  when (not worker && length failures > 0) $ do
-    printf "Build failed for %s:\n%s\n" (pluralize (length failures) "reason")
+  let listyMode = case buildMode of ModeListTargets -> True; ModeListRules -> True; _ -> False
+  let numFails = length failures
+  when (not worker && numFails > 0) $ do
+    printf "Build failed for %s:\n%s\n" (pluralize numFails "reason")
       (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] failures ])
-  when (not quiet && not worker) $ do
-    when (length failures == 0) $ do
+  when (not quiet && not worker && not listyMode) $ do
+    when (numFails == 0) $ do
       -- We flush this report to be sure is proceeds whatever follows the build; i.e. cat, exec
       putOut $ printf "checked %s" (pluralize nr "rule")
+  let ec = if numFails > 0 then ExitFailure numFails else ExitSuccess
+  pure ec
 
 pluralize :: Int -> String -> String
 pluralize n what = printf "%d %s%s" n what (if n == 1 then "" else "s")

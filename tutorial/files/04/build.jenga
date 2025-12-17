@@ -1,8 +1,8 @@
 hello.exe : main.o fib.o
-  gcc $^ -o $@
+  gcc $ins -o $out
 
 main.o : main.c fib.h
-  gcc -Wall -c $< -o $@
+  gcc -Wall -c $in -o $out
 
 fib.o : fib.c fib.h
-  gcc -Wall -c $< -o $@
+  gcc -Wall -c $in -o $out

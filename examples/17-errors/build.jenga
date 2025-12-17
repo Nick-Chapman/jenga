@@ -2,16 +2,16 @@
 # This example is a baseline for testing the reporting various build errors
 
 alpha: beta gamma
-  echo '[' $$(cat $^) ']' > $@
+  echo '[' $$(cat $ins) ']' > $out
 
 beta : delta epsilon
-  echo '[' $$(cat $^) ']' > $@
+  echo '[' $$(cat $ins) ']' > $out
 
 gamma : zeta eta theta
-  echo '[' $$(cat $^) ']' > $@
+  echo '[' $$(cat $ins) ']' > $out
 
-delta : : echo D > $@
-epsilon : : echo E > $@
-zeta : : echo Z > $@
-eta : : echo H > $@
-theta : : echo T > $@
+delta : : echo D > $out
+epsilon : : echo E > $out
+zeta : : echo Z > $out
+eta : : echo H > $out
+theta : : echo T > $out

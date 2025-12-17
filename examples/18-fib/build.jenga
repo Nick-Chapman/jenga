@@ -4,18 +4,18 @@
 # Try: jenga cat fib-40.txt
 
 numbers:
-  seq 2 100 > $@
+  seq 2 100 > $out
 
 fib-0.txt:
-  echo 0 > $@
+  echo 0 > $out
 
 fib-1.txt:
-  echo 1 > $@
+  echo 1 > $out
 
 FIB: numbers
-  cat $< | while read n; do echo fib-$$n.txt: fib-$$(expr $$n - 1).txt plus fib-$$(expr $$n - 2).txt : echo '$$$$(cat $$^) | bc >> $$@' ; done > $@
+  cat $in | while read n; do echo fib-$$n.txt: fib-$$(expr $$n - 1).txt plus fib-$$(expr $$n - 2).txt : echo '$$$$(cat $$ins) | bc >> $$out' ; done > $out
 
 include FIB
 
 plus:
-  echo + > $@
+  echo + > $out

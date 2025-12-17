@@ -4,22 +4,22 @@
 # Compile C; using scanner dependencies "@"
 
 main.o : @main.d
-  gcc -c main.c -o $@
+  gcc -c main.c -o $out
 
 fib.o : @fib.d
-  gcc -c fib.c -o $@
+  gcc -c fib.c -o $out
 
 
 # Deps generation...
 
 fib.d : fib.c
-  gcc -MG -MM $< > $@
+  gcc -MG -MM $in > $out
 
 main.d : main.c
-  gcc -MG -MM $< > $@
+  gcc -MG -MM $in > $out
 
 
 # Link...
 
 main.exe : fib.o main.o
-  gcc $^ -o $@
+  gcc $ins -o $out

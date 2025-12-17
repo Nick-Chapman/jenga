@@ -3,12 +3,12 @@
   cat report
 
 report: ball.tar
-  echo -------------------- >> $@
-  tar -tf ball.tar | sort >> $@
-  echo -------------------- >> $@
+  echo -------------------- >> $out
+  tar -tf ball.tar | sort >> $out
+  echo -------------------- >> $out
 
 ball.tar: my.all @my.all
-  tar -cf $@ $$(cat my.all)
+  tar -cf $out $$(cat my.all)
 
 my.all :
-  echo '$glob:.' > $@
+  echo '$glob:.' > $out

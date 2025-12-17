@@ -33,11 +33,11 @@ Top.hi Top.o : ghc.exe Top.hs B.hi C.hi
 # Compiler script
 
 version:
-  echo 9.8.4 > $@
+  echo 9.8.4 > $out
 
 ghc-path: version
-  echo ~/.ghcup/bin/ghc-$$(cat version) > $@
+  echo ~/.ghcup/bin/ghc-$$(cat version) > $out
 
 ghc.exe : ghc-path
-  echo exec $$(cat ghc-path) '"$$@"' > $@
-  chmod +x $@
+  echo exec $$(cat ghc-path) '"$$@"' > $out
+  chmod +x $out

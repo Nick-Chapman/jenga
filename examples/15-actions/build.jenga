@@ -1,14 +1,14 @@
 
 *run : the.sh
-  ./$<
+  ./$in
 
 *test : the.out the.out.expected
-  diff $^
+  diff $ins
 
 the.out : the.sh
-  ./$< > $@
+  ./$in > $out
 
 promotion.rule :
-  if [ ! -z "$promote" ]; then echo '!the.out.expected : the.out : ln $$< $$@'; fi > $@
+  if [ ! -z "$promote" ]; then echo '!the.out.expected : the.out : ln $$in $$out'; fi > $out
 
 include promotion.rule

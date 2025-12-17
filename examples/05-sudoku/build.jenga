@@ -11,17 +11,17 @@ main.o : ghc.exe main.hs Sudoku.hi
 # Link the executable (including the containers package)
 
 solver.exe : ghc.exe main.o Sudoku.o
-  ./ghc.exe main.o Sudoku.o -package containers -o $@
+  ./ghc.exe main.o Sudoku.o -package containers -o $out
 
 
 # Compiler script
 
 version:
-  echo 9.8.4 > $@
+  echo 9.8.4 > $out
 
 ghc-path: version
-  echo ~/.ghcup/bin/ghc-$$(cat version) > $@
+  echo ~/.ghcup/bin/ghc-$$(cat version) > $out
 
 ghc.exe : ghc-path
-  echo exec $$(cat ghc-path) '"$$@"' > $@
-  chmod +x $@
+  echo exec $$(cat ghc-path) '"$$@"' > $out
+  chmod +x $out

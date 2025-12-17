@@ -1,28 +1,28 @@
 
 executable-name:
-  echo jenga.exe > $@
+  echo jenga.exe > $out
 
 include ../rulelib/haskell.jenga
 
 main-entry:
-  echo Engine > $@
+  echo Engine > $out
 
 ghc-version:
-  echo 9.10.3 > $@
+  echo 9.10.3 > $out
 
 ghc-options:
-  echo -Werror >> $@
-  echo -Wall >> $@
-  echo -Wno-name-shadowing >> $@
+  echo -Werror >> $out
+  echo -Wall >> $out
+  echo -Wno-name-shadowing >> $out
 
 default-extensions:
-  echo LambdaCase >> $@
-  echo DuplicateRecordFields >> $@
-  echo GADTs >> $@
+  echo LambdaCase >> $out
+  echo DuplicateRecordFields >> $out
+  echo GADTs >> $out
 
 packages:
-  echo MissingH >> $@
-  echo data-ordlist >> $@
-  echo filelock >> $@
-  echo optparse-applicative >> $@
-  echo split >> $@
+  echo MissingH >> $out
+  echo data-ordlist >> $out
+  echo filelock >> $out
+  echo optparse-applicative >> $out
+  echo split >> $out

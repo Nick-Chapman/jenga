@@ -10,7 +10,7 @@ Build failed for 1 reason:
 
 # Promote
 jenga build -a --promote
-A: if [ ! -z "promote" ]; then echo '!the.out.expected : the.out : ln $< $@'; fi > promotion.rule
+A: if [ ! -z "promote" ]; then echo '!the.out.expected : the.out : ln $in $out'; fi > promotion.rule
 A: ln the.out the.out.expected
 ran 2 commands
 checked 3 rules

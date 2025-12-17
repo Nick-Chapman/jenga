@@ -5,7 +5,7 @@
 ## caller must also define: main-entry ghc-version
 ## caller may optionally define: ghc-options default-extensions packages xdepends
 
-all.files : : echo '$glob' > $@
+all.files : : echo '$glob' > $out
 
 hs.files : all.files
   egrep '^[^#]+.hs$$' all.files > hs.files # ignore filenames containing '#'
@@ -41,14 +41,14 @@ ghc.pkgdb : ghc-version
   echo ~/.ghcup/ghc/$$(cat ghc-version)/lib/ghc-$$(cat ghc-version)/lib/package.conf.d > ghc.pkgdb
 
 pkgdb: ghc-version
-  ls -d ~/.stack/snapshots/*/*/$$(cat ghc-version)/pkgdb | tail -1 > $@
+  ls -d ~/.stack/snapshots/*/*/$$(cat ghc-version)/pkgdb | tail -1 > $out
 
 ghc.compiler : maybe.unbuffer ghc.exe pkgdb all.options
   echo $$(cat ./maybe.unbuffer) $$(cat ghc.exe) -package-db $$(cat pkgdb) $$(cat all.options) '"$$@"' > ghc.compiler
   chmod +x ghc.compiler
 
 maybe.unbuffer : ?/usr/bin/unbuffer
-  if [ ! -f unbuffer ]; then echo exec; else echo unbuffer; fi > $@
+  if [ ! -f unbuffer ]; then echo exec; else echo unbuffer; fi > $out
 
 all.options : ?ghc-options ?default-extensions
   touch ghc-option default-extensions

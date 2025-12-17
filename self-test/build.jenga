@@ -1,12 +1,12 @@
 
 expect.names  :
-  echo '$glob' | grep -v ^rules.sh$$ | grep \.sh$$ | sed 's|\.sh$$||' | sort > $@
+  echo '$glob' | grep -v ^rules.sh$$ | grep \.sh$$ | sed 's|\.sh$$||' | sort > $out
 
 include ../rulelib/expect.jenga
 
-self-test.deps : : echo 'jenga ../src/jenga.exe' > $@
+self-test.deps : : echo 'jenga ../src/jenga.exe' > $out
 
 rules : rules.sh expect.names
-  ./rules.sh $$(cat expect.names) > $@
+  ./rules.sh $$(cat expect.names) > $out
 
 include rules

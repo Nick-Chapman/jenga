@@ -3,7 +3,7 @@
 # CFLAGS is allowed to be source or build by a rule
 
 main.exe : main.o
-  gcc -o $@ $<
+  gcc -o $out $in
 
 main.o : main.c ?CFLAGS
   gcc -c $$(test -f CFLAGS && cat CFLAGS) main.c

@@ -721,7 +721,7 @@ lookupWitness config wkd = do
         Nothing -> do
           -- We failed to parse rhe witness file. Perhaps it got corrupted.
           -- Or perhaps we encountered a witness with an out-of-date format.
-          -- XLogErr (printf "removing bad witness file: %s" (show witFile))
+          -- XLogErr (printf "removing bad witness file: %s" (ppKey config (Key witFile)))
           XUnLink witFile
           pure Nothing
 
@@ -751,12 +751,11 @@ exportWitness = show . toQ
 data QWitness = TRACE [QCommandRes] (Maybe QWitMap) -- Nothing indicates failure
   deriving (Show,Read)
 
-data QCommandRes = RUN
-  { exitCode :: ExitCode
-  , stdout :: String
-  , stderr :: String
-  }
-  deriving (Show,Read)
+type QCommandRes =
+  ( Int
+  , String -- stdout
+  , String -- stderr
+  )
 
 type QWitMap = [(FilePath,QDigest)] -- note: just the basename of every path
 type QDigest = String
@@ -764,22 +763,31 @@ type QDigest = String
 toQ :: Witness -> QWitness
 toQ = \case
   WitnessFAIL (ActionRes xs) -> do
-    let cs = [ RUN{exitCode,stdout,stderr} | CommandRes{exitCode,stdout,stderr} <- xs ]
+    let cs = [ (exitCodeToNum exitCode,stdout,stderr) | CommandRes{exitCode,stdout,stderr} <- xs ]
     TRACE cs Nothing
   WitnessSUCC{wtargets=WitMap m,ares=ActionRes xs} -> do
-    let cs = [ RUN{exitCode,stdout,stderr} | CommandRes{exitCode,stdout,stderr} <- xs ]
+    let cs = [ (exitCodeToNum exitCode,stdout,stderr) | CommandRes{exitCode,stdout,stderr} <- xs ]
     let targets = [ (stringOfTag tag,digest) | (tag,Digest digest) <- Map.toList m ]
     TRACE cs (Just targets)
 
 fromQ :: QWitness -> Witness
 fromQ = \case
   TRACE cs topt -> do
-    let ares = ActionRes [ CommandRes{exitCode,stdout,stderr} | RUN{exitCode,stdout,stderr} <- cs ]
+    let ares = ActionRes [ CommandRes{exitCode = exitCodeFromNum n,stdout,stderr} | (n,stdout,stderr) <- cs ]
     case topt of
       Nothing -> WitnessFAIL ares
       Just targets -> do
         let wtargets = WitMap (Map.fromList [ (makeTag fp,Digest digest) | (fp,digest) <- targets ])
         WitnessSUCC{wtargets,ares}
+
+
+-- To reduce bulk in the external format for QWitness, we convert ExitCode to plain ints.
+-- This assumes (but doesn't check) a failure code is never 0.
+exitCodeToNum :: ExitCode -> Int
+exitCodeToNum = \case ExitSuccess -> 0; ExitFailure n -> n
+
+exitCodeFromNum :: Int -> ExitCode
+exitCodeFromNum = \case 0 -> ExitSuccess; n -> ExitFailure n
 
 ----------------------------------------------------------------------
 -- Result from running actions

@@ -1,8 +1,8 @@
 {-# LANGUAGE ApplicativeDo, RecordWildCards #-}
 
 module CommandLine
-  ( LogMode(..),Config(..),BuildMode(..),OldBuildMode(..), CacheDirSpec(..)
-  , exec, munge
+  ( LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..)
+  , exec
   ) where
 
 import Control.Monad (when)
@@ -21,7 +21,6 @@ data Config = Config
   , cacheDir :: Dir
   , worker :: Bool
   , buildMode :: BuildMode
-  , oldBuildMode :: OldBuildMode
   , args :: [FilePath]
   , jnum :: Int
   , seePid :: Bool
@@ -39,47 +38,27 @@ data Config = Config
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
 
-data OldBuildMode
-  = OldModeListTargets
-  | OldModeListRules
-  | OldModeBuild
-  | OldModeExec FilePath [FilePath]
-  | OldModeCat FilePath
-  | OldModeInstall FilePath FilePath
-  | OldModeRun [String]
-
 data BuildMode
-  = Build
-  | Test
-  | Run
-  | Cat
-  | Exec
-  | Install
-  | ListTargets
-  | ListRules
+  = ModeBuild
+  | ModeTest
+  | ModeRun
+  | ModeCat
+  | ModeExec
+  | ModeInstall
+  | ModeListTargets
+  | ModeListRules
   deriving (Bounded,Enum)
 
 instance Show BuildMode where
   show = \case
-    Build -> "build"
-    Cat -> "cat"
-    Exec -> "exec"
-    Install -> "install"
-    Run -> "run"
-    Test -> "test"
-    ListTargets -> "list-targets"
-    ListRules -> "list-rules"
-
-munge :: BuildMode -> OldBuildMode
-munge = \case
-  Build -> OldModeBuild
-  Cat -> OldModeCat "lala"
-  Exec -> OldModeExec "" []
-  Install -> OldModeInstall "" ""
-  Run -> OldModeRun []
-  Test -> OldModeRun ["test"]
-  ListTargets -> OldModeListTargets
-  ListRules -> OldModeListRules
+    ModeBuild -> "build"
+    ModeCat -> "cat"
+    ModeExec -> "exec"
+    ModeInstall -> "install"
+    ModeRun -> "run"
+    ModeTest -> "test"
+    ModeListTargets -> "list-targets"
+    ModeListRules -> "list-rules"
 
 modeHelp :: String
 modeHelp = intercalate "|" (map show all)
@@ -109,7 +88,6 @@ exec = do
     confParser = do
 
       let logMode = undefined -- TODO kill
-      let oldBuildMode = undefined -- TODO: kill
 
       buildMode <- argument auto $
         metavar "MODE" <>

@@ -16,7 +16,7 @@ checked 6 rules
 ABBC
 
 # See memoization when building; No target is "Require"d more than once
-jenga build -a --debug-demand
+jenga build -a --show-demand
 B: Require: a
 B: Require: b
 B: Require: c

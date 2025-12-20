@@ -51,7 +51,7 @@ jenga exec RELOCATED/RENAMED.exe
 jenga exec ANOTHER/RENAMED.exe
 
 # View the targets
-jenga build -t
+jenga list-targets
 
 # Corrupt one build.jenga; see parse error
 chmod +w RELOCATED/build.jenga && echo xxx >> RELOCATED/build.jenga
@@ -59,7 +59,7 @@ jenga build -a
 
 # Remove one directory copy; view targets again
 rm -rf RELOCATED
-jenga build -t
+jenga list-targets
 
 # Mod some more, try -q
 sed -i 's/fib(10)/fib(11)/g' ANOTHER/main.c

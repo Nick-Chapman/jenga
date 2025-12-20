@@ -6,4 +6,4 @@ jenga build -a
 jenga cat -a top
 
 # See memoization when building; No target is "Require"d more than once
-jenga build -a --debug-demand
+jenga build -a --show-demand

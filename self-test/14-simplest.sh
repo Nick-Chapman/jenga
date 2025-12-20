@@ -3,4 +3,4 @@
 jenga build -a
 
 # See Targets
-jenga build --list-targets
+jenga list-targets

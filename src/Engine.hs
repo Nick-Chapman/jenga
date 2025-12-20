@@ -24,8 +24,8 @@ import System.Process (ProcessHandle,waitForProcess,CreateProcess(env),shell,pro
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
-import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
-import CommandLine qualified (exec)
+import CommandLine (LogMode(..),Config(..),BuildMode(..),OldBuildMode(..),CacheDirSpec(..))
+import CommandLine qualified (exec,munge)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
 import Locate (Loc,pathOfLoc,Dir,makeAbsoluteDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
 import Syntax qualified (elaborate)
@@ -41,7 +41,23 @@ main = do
 -- Engine main
 
 engineMain :: Config -> IO ExitCode
-engineMain config@Config{startDir,homeDir,cacheDirSpec,logMode} = do
+engineMain config@Config{startDir,homeDir,cacheDirSpec,buildMode,flagA,flagQ} = do
+
+  config <- pure $ config { oldBuildMode = CommandLine.munge buildMode } -- TODO kill
+
+  let
+    logMode = -- TODO kill
+      case (flagQ,flagA) of
+        (True,True) -> error "Q+A"
+        (True,False) -> LogQuiet
+        (False,True) -> LogActions
+        (False,False) -> do
+          case buildMode of
+            Cat -> LogQuiet
+            Exec -> LogQuiet
+            _ -> LogNormal
+
+  config <- pure $ config { logMode } -- TODO kill
 
   let userProg = mkUserProg config
   let quiet = case logMode of LogQuiet -> True; _ -> False
@@ -87,10 +103,10 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Config -> UserProg -> IO ExitCode
-elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
-  case buildMode of
+elaborateAndBuild config@Config{logMode,startDir,oldBuildMode,args} userProg = do
+  case oldBuildMode of
 
-    ModeListTargets -> do
+    OldModeListTargets -> do
       fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
          system <- runElaboration config (userProg args)
          let System{rules} = system
@@ -106,7 +122,7 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
       ec <- newReport config fbs
       pure ec
 
-    ModeListRules -> do
+    OldModeListRules -> do
       fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
@@ -120,7 +136,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
       ec <- newReport config fbs
       pure ec
 
-    ModeCat src0 -> do
+    OldModeCat _src0 -> do
+      let src0 = case args of [x] -> x; _ -> error "OldModeCat"
       let src = startDir </> src0
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg ["."])
@@ -138,7 +155,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
             XIO $ putStr contents
       pure ec
 
-    ModeExec exe0 argsForExe -> do
+    OldModeExec _exe0 _argsForExe -> do
+      let (exe0,argsForExe) = case args of x:xs -> (x,xs); _ -> error "OldModeExec"
       let exe = startDir </> exe0
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg ["."])
@@ -159,7 +177,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
               putStr (seeFailureExit exitCode) -- TODO: propagate exit-code instead of print
       pure ec
 
-    ModeInstall src0 dest0 -> do
+    OldModeInstall _src0 _dest0 -> do
+      let (src0,dest0) = case args of [x,y] -> (x,y); _ -> error "OldModeInstall"
       let src = startDir </> src0
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg ["."])
@@ -180,15 +199,16 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
                 printf "installed %s\n" (ppKey config (Key dest))
       pure ec
 
-    ModeRun names -> do -- including "test" == "run test"
+    OldModeRun _names -> do -- including "test" == "run test"
+      let names = _names ++ args
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg args)
+        system <- runElaboration config (userProg [])
         let System{how} = system
         parallel_ [ buildPhony config how name | name <- names ]
       ec <- newReport config fbs
       pure ec
 
-    ModeBuild -> do
+    OldModeBuild -> do
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         buildEverythingInSystem config system
@@ -196,9 +216,9 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
       pure ec
 
 newReport :: Config -> FBS -> IO ExitCode
-newReport Config{buildMode,logMode,worker} FBS{countRules=nr,failures} = do
+newReport Config{oldBuildMode,logMode,worker} FBS{countRules=nr,failures} = do
   let quiet = case logMode of LogQuiet -> True; _ -> False
-  let listyMode = case buildMode of ModeListTargets -> True; ModeListRules -> True; _ -> False
+  let listyMode = case oldBuildMode of OldModeListTargets -> True; OldModeListRules -> True; _ -> False
   let numFails = length failures
   when (not worker && numFails > 0) $ do
     printf "Build failed for %s:\n%s\n" (pluralize numFails "reason")

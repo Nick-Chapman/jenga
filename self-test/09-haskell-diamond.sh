@@ -6,4 +6,4 @@ jenga build -a
 jenga exec diamond.exe
 
 # Debug demand
-jenga build --debug-demand
+jenga build --show-demand

@@ -23,7 +23,7 @@ jenga exec hello.exe
 Hello, 89 jenga. Discovered deps and generated rules.
 
 # Targets
-jenga build --list-targets
+jenga list-targets
 all.files
 hello.exe
 c.files
@@ -35,7 +35,7 @@ fib.o
 main.o
 
 # Rules
-jenga build --list-rules
+jenga list-rules
 all.files : 
   echo '.output\n12-generated-rules.sh\nbuild.jenga\ndefs.h\nfib.c\nfib.h\njenga\njenga.exe\nmain.c' > all.files
 

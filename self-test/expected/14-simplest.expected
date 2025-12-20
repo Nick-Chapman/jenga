@@ -8,7 +8,7 @@ ran 3 commands
 checked 3 rules
 
 # See Targets
-jenga build --list-targets
+jenga list-targets
 a
 b
 ab

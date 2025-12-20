@@ -84,7 +84,7 @@ jenga exec ANOTHER/RENAMED.exe
 hello, 55 world
 
 # View the targets
-jenga build -t
+jenga list-targets
 RELOCATED/main.o
 RELOCATED/fib.o
 RELOCATED/RENAMED.exe
@@ -100,7 +100,7 @@ Build failed for 1 reason:
 
 # Remove one directory copy; view targets again
 rm -rf RELOCATED
-jenga build -t
+jenga list-targets
 ANOTHER/main.o
 ANOTHER/fib.o
 ANOTHER/RENAMED.exe
@@ -116,15 +116,21 @@ hello, 89 world
 jenga --help
 jenga: A build system
 
-Usage: jenga.exe (COMMAND | COMMAND | COMMAND | COMMAND | COMMAND | COMMAND)
+Usage: jenga.exe MODE [ARG]
 
 Available options:
   -h,--help                Show this help text
-
-Available commands:
-  build                    Bring a build up to date
-  exec                     build; then run a single executable target
-  cat                      build; then cat a single target
-  install                  build; then install a single executable
-  run                      build; then run a list of actions
-  test                     build; then run the 'test' action
+  MODE                     build|test|run|cat|exec|install|list-targets|list-rules
+  ARG                      Target or directory
+  -j,--jobs NUM            Allow NUM jobs in parallel (default: 3)
+  -q,--quiet               Build quietly, except for errors
+  -a,--show-actions        Log rule actions when executed
+  -d,--show-demand         Log build targets when demanded
+  -p,--show-pid            Prefix log lines with pid
+  -c,--cache DIR           Use .cache/jenga in DIR instead of $HOME
+  -f,--force               Build using temporary cache to force build actions
+  --rel                    Report paths relative to starting directory
+  --promote                Promote test output to .expected files
+  --debug-external         Debug calls to md5sum
+  --debug-internal         Debug file system access
+  --debug-locking          Debug locking behaviour

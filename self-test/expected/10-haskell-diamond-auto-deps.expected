@@ -21,7 +21,7 @@ jenga exec diamond.exe
 Top[B[A],C[A]]
 
 # Debug demand
-jenga build --debug-demand
+jenga build --show-demand
 B: Require: diamond.exe
 B: Require: ghc.exe
 B: Require: ghc-path

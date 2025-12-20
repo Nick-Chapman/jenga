@@ -1,16 +1,17 @@
 {-# LANGUAGE ApplicativeDo, RecordWildCards #-}
 
 module CommandLine
-  ( LogMode(..),Config(..),BuildMode(..), CacheDirSpec(..)
-  , exec
+  ( LogMode(..),Config(..),BuildMode(..),OldBuildMode(..), CacheDirSpec(..)
+  , exec, munge
   ) where
 
 import Control.Monad (when)
-import Options.Applicative -- fully opened
+import Data.List (intercalate)
+import Locate (Dir,makeAbsoluteDir)
 import System.Directory (getCurrentDirectory)
 import System.Environment (lookupEnv)
 
-import Locate (Dir,makeAbsoluteDir)
+import Options.Applicative -- fully opened
 
 data LogMode = LogQuiet | LogNormal | LogActions
 
@@ -18,8 +19,9 @@ data Config = Config
   { startDir :: Dir
   , homeDir :: Dir
   , cacheDir :: Dir
-  , worker :: Bool -- can't set on command line; but convenient to have in config
+  , worker :: Bool
   , buildMode :: BuildMode
+  , oldBuildMode :: OldBuildMode
   , args :: [FilePath]
   , jnum :: Int
   , seePid :: Bool
@@ -31,171 +33,186 @@ data Config = Config
   , debugLocking :: Bool
   , withPromotion :: Bool
   , reportRelative :: Bool
+  , flagQ :: Bool
+  , flagA :: Bool
   }
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
 
+data OldBuildMode
+  = OldModeListTargets
+  | OldModeListRules
+  | OldModeBuild
+  | OldModeExec FilePath [FilePath]
+  | OldModeCat FilePath
+  | OldModeInstall FilePath FilePath
+  | OldModeRun [String]
+
 data BuildMode
-  = ModeListTargets
-  | ModeListRules
-  | ModeBuild
-  | ModeExec FilePath [FilePath]
-  | ModeCat FilePath
-  | ModeInstall FilePath FilePath
-  | ModeRun [String]
+  = Build
+  | Test
+  | Run
+  | Cat
+  | Exec
+  | Install
+  | ListTargets
+  | ListRules
+  deriving (Bounded,Enum)
+
+instance Show BuildMode where
+  show = \case
+    Build -> "build"
+    Cat -> "cat"
+    Exec -> "exec"
+    Install -> "install"
+    Run -> "run"
+    Test -> "test"
+    ListTargets -> "list-targets"
+    ListRules -> "list-rules"
+
+munge :: BuildMode -> OldBuildMode
+munge = \case
+  Build -> OldModeBuild
+  Cat -> OldModeCat "lala"
+  Exec -> OldModeExec "" []
+  Install -> OldModeInstall "" ""
+  Run -> OldModeRun []
+  Test -> OldModeRun ["test"]
+  ListTargets -> OldModeListTargets
+  ListRules -> OldModeListRules
+
+modeHelp :: String
+modeHelp = intercalate "|" (map show all)
+  where all :: [BuildMode] = [minBound ..maxBound]
+
+instance Read BuildMode where
+  readsPrec _ = \given -> [ (x,"") | x <- all, show x == given ]
+    where all = [minBound ..maxBound]
 
 exec :: IO Config
 exec = do
+
   homeDir <- makeAbsoluteDir <$> maybe "/tmp" id <$> lookupEnv "HOME"
   startDir <- makeAbsoluteDir <$> getCurrentDirectory
   let cacheDir = undefined -- TODO: ahem!
-  execAt homeDir startDir cacheDir
+  let worker = False
 
-execAt :: Dir -> Dir -> Dir -> IO Config
-execAt homeDir startDir cacheDir = do
-  customExecParser
-    -- TODO: fix digest-id shown in usage message when run by "jenga exec src/jenga.exe"
-    (prefs (showHelpOnError <> showHelpOnEmpty))
-    (info (subCommands <**> helper)
-     ( fullDesc <> header "jenga: A build system" ))
+  let
+    positive :: ReadM Int  = do
+      i <- auto
+      when (i < 1) $
+        readerError "Value must be at least 1"
+      pure i
 
-  where
-  subCommands :: Parser Config
-  subCommands =
-    -- TODO: fix "COMMAND" shown in usage message
-    hsubparser (command "build" (info buildCommand (progDesc "Bring a build up to date"))) <|>
-    hsubparser (command "exec" (info execCommand (progDesc "build; then run a single executable target"))) <|>
-    hsubparser (command "cat" (info catCommand (progDesc "build; then cat a single target"))) <|>
-    hsubparser (command "install" (info installCommand (progDesc "build; then install a single executable"))) <|>
-    hsubparser (command "run" (info runCommand (progDesc "build; then run a list of actions"))) <|>
-    hsubparser (command "test" (info testCommand (progDesc "build; then run the 'test' action")))
+  let
+    confParser :: Parser Config
+    confParser = do
 
-  buildCommand :: Parser Config
-  buildCommand = do
-    let
-      buildMode =
-        flag' ModeListTargets
-        (short 't'
-          <> long "list-targets"
-          <> help "List buildable targets")
-        <|>
-        flag' ModeListRules
-        (short 'r'
-          <> long "list-rules"
-          <> help "List generated rules")
-        <|>
-        pure ModeBuild
-    let
-      args =
-        many (strArgument (metavar "DIRS" <> help "Directories to search for build rules; default CWD"))
-    sharedOptions LogNormal args buildMode
+      let logMode = undefined -- TODO kill
+      let oldBuildMode = undefined -- TODO: kill
 
-  execCommand :: Parser Config
-  execCommand = do
-    let
-      buildMode = do
-        exe <- strArgument (metavar "EXE" <> help "Target executable to build and run")
-        exeArgs <- many (strArgument (metavar "ARG+" <> help "Arguments for target executable"))
-        pure (ModeExec exe exeArgs)
-    let args = pure []
-    sharedOptions LogQuiet args buildMode
+      buildMode <- argument auto $
+        metavar "MODE" <>
+        help modeHelp
 
-  catCommand :: Parser Config
-  catCommand = do
-    let
-      buildMode = do
-        target <- strArgument (metavar "TARGET" <> help "Executable to cat")
-        pure (ModeCat target)
-    let args = pure []
-    sharedOptions LogQuiet args buildMode
+      args <- many $ strArgument $
+        metavar "ARG" <>
+        help "Target or directory"
 
-  installCommand :: Parser Config
-  installCommand = do
-    let
-      buildMode = do
-        exe <- strArgument (metavar "EXE" <> help "Executable to build and install")
-        dest <- strArgument (metavar "DEST" <> help "Destination of installed executable")
-        pure (ModeInstall exe dest)
-    let args = pure []
-    sharedOptions LogQuiet args buildMode
+      jnum <- option positive $
+        hidden <>
+        short 'j' <>
+        long "jobs" <>
+        metavar "NUM" <>
+        value 3 <>
+        showDefault <>
+        help "Allow NUM jobs in parallel"
 
-  runCommand :: Parser Config
-  runCommand = do
-    let
-      buildMode = do
-        ps <- some (strArgument (metavar "PHONY+" <> help "Phony targets to build and run"))
-        pure (ModeRun ps)
-    let args = pure []
-    sharedOptions LogNormal args buildMode
+      flagQ <- switch $
+        hidden <>
+        short 'q' <>
+        long "quiet" <>
+        help "Build quietly, except for errors"
 
-  testCommand :: Parser Config
-  testCommand = do
-    let args = pure []
-    sharedOptions LogNormal args (pure (ModeRun ["test"]))
+      flagA <- switch $
+        hidden <>
+        short 'a' <>
+        long "show-actions" <>
+        help "Log rule actions when executed"
 
-  sharedOptions :: LogMode -> Parser [FilePath] -> Parser BuildMode -> Parser Config
-  sharedOptions defaultLogMode args buildMode = do
+      debugDemand <- switch $
+        hidden <>
+        short 'd' <>
+        long "show-demand" <>
+        help "Log build targets when demanded"
 
-    args <- args
-    buildMode <- buildMode
+      seePid <- switch $
+        hidden <>
+        short 'p' <>
+        long "show-pid" <>
+        help "Prefix log lines with pid"
 
-    let worker = False
+      cacheDirSpec <-
+        CacheDirChosen <$>
+        (strOption $
+         hidden <>
+         short 'c' <>
+         long "cache" <>
+         metavar "DIR" <>
+         help "Use .cache/jenga in DIR instead of $HOME"
+        ) <|>
+        (flag' CacheDirTemp $
+         hidden <>
+         short 'f' <>
+--         long "temporary-cache" <>
+         long "force" <>
+         help "Build using temporary cache to force build actions"
+        ) <|>
+        pure CacheDirDefault
 
-    let
-      positive :: ReadM Int  = do
-        i <- auto
-        when (i < 1) $ readerError "Value must be at least 1"
-        pure i
+      reportRelative <- switch $
+        hidden <>
+        long "rel" <>
+        help "Report paths relative to starting directory"
 
-    jnum <- do
-      option positive $
-        short 'j'
-        <> long "jobs"
-        <> value 3
-        <> metavar "NUM"
-        <> showDefault
-        <> help "Allow NUM jobs in parallel"
+      withPromotion <- switch $
+        hidden <>
+        long "promote" <>
+        help "Promote test output to .expected files"
 
-    seePid <-
-      switch (short 'p'
-               <> long "show-pid"
-               <> help "Prefix log lines with pid")
+      debugExternal <- switch $
+        hidden <>
+        long "debug-external" <>
+        help "Debug calls to md5sum"
 
-    cacheDirSpec <-
-      CacheDirChosen <$> strOption
-      (short 'c' <> long "cache" <> metavar "DIR"
-       <> help "Use .cache/jenga in DIR instead of $HOME"
-      )
-      <|>
-      flag' CacheDirTemp
-      (short 'f' <> long "temporary-cache"
-       <> help "Build using temporary cache to force build actions")
-      <|> pure CacheDirDefault
+      debugInternal <- switch $
+        hidden <>
+        long "debug-internal" <>
+        help "Debug file system access"
 
-    logMode <-
-      flag' LogActions
-      (short 'a'
-       <> long "show-actions"
-        <> help "Build showing actions run")
-      <|>
-      flag' LogQuiet
-      (short 'q'
-       <> long "quiet"
-       <> help "Build quietly, except for errors")
-      <|>
-      pure defaultLogMode
+      debugLocking <- switch $
+        hidden <>
+        long "debug-locking" <>
+        help "Debug locking behaviour"
 
-    debugDemand <- switch (long "debug-demand" <> help "Debug demanded build targets")
-    debugExternal <- switch (long "debug-external" <> help "Debug calls to md5sum")
-    debugInternal <- switch (long "debug-internal" <> help "Debug file system access")
-    debugLocking <- switch (long "debug-locking" <> help "Debug locking behaviour")
+      pure $ Config {..}
 
-    withPromotion <-
-      switch (long "promote"
-              <> help "Promote test output to .expected files")
+  let
+    myPrefs :: ParserPrefs
+    myPrefs = prefs $
+      showHelpOnError <>
+      showHelpOnEmpty <>
+      subparserInline <>
+      mempty
+  let
+    im :: InfoMod Config
+    im =
+      header "jenga: A build system"
+--      <> footer "JENGA-FOOTER" -- TODO: link to github?
+--      <> progDesc "JENGA-DESC" -- TODO: description of modes?
 
-    reportRelative <-
-      switch (long "rel"
-              <> help "Report paths relative to starting directory")
+  let
+    pic :: ParserInfo Config
+    pic = info (helper <*> confParser) im
 
-    pure $ Config { .. }
+  customExecParser myPrefs pic

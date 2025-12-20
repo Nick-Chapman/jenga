@@ -12,6 +12,7 @@ checked 2 rules
 
 # Run (see exit code 25)
 jenga exec main.exe
+checked 2 rules
 hello, conditional world
 (exit-code) 25
 

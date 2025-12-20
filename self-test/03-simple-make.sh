@@ -3,4 +3,4 @@
 jenga build -a
 
 # Run
-jenga exec main.exe
+jenga exec -q main.exe

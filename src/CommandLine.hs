@@ -1,7 +1,7 @@
 {-# LANGUAGE ApplicativeDo, RecordWildCards #-}
 
 module CommandLine
-  ( LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..)
+  ( Config(..),BuildMode(..),CacheDirSpec(..)
   , exec
   ) where
 
@@ -13,8 +13,6 @@ import System.Environment (lookupEnv)
 
 import Options.Applicative -- fully opened
 
-data LogMode = LogQuiet | LogNormal | LogActions
-
 data Config = Config
   { startDir :: Dir
   , homeDir :: Dir
@@ -25,7 +23,6 @@ data Config = Config
   , jnum :: Int
   , seePid :: Bool
   , cacheDirSpec :: CacheDirSpec
-  , logMode :: LogMode
   , debugDemand :: Bool
   , debugExternal :: Bool
   , debugInternal :: Bool
@@ -87,8 +84,6 @@ exec = do
     confParser :: Parser Config
     confParser = do
 
-      let logMode = undefined -- TODO kill
-
       buildMode <- argument auto $
         metavar "MODE" <>
         help modeHelp
@@ -142,7 +137,6 @@ exec = do
         (flag' CacheDirTemp $
          hidden <>
          short 'f' <>
---         long "temporary-cache" <>
          long "force" <>
          help "Build using temporary cache to force build actions"
         ) <|>

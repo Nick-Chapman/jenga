@@ -24,7 +24,7 @@ import System.Process (ProcessHandle,waitForProcess,CreateProcess(env),shell,pro
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
-import CommandLine (LogMode(..),Config(..),BuildMode(..),CacheDirSpec(..))
+import CommandLine (Config(..),BuildMode(..),CacheDirSpec(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
 import Locate (Loc,pathOfLoc,Dir,makeAbsoluteDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
@@ -41,24 +41,9 @@ main = do
 -- Engine main
 
 engineMain :: Config -> IO ExitCode
-engineMain config@Config{startDir,homeDir,cacheDirSpec,buildMode,flagA,flagQ} = do
-
-  let
-    logMode = -- TODO kill
-      case (flagQ,flagA) of
-        (True,True) -> error "Q+A" -- TODO
-        (True,False) -> LogQuiet
-        (False,True) -> LogActions
-        (False,False) -> do
-          case buildMode of
-            ModeCat -> LogQuiet
-            ModeExec -> LogQuiet
-            _ -> LogNormal
-
-  config <- pure $ config { logMode } -- TODO kill
+engineMain config@Config{startDir,homeDir,cacheDirSpec,flagQ=quiet} = do
 
   let userProg = mkUserProg config
-  let quiet = case logMode of LogQuiet -> True; _ -> False
   myPid <- getCurrentPid
 
   cacheDir :: Dir <- insistLocIsDir <$> -- TODO: move into CommandLine
@@ -101,7 +86,7 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Config -> UserProg -> IO ExitCode
-elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
+elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = do
   case buildMode of
 
     ModeListTargets -> do
@@ -192,7 +177,6 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
             let dest = startDir </> dest0
             installDigest config digest dest
             XIO $ do
-              let quiet = case logMode of LogQuiet -> True; _ -> False
               when (not quiet) $ do
                 printf "installed %s\n" (ppKey config (Key dest))
       pure ec
@@ -222,8 +206,8 @@ elaborateAndBuild config@Config{logMode,startDir,buildMode,args} userProg = do
       pure ec
 
 newReport :: Config -> FBS -> IO ExitCode
-newReport Config{buildMode,logMode,worker} FBS{countRules=nr,failures} = do
-  let quiet = case logMode of LogQuiet -> True; _ -> False
+newReport Config{buildMode,worker,flagQ=quiet} FBS{countRules=nr,failures} = do
+  -- TODO: remove special case for listyMode. use can always say -q
   let listyMode = case buildMode of ModeListTargets -> True; ModeListRules -> True; _ -> False
   let numFails = length failures
   when (not worker && numFails > 0) $ do
@@ -946,7 +930,7 @@ data B a where
   BYield :: B ()
 
 runB :: Config -> B () -> X FBS
-runB config@Config{logMode} build0 = do
+runB config@Config{flagQ=quiet} build0 = do
   loop build bstate0 kFinal
   where
     build = do
@@ -960,8 +944,7 @@ runB config@Config{logMode} build0 = do
       when (length jobs /= 0) $ error "runB: unexpected left over jobs"
       myPid <- XIO getCurrentPid
       XRemoveDirRecursive (sandboxParent myPid)
-      let see = case logMode of LogQuiet -> False; _ -> True
-      when (see && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
+      when (not quiet && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
       pure (makeFBS s)
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X FBS) -> X FBS
@@ -1155,7 +1138,7 @@ data X a where
   XRemoveDirRecursive :: Dir -> X ()
 
 runX :: Config -> X a -> IO a
-runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = loop
+runX config@Config{homeDir,debugExternal,debugInternal,debugLocking,flagA=logActions} = loop
   where
 
     log mes = maybePrefixPid config mes >>= putOut
@@ -1180,8 +1163,7 @@ runX config@Config{homeDir,logMode,debugExternal,debugInternal,debugLocking} = l
       -- sandboxed execution of user's action; for now always a list of bash commands
       XRunActionInDir dir Action{commands} -> ActionRes <$> do
         forM commands $ \command -> do
-          let logAction = case logMode of LogActions -> True; _ -> False
-          when logAction $ log $ printf "A: %s" command
+          when logActions $ log $ printf "A: %s" command
           (exitCode,stdout,stderr) <-
             withCurrentDirectory (pathOfDir dir) (readCreateProcessWithExitCode (shell command) "")
           pure $ CommandRes { exitCode, stdout, stderr }

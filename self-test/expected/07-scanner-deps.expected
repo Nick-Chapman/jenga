@@ -11,12 +11,15 @@ checked 5 rules
 
 # Run
 jenga exec main.exe
+checked 5 rules
 hello, 144 world with scanner deps
 
 # Inspect the generated deps
 jenga cat main.d
+checked 1 rule
 main.o: main.c fib.h defs.h
 jenga cat fib.d
+checked 1 rule
 fib.o: fib.c fib.h
 
 # Make a change

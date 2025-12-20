@@ -18,6 +18,7 @@ checked 11 rules
 
 # Run
 jenga exec diamond.exe
+checked 11 rules
 Top[B[A],C[A]]
 
 # Debug demand

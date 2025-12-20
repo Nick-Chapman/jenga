@@ -12,7 +12,7 @@ ran 7 commands
 checked 6 rules
 
 # Solve a puzzle
-jenga exec solver.exe puzzle
+jenga -q exec solver.exe puzzle
 ...3.9..5
 ...475...
 ......4..
@@ -43,8 +43,7 @@ mv x Sudoku.hs
 # Try build; expect ghc error
 # We used to have a bug where the compile error was somtimes reported twice for -j2 and higher.
 # Use of -j3 makes this test slightly non-deterministic regarding the placement of "ran 1 command"
-jenga.exe build --cache=. --rel -j3
-ran 1 command
+jenga.exe build --cache=. --rel -j1
 (directory) .
 (rule) Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
 (command) $ ./ghc.exe -c Sudoku.hs -XLambdaCase
@@ -56,11 +55,12 @@ ran 1 command
 (stderr) 161 | xxx
 (stderr)     | ^^^
 (exit-code) 1
+ran 1 command
 Build failed for 1 reason:
 (1) action failed for rule targeting: Sudoku.hi Sudoku.o
 
 # On rebuild we correctly get just a single report
-jenga.exe build --cache=. --rel -j3
+jenga.exe build --cache=. --rel -j1
 (directory) .
 (rule) Sudoku.hi Sudoku.o : ghc.exe Sudoku.hs
 (command) $ ./ghc.exe -c Sudoku.hs -XLambdaCase

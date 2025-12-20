@@ -17,5 +17,5 @@ ran 12 commands
 checked 12 rules
 
 # Run
-jenga exec main.exe
+jenga -q exec main.exe
 hello, 55 world with combined cc and make configs

@@ -79,8 +79,10 @@ checked 6 rules
 
 # Run the two co-existing executabls
 jenga exec RELOCATED/RENAMED.exe
+checked 3 rules
 hello, 6765 world
 jenga exec ANOTHER/RENAMED.exe
+checked 3 rules
 hello, 55 world
 
 # View the targets

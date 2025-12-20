@@ -9,5 +9,5 @@ ran 4 commands
 checked 4 rules
 
 # Run
-jenga exec main.exe
+jenga exec -q main.exe
 hello, 55 world with explicit make-style rules

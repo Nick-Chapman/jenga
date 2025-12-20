@@ -15,11 +15,14 @@ checked 9 rules
 
 # Run
 jenga exec hello.exe
+checked 9 rules
 Hello, 55 jenga. Discovered deps and generated rules.
 
 # Change & rereun
 sed -i 's/10/11/' defs.h
 jenga exec hello.exe
+ran 3 commands
+checked 9 rules
 Hello, 89 jenga. Discovered deps and generated rules.
 
 # Targets

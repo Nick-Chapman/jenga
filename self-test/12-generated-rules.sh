@@ -10,7 +10,7 @@ sed -i 's/10/11/' defs.h
 jenga exec hello.exe
 
 # Targets
-jenga list-targets
+jenga list-targets -q
 
 # Rules
-jenga list-rules
+jenga list-rules -q

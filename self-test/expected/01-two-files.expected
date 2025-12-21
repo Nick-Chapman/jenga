@@ -86,7 +86,7 @@ checked 3 rules
 hello, 55 world
 
 # View the targets
-jenga list-targets
+jenga -q list-targets
 RELOCATED/main.o
 RELOCATED/fib.o
 RELOCATED/RENAMED.exe
@@ -102,7 +102,7 @@ Build failed for 1 reason:
 
 # Remove one directory copy; view targets again
 rm -rf RELOCATED
-jenga list-targets
+jenga -q list-targets
 ANOTHER/main.o
 ANOTHER/fib.o
 ANOTHER/RENAMED.exe

@@ -209,14 +209,12 @@ elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
       pure ec
 
 newReport :: Config -> FBS -> IO ExitCode
-newReport Config{buildMode,worker,flagQ=quiet} FBS{countRules=nr,failures} = do
-  -- TODO: remove special case for listyMode. use can always say -q
-  let listyMode = case buildMode of ModeListTargets -> True; ModeListRules -> True; _ -> False
+newReport Config{worker,flagQ=quiet} FBS{countRules=nr,failures} = do
   let numFails = length failures
   when (not worker && numFails > 0) $ do
     printf "Build failed for %s:\n%s\n" (pluralize numFails "reason")
       (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] failures ])
-  when (not quiet && not worker && not listyMode) $ do
+  when (not quiet && not worker) $ do
     when (numFails == 0) $ do
       -- We flush this report to be sure is proceeds whatever follows the build; i.e. cat, exec
       putOut $ printf "checked %s" (pluralize nr "rule")

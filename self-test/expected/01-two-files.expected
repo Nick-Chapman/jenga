@@ -118,12 +118,10 @@ hello, 89 world
 jenga --help
 jenga: A build system
 
-Usage: jenga.exe MODE [ARG]
+Usage: jenga.exe COMMAND
 
 Available options:
   -h,--help                Show this help text
-  MODE                     build|test|run|cat|exec|install|list-targets|list-rules
-  ARG                      Target or directory
   -j,--jobs NUM            Allow NUM jobs in parallel (default: 3)
   -q,--quiet               Build quietly, except for errors
   -a,--show-actions        Log rule actions when executed
@@ -136,3 +134,13 @@ Available options:
   --debug-external         Debug calls to md5sum
   --debug-internal         Debug file system access
   --debug-locking          Debug locking behaviour
+
+Available commands:
+  build                    Bring the build up to date
+  test                     Test everything
+  run                      Build then run a phony-target
+  cat                      Build then print a target
+  exec                     Build then execute a target with arguments
+  install                  Build then install a target
+  list-targets             List all build targets
+  list-rules               List all build rules

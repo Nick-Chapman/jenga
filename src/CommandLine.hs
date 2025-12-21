@@ -6,7 +6,6 @@ module CommandLine
   ) where
 
 import Control.Monad (when)
-import Data.List (intercalate)
 import Locate (Dir,makeAbsoluteDir)
 import System.Directory (getCurrentDirectory)
 import System.Environment (lookupEnv)
@@ -19,7 +18,6 @@ data Config = Config
   , cacheDir :: Dir
   , worker :: Bool
   , buildMode :: BuildMode
-  , args :: [FilePath]
   , jnum :: Int
   , seePid :: Bool
   , cacheDirSpec :: CacheDirSpec
@@ -36,34 +34,52 @@ data Config = Config
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
 
 data BuildMode
-  = ModeBuild
+  = ModeBuild { targets :: [String] }
   | ModeTest
-  | ModeRun
-  | ModeCat
-  | ModeExec
-  | ModeInstall
+  | ModeRun { phony :: String }
+  | ModeCat { target :: String }
+  | ModeExec { exe :: String, args :: [String] }
+  | ModeInstall { target :: String, destination ::  String }
   | ModeListTargets
   | ModeListRules
-  deriving (Bounded,Enum)
 
-instance Show BuildMode where
-  show = \case
-    ModeBuild -> "build"
-    ModeCat -> "cat"
-    ModeExec -> "exec"
-    ModeInstall -> "install"
-    ModeRun -> "run"
-    ModeTest -> "test"
-    ModeListTargets -> "list-targets"
-    ModeListRules -> "list-rules"
+buildModeParser :: Parser BuildMode
+buildModeParser = hsubparser $
+  build <> test <> run <> cat <> exec <> install <> listT <> listR
+  where
+    build = command "build" $ info (ModeBuild <$> args) $
+      progDesc "Bring the build up to date"
+      where args = many <$> strArgument $ metavar "TARGETS" <> help "Targets to build"
 
-modeHelp :: String
-modeHelp = intercalate "|" (map show all)
-  where all :: [BuildMode] = [minBound ..maxBound]
+    test = command "test" $ info (pure ModeTest) $
+      progDesc "Test everything"
 
-instance Read BuildMode where
-  readsPrec _ = \given -> [ (x,"") | x <- all, show x == given ]
-    where all = [minBound ..maxBound]
+    run = command "run" $ info (ModeRun <$> phony) $
+      progDesc "Build then run a phony-target"
+      where phony = strArgument $ metavar "PHONY" <> help "Phony-target to run"
+
+    cat = command "cat" $ info (ModeCat <$> target) $
+      progDesc "Build then print a target"
+      where target = strArgument $ metavar "TARGET" <> help "Target to print"
+
+    exec = command "exec" $ info (ModeExec <$> exe <*> args) $
+      progDesc "Build then execute a target with arguments"
+      where
+        exe = strArgument $ metavar "EXE" <> help "Executable target"
+        args = many <$> strArgument $ metavar "ARGS" <> help "Arguments to pass"
+
+    install = command "install" $ info (ModeInstall <$> target <*> dest) $
+      progDesc "Build then install a target"
+      where
+        target = strArgument $ metavar "TARGET" <> help "Target to install"
+        dest = strArgument $ metavar "DESTINATION" <> help "Destination to install as"
+
+    listT = command "list-targets" $ info (pure ModeListTargets) $
+      progDesc "List all build targets"
+
+    listR = command "list-rules" $ info (pure ModeListRules) $
+      progDesc "List all build rules"
+
 
 exec :: IO Config
 exec = do
@@ -84,13 +100,7 @@ exec = do
     confParser :: Parser Config
     confParser = do
 
-      buildMode <- argument auto $
-        metavar "MODE" <>
-        help modeHelp
-
-      args <- many $ strArgument $
-        metavar "ARG" <>
-        help "Target or directory"
+      buildMode <- buildModeParser
 
       jnum <- option positive $
         hidden <>
@@ -181,7 +191,6 @@ exec = do
     im =
       header "jenga: A build system"
 --      <> footer "JENGA-FOOTER" -- TODO: link to github?
---      <> progDesc "JENGA-DESC" -- TODO: description of modes?
 
   let
     pic :: ParserInfo Config

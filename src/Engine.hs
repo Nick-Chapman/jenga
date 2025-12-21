@@ -86,10 +86,11 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Config -> UserProg -> IO ExitCode
-elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = do
+elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
   case buildMode of
 
     ModeListTargets -> do
+      let args = []
       fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
          system <- runElaboration config (userProg args)
          let System{rules} = system
@@ -106,6 +107,7 @@ elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = 
       pure ec
 
     ModeListRules -> do
+      let args = []
       fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
         system <- runElaboration config (userProg args)
         let System{how,rules} = system
@@ -119,11 +121,11 @@ elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = 
       ec <- newReport config fbs
       pure ec
 
-    ModeCat -> do
-      let src0 = case args of [x] -> x; _ -> error "ModeCat" -- TODO
+    ModeCat src0 -> do
+      let args = []
       let src = startDir </> src0
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg ["."])
+        system <- runElaboration config (userProg args)
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key src)
         pure ()
@@ -138,11 +140,11 @@ elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = 
             XIO $ putStr contents
       pure ec
 
-    ModeExec -> do
-      let (exe0,argsForExe) = case args of x:xs -> (x,xs); _ -> error "ModeExec" -- TODO
+    ModeExec exe0 argsForExe -> do
+      let args = []
       let exe = startDir </> exe0
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg ["."])
+        system <- runElaboration config (userProg args)
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key exe)
         pure ()
@@ -160,11 +162,11 @@ elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = 
               putStr (seeFailureExit exitCode) -- TODO: propagate exit-code instead of print
       pure ec
 
-    ModeInstall -> do
-      let (src0,dest0) = case args of [x,y] -> (x,y); _ -> error "ModeInstall" -- TODO
+    ModeInstall src0 dest0 -> do
+      let args = []
       let src = startDir </> src0
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg ["."])
+        system <- runElaboration config (userProg args)
         let System{how} = system
         _digest <- buildArtifact emptyChain config how (Key src)
         pure ()
@@ -181,24 +183,25 @@ elaborateAndBuild config@Config{startDir,buildMode,args,flagQ=quiet} userProg = 
                 printf "installed %s\n" (ppKey config (Key dest))
       pure ec
 
-    ModeRun -> do
-      let names = args
+    ModeRun phony -> do
+      let args = []
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg [])
+        system <- runElaboration config (userProg args)
         let System{how} = system
-        parallel_ [ buildPhony config how name | name <- names ]
+        buildPhony config how phony
       ec <- newReport config fbs
       pure ec
 
-    ModeTest -> do -- ignore args
+    ModeTest -> do
+      let args = []
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg [])
+        system <- runElaboration config (userProg args)
         let System{how} = system
         buildPhony config how "test"
       ec <- newReport config fbs
       pure ec
 
-    ModeBuild -> do
+    ModeBuild args -> do
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         buildEverythingInSystem config system

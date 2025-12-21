@@ -144,3 +144,5 @@ Available commands:
   install                  Build then install a target
   list-targets             List all build targets
   list-rules               List all build rules
+
+For more information, see https://github.com/Nick-Chapman/jenga

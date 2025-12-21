@@ -190,8 +190,7 @@ exec = do
     im :: InfoMod Config
     im =
       header "jenga: A build system"
---      <> footer "JENGA-FOOTER" -- TODO: link to github?
-
+      <> footer "For more information, see https://github.com/Nick-Chapman/jenga"
   let
     pic :: ParserInfo Config
     pic = info (helper <*> confParser) im

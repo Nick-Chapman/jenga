@@ -20,7 +20,7 @@ module Locate
   , insistLocIsDir
   ) where
 
-import System.FilePath qualified as FP
+import System.FilePath qualified as FP (takeDirectory,takeFileName,(</>))
 import System.Path.NameManip (guess_dotdot)
 
 -- types... invariant: Loc and Dir *always* start with a '/'
@@ -51,7 +51,7 @@ makeAbsoluteDir fp =
     _ -> error (show ("makeAbsoluteDir",fp))
 
 makeTag :: String -> Tag
-makeTag s = TagX s -- TODO: check contains no /s
+makeTag s = if '/' `elem` s then error "makeTag contanis slash" else TagX s
 
 -- moving between the types...
 
@@ -64,15 +64,14 @@ takeBase (LocX fp) = makeTag (FP.takeFileName fp)
 (</>) :: Dir -> String -> Loc
 (</>) (DirX dir) path =
   case path of
-    '/':_ -> LocX path -- TODO: do we get this anyway from FP.</>
     rel -> do
-      LocX (FP.normalise $ removeDotdotIsPossible (dir FP.</> rel))
+      LocX (removeDotdotIsPossible (dir FP.</> rel))
       where
         removeDotdotIsPossible :: String -> String
         removeDotdotIsPossible s =
           case guess_dotdot s of Just s -> s; Nothing -> s
 
-locOfDir :: Dir -> Loc -- upcast; TODO: shame
+locOfDir :: Dir -> Loc
 locOfDir (DirX fp) = LocX fp
 
 insistLocIsDir :: Loc -> Dir

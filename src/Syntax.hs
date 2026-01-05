@@ -3,12 +3,13 @@ module Syntax (elaborate) where
 
 import Data.List (intercalate,sort)
 import Data.List.Split (splitOn)
+import Data.Text qualified as Text (pack)
 import Text.Printf (printf)
 
 import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
 import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,insistLocIsDir)
-import Par4 (Position(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
+import Par4 (Pos(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: (Key -> String) -> Config -> Key -> G ()
 elaborate ppKey config@Config{homeDir} dotJengaFile0 = do -- TODO: pass ppKey in config?
@@ -21,9 +22,9 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do -- TODO: pass ppKey in
 
     elabRuleFile :: Key -> G ()
     elabRuleFile dotJengaFile  = do
-      s <- GReadKey dotJengaFile
+      t <- Text.pack <$> GReadKey dotJengaFile
       let filename = ppKey dotJengaFile
-      case Par4.parse gram s of
+      case Par4.parse gram t of
         Left parseError ->
           GFail (printf "%s: %s" filename parseError)
         Right clauses ->
@@ -153,7 +154,7 @@ filterDepsFor artNames contents = do
 data Clause = ClauseTrip Trip | ClauseInclude String
 
 data Trip = Trip
-  { pos :: Position
+  { pos :: Pos -- TODO: unused?
   , ruleTarget :: MTarget
   , deps :: [Dep]
   , commands :: [[ActChunk]]

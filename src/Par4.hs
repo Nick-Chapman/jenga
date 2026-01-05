@@ -1,8 +1,10 @@
 -- | 4-value Parser Combinators
-module Par4 (Par,parse,word,key,int,ws0,ws1,sp,nl,lit,sat,char,alts,opt,skip,separated,terminated,many,some,digit,dot,noError,Position(..),position) where
+module Par4 (Par,parse,word,key,int,ws0,ws1,sp,nl,lit,sat,char,alts,opt,skip,separated,terminated,many,some,digit,dot,noError,Pos(..),position) where
 
 import Control.Applicative (Alternative,empty,(<|>),many,some)
 import Control.Monad (ap,liftM)
+import Data.Text (Text)
+import Data.Text qualified as Text
 import Text.Printf (printf)
 import qualified Data.Char as Char
 
@@ -29,7 +31,7 @@ dot :: Par Char
 sat :: (Char -> Bool) -> Par Char
 char :: Par Char
 noError :: Par a -> Par a
-position :: Par Position
+position :: Par Pos
 
 skip p = do _ <- many p; return ()
 separated sep p = do x <- p; alts [ pure [x], do sep; xs <- separated sep p; pure (x:xs) ]
@@ -41,23 +43,18 @@ key cs = NoError (mapM_ lit cs)
 int = foldl (\acc d -> 10*acc + d) 0 <$> some digit
 ws1 = do sp; ws0
 ws0 = do _ <- many sp; return ()
-digit = digitOfChar <$> sat Char.isDigit
+digit = (\c -> Char.ord c - ord0) <$> sat Char.isDigit where ord0 = Char.ord '0'
 sp = lit ' '
 nl = lit '\n'
 lit x = do _ <- sat (== x); pure ()
 dot = sat (/= '\n')
-
 sat = Satisfy
 char = sat (const True)
-
-digitOfChar :: Char -> Int
-digitOfChar c = Char.ord c - ord0 where ord0 = Char.ord '0'
-
 noError = NoError
-position = Pos
+position = Position
 
 data Par a where
-  Pos :: Par Position
+  Position :: Par Pos
   Ret :: a -> Par a
   Bind :: Par a -> (a -> Par b) -> Par b
   Fail :: Par a
@@ -65,94 +62,93 @@ data Par a where
   NoError :: Par a -> Par a
   Alt :: Par a -> Par a -> Par a
 
-type Res a = Either Int (a,Int)
-
 -- Four continuations:
 data K4 a b = K4
-  { eps :: a -> Res b            -- success; *no* input consumed
-  , succ :: Int -> [Char] -> a -> Res b -- success; input consumed
-  , fail :: () -> Res b          -- failure; *no* input consumed
-  , err :: Int -> [Char] -> Res b       -- failure; input consumed (so an error!)
+  { eps :: a -> Res b                  -- success; *no* input consumed
+  , succ :: Pos -> Text -> a -> Res b  -- success; input consumed
+  , fail :: Res b                      -- failure; *no* input consumed
+  , err :: Pos -> Text -> Res b        -- failure; input consumed (so an error!)
   }
 
-parse :: Par a -> String -> Either String a
-parse parStart chars0  = do
+type Res a = Either String a
 
-  case (run 0 chars0 parStart kFinal) of
-    Left i -> Left $ printf "failed to parse %s" (report i)
-    Right (a,i) -> do
-      if i == length chars0 then Right a else
-        Left $ printf "unparsed input from %s" (report i)
-
+parse :: Par a -> Text -> Either String a
+parse parStart text0 = run pos0 text0 parStart finish
   where
-    report :: Int -> String
-    report i = item ++ " at " ++ show (mkPosition i)
+    finish :: K4 x x
+    finish =
+      K4 { eps = yes pos0 text0
+         , succ = yes
+         , fail = no pos0 text0
+         , err = no
+         }
       where
-        item = if i == length chars0 then "<EOF>" else show (chars0 !! i)
+        yes p t a =
+          if Text.null t then Right a else
+            Left $ printf "unparsed input from %s" (report p t)
 
-    mkPosition :: Int -> Position
-    mkPosition p = Position {line,col}
-      where
-        line :: Int = 1 + length [ () | c <- take p chars0, c == '\n' ]
-        col :: Int = length (takeWhile (/= '\n') (reverse (take p chars0)))
+        no p t =
+          Left $ printf "failed to parse %s" (report p t)
 
-    kFinal = K4 { eps = \a -> Right (a,0)
-                , succ = \i _ a -> Right (a,i)
-                , fail = \() -> Left 0
-                , err = \i _ -> Left i
-                }
+        report :: Pos -> Text -> String
+        report p t = item ++ " at " ++ show p
+          where
+            item = case (Text.uncons t) of Nothing -> "<EOF>"; Just (c,_) -> show c
 
-    run :: Int -> [Char] -> Par a -> K4 a b -> Res b
-    run i chars par k@K4{eps,succ,fail,err} = case par of
+    run :: Pos -> Text -> Par a -> K4 a b -> Res b
+    run p t par k@K4{eps,succ,fail,err} = case par of
 
-      Pos -> do
-        -- It would be more efficient to track line/col directly in the state of the parser
-        -- instead of mkPosition recounting newlines passed so far each time a position is required.
-        let position = mkPosition i
-        eps position
+      Position -> eps p
 
       Ret x -> eps x
 
-      Fail -> fail ()
+      Fail -> fail
 
       Satisfy pred -> do
-        case chars of
-          [] -> fail ()
-          c:chars -> if pred c then succ (i+1) chars c else fail ()
+        case Text.uncons t of
+          Nothing -> fail
+          Just (c,t) -> if pred c then succ (tickPos p c) t c else fail
 
       NoError par -> do
-        run i chars par K4 { eps = eps
-                           , succ = succ
-                           , fail = fail
-                           , err = \_ _ -> fail ()
-                           }
+        run p t par K4 { eps = eps
+                       , succ = succ
+                       , fail = fail
+                       , err = \_ _ -> fail
+                       }
 
       Alt p1 p2 -> do
-        run i chars p1 K4{ eps = \a1 ->
-                             run i chars p2 K4{ eps = \_ -> eps a1 -- left biased
-                                              , succ
-                                              , fail = \() -> eps a1
-                                              , err
-                                              }
-                         , succ
-                         , fail = \() -> run i chars p2 k
-                         , err
-                         }
+        run p t p1 K4{ eps = \a1 ->
+                         run p t p2 K4{ eps = \_ -> eps a1 -- left biased
+                                      , succ
+                                      , fail = eps a1
+                                      , err
+                                      }
+                     , succ
+                     , fail = run p t p2 k
+                     , err
+                     }
 
       Bind par f -> do
-        run i chars par K4{ eps = \a -> run i chars (f a) k
-                          , succ = \i chars a ->
-                                     run i chars (f a) K4{ eps = \a -> succ i chars a -- consume
-                                                         , succ
-                                                         , fail = \() -> err i chars -- fail->error
-                                                         , err
-                                                         }
-                          , fail
-                          , err
-                          }
+        run p t par K4{ eps = \a -> run p t (f a) k
+                      , succ = \p t a ->
+                          run p t (f a) K4{ eps = \a -> succ p t a -- consume
+                                          , succ
+                                          , fail = err p t -- fail->error
+                                          , err
+                                          }
+                      , fail
+                      , err
+                      }
 
+data Pos = Pos { line :: Int, col :: Int } deriving (Eq,Ord)
 
-data Position = Position { line :: Int, col :: Int } deriving (Eq,Ord)
+instance Show Pos where
+  show Pos{line,col} = show line ++ "'" ++ show col
 
-instance Show Position where
-  show Position{line,col} = show line ++ "'" ++ show col
+pos0 :: Pos
+pos0 = Pos { line = 1, col = 0 }
+
+tickPos :: Pos -> Char -> Pos
+tickPos Pos {line,col} = \case
+  '\n' -> Pos { line = line + 1, col = 0 }
+  _ -> Pos { line, col = col + 1 }

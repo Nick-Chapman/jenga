@@ -24,7 +24,7 @@ data G a where
   GFail :: String -> G a
   GRule :: Rule -> G ()
   GWhat :: Loc -> G What
-  GReadKey :: Key -> G String
+  GReadKey :: Key -> G String -- TODO Text
   GExistsKey :: Key -> G Bool
   GPar :: G a -> G b -> G (a,b)
 

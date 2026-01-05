@@ -23,9 +23,9 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do -- TODO: pass ppKey in
     elabRuleFile dotJengaFile  = do
       s <- GReadKey dotJengaFile
       let filename = ppKey dotJengaFile
-      case Par4.parse filename gram s of
+      case Par4.parse gram s of
         Left parseError ->
-          GFail parseError
+          GFail (printf "%s: %s" filename parseError)
         Right clauses ->
           mapM_ elabClause clauses
 

@@ -4,6 +4,7 @@ rm the.out.expected
 
 # Test; the.out.expected is missing, so failure
 jenga test
+running phony: test
 ran 2 commands
 Build failed for 1 reason:
 (1) 'the.out.expected' : is not source and has no build rule
@@ -17,6 +18,7 @@ checked 3 rules
 
 # Test (now passes)
 jenga test -a
+running phony: test
 A: diff the.out the.out.expected
 ran 1 command
 checked 2 rules
@@ -28,6 +30,7 @@ echo 'But I want to see this!' > the.out.expected
 
 # Rerun test; get failure
 jenga test -a
+running phony: test
 A: diff the.out the.out.expected
 (directory) .
 (rule) *test : the.out the.out.expected
@@ -43,8 +46,10 @@ Build failed for 1 reason:
 
 # Fix again with --promote
 jenga test -a --promote
+running phony: test
 checked 3 rules
 
 # And see it fixed
 jenga test -a
+running phony: test
 checked 2 rules

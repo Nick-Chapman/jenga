@@ -6,7 +6,7 @@ import Control.Monad (ap,liftM)
 import Control.Monad (when,forM)
 import Data.Hash.MD5 qualified as MD5
 import Data.IORef (newIORef,readIORef,writeIORef)
-import Data.List (stripPrefix,intercalate)
+import Data.List (stripPrefix,intercalate,isPrefixOf)
 import Data.List qualified as List (foldl')
 import Data.List.Ordered (nubSort)
 import Data.List.Split (splitOn)
@@ -183,12 +183,23 @@ elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
                 printf "installed %s\n" (ppKey config (Key dest))
       pure ec
 
-    ModeRun phony -> do
+    ModeListPhony -> do
+      let args = []
+      fbs :: FBS <- runBuild config $ \config@Config{worker} -> do
+         system <- runElaboration config (userProg args)
+         let System{how=How{phow}} = system
+         when (not worker) $ do
+           let names = Map.keys phow
+           sequence_ [ BLog name | name <- names ] -- TODO: point of BLog
+      ec <- newReport config fbs
+      pure ec
+
+    ModeRun phony -> do -- TODO: allow multiple; support pattern matching
       let args = []
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
         let System{how} = system
-        buildPhony config how phony
+        buildPhonys config how [phony]
       ec <- newReport config fbs
       pure ec
 
@@ -196,8 +207,9 @@ elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
       let args = []
       fbs :: FBS <- runBuild config $ \config -> do
         system <- runElaboration config (userProg args)
-        let System{how} = system
-        buildPhony config how "test"
+        let System{how=how@How{phow}} = system
+        let names = [ name | name <- Map.keys phow, "test" `isPrefixOf` name ]
+        buildPhonys config how names
       ec <- newReport config fbs
       pure ec
 
@@ -353,7 +365,7 @@ blockName = \case
 data System = System { rules :: [Rule], how :: How }
 
 data How = How { ahow :: Map Key Rule -- map from (artifact)-key to rule
-               , phow :: Map String [Rule] -- map from phoy name to set of rules
+               , phow :: Map String [Rule] -- map from phoy name to set of rules -- TODO: move to just single rule
                }
 
 runElaboration :: Config -> G () -> B System
@@ -441,11 +453,18 @@ tagOfKey (Key loc) = takeBase loc
 ----------------------------------------------------------------------
 -- Build
 
+buildPhonys :: Config -> How -> [String] -> B ()
+buildPhonys config how names =
+  parallel_ [ buildPhony config how name | name <- names ]
+
 buildPhony :: Config -> How -> String -> B ()
-buildPhony config how@How{phow} phonyName = do
+buildPhony config@Config{worker,flagQ=quiet} how@How{phow} phonyName = do
+  Execute $ XIO $ do
+    when (not quiet && not worker) $ do
+      printf "running phony: %s\n" phonyName
   case maybe [] id $ Map.lookup phonyName phow of
     [] ->
-      bfail (printf "no rules for phony target '%s'" phonyName)
+      bfail (printf "no rule for phony '%s'" phonyName)
     rules ->
       parallel_ [ do _ :: WitMap <- buildRule emptyChain config how rule; pure ()
                 | rule <- rules

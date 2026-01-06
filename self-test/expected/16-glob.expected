@@ -1,6 +1,7 @@
 
 # Run the view action (note that subdirs are excluded by glob)
 jenga run -a view
+running phony: view
 A: echo '.output\n16-glob.sh\nbuild.jenga\nfile1\nfile2\nfile3\njenga\njenga.exe\nyyy' > my.all
 A: tar -cf ball.tar $(cat my.all)
 A: echo -------------------- >> report

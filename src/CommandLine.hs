@@ -40,12 +40,13 @@ data BuildMode
   | ModeCat { target :: String }
   | ModeExec { exe :: String, args :: [String] }
   | ModeInstall { target :: String, destination ::  String }
+  | ModeListPhony
   | ModeListTargets
   | ModeListRules
 
 buildModeParser :: Parser BuildMode
 buildModeParser = hsubparser $
-  build <> test <> run <> cat <> exec <> install <> listT <> listR
+  build <> test <> run <> cat <> exec <> install <> listT <> listR <> listP
   where
     build = command "build" $ info (ModeBuild <$> args) $
       progDesc "Bring the build up to date"
@@ -80,6 +81,8 @@ buildModeParser = hsubparser $
     listR = command "list-rules" $ info (pure ModeListRules) $
       progDesc "List all build rules"
 
+    listP = command "list-phony" $ info (pure ModeListPhony) $
+      progDesc "List all phony targets (can be run)"
 
 exec :: IO Config
 exec = do

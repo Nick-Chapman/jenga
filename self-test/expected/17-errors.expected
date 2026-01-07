@@ -74,14 +74,12 @@ Build failed for 1 reason:
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 echo 'epsilon : : echo E5 > epsilon' >> build.jenga
 jenga run run
-running phony: run
 Build failed for 1 reason:
 (1) no rule for phony 'run'
 
 # Add the phony
 echo '*run : alpha : cat alpha' >> build.jenga
 jenga run run # OK
-running phony: run
 (directory) .
 (rule) *run : alpha
 (command) $ cat alpha

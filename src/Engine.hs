@@ -41,7 +41,7 @@ main = do
 -- Engine main
 
 engineMain :: Config -> IO ExitCode
-engineMain config@Config{startDir,homeDir,cacheDirSpec,flagQ=quiet} = do
+engineMain config@Config{startDir,homeDir,cacheDirSpec,flagV} = do
 
   let userProg = mkUserProg config
   myPid <- getCurrentPid
@@ -58,7 +58,7 @@ engineMain config@Config{startDir,homeDir,cacheDirSpec,flagQ=quiet} = do
         pure (insistLocIsDir (startDir </> dirString) </> ".cache/jenga")
       CacheDirTemp -> do
         let loc = locOfDir (makeAbsoluteDir (printf "/tmp/%s/.cache/jenga" (show myPid)))
-        when (not quiet) $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
+        when flagV $ putOut (printf "using temporary cache: %s" (pathOfLoc loc))
         pure loc
 
   config <- pure $ config { cacheDir } -- override the initial undefined value for cacheDir
@@ -86,7 +86,7 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Config -> UserProg -> IO ExitCode
-elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
+elaborateAndBuild config@Config{startDir,buildMode,flagV} userProg = do
   case buildMode of
 
     ModeListTargets -> do
@@ -179,7 +179,7 @@ elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
             let dest = startDir </> dest0
             installDigest config digest dest
             XIO $ do
-              when (not quiet) $ do
+              when flagV $ do
                 printf "installed %s\n" (ppKey config (Key dest))
       pure ec
 
@@ -221,12 +221,12 @@ elaborateAndBuild config@Config{startDir,buildMode,flagQ=quiet} userProg = do
       pure ec
 
 newReport :: Config -> FBS -> IO ExitCode
-newReport Config{worker,flagQ=quiet} FBS{countRules=nr,failures} = do
+newReport Config{worker,flagQ} FBS{countRules=nr,failures} = do
   let numFails = length failures
   when (not worker && numFails > 0) $ do
     printf "Build failed for %s:\n%s\n" (pluralize numFails "reason")
       (intercalate "\n" [ printf "(%d) %s" i r | (i,r) <- zip [1::Int ..] failures ])
-  when (not quiet && not worker) $ do
+  when (not flagQ && not worker) $ do
     when (numFails == 0) $ do
       -- We flush this report to be sure is proceeds whatever follows the build; i.e. cat, exec
       putOut $ printf "checked %s" (pluralize nr "rule")
@@ -458,9 +458,9 @@ buildPhonys config how names =
   parallel_ [ buildPhony config how name | name <- names ]
 
 buildPhony :: Config -> How -> String -> B ()
-buildPhony config@Config{worker,flagQ=quiet} how@How{phow} phonyName = do
+buildPhony config@Config{worker,flagV} how@How{phow} phonyName = do
   Execute $ XIO $ do
-    when (not quiet && not worker) $ do
+    when (flagV && not worker) $ do
       printf "running phony: %s\n" phonyName
   case maybe [] id $ Map.lookup phonyName phow of
     [] ->
@@ -950,7 +950,7 @@ data B a where
   BYield :: B ()
 
 runB :: Config -> B () -> X FBS
-runB config@Config{flagQ=quiet} build0 = do
+runB config@Config{flagQ} build0 = do
   loop build bstate0 kFinal
   where
     build = do
@@ -964,7 +964,7 @@ runB config@Config{flagQ=quiet} build0 = do
       when (length jobs /= 0) $ error "runB: unexpected left over jobs"
       myPid <- XIO getCurrentPid
       XRemoveDirRecursive (sandboxParent myPid)
-      when (not quiet && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
+      when (not flagQ && runCounter>0) $ do XLog (printf "ran %s" (pluralize runCounter "command"))
       pure (makeFBS s)
 
     loop :: B a -> BState -> (BState -> BuildRes a -> X FBS) -> X FBS

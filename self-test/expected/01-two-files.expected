@@ -17,7 +17,7 @@ checked 3 rules
 hello, 55 world
 
 # Install the artifact
-jenga install -a example/main.exe as.exe
+jenga install -v -a example/main.exe as.exe
 checked 3 rules
 installed as.exe
 
@@ -123,7 +123,8 @@ Usage: jenga.exe COMMAND
 Available options:
   -h,--help                Show this help text
   -j,--jobs NUM            Allow NUM jobs in parallel (default: 3)
-  -q,--quiet               Build quietly, except for errors
+  -q,--quiet               Suppress 'checked' and 'ran' messages
+  -v,--verbose             Extra messages while building
   -a,--show-actions        Log rule actions when executed
   -d,--show-demand         Log build targets when demanded
   -p,--show-pid            Prefix log lines with pid

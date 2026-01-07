@@ -10,7 +10,7 @@ jenga build -a
 jenga exec -a example/main.exe
 
 # Install the artifact
-jenga install -a example/main.exe as.exe
+jenga install -v -a example/main.exe as.exe
 
 # And run that
 ./as.exe

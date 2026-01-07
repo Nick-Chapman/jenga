@@ -28,6 +28,7 @@ data Config = Config
   , withPromotion :: Bool
   , reportRelative :: Bool
   , flagQ :: Bool
+  , flagV :: Bool
   , flagA :: Bool
   }
 
@@ -118,7 +119,13 @@ exec = do
         hidden <>
         short 'q' <>
         long "quiet" <>
-        help "Build quietly, except for errors"
+        help "Suppress 'checked' and 'ran' messages"
+
+      flagV <- switch $
+        hidden <>
+        short 'v' <>
+        long "verbose" <>
+        help "Extra messages while building"
 
       flagA <- switch $
         hidden <>

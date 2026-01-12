@@ -46,9 +46,6 @@ Build failed for 1 reason:
 grep -v '^epsilon' build.jenga > xx && mv xx build.jenga
 echo 'epsilon : : missing-command' >> build.jenga
 jenga build
-(directory) .
-(rule) epsilon : 
-(command) $ missing-command
 (stderr) /bin/sh: 1: missing-command: not found
 (exit-code) 127
 ran 1 command
@@ -80,9 +77,6 @@ Build failed for 1 reason:
 # Add the phony
 echo '*run : alpha : cat alpha' >> build.jenga
 jenga run run # OK
-(directory) .
-(rule) *run : alpha
-(command) $ cat alpha
 [ [ D E5 ] [ Z H T ] ]
 ran 4 commands
 checked 8 rules

@@ -7,9 +7,6 @@ A: echo -------------------- >> report
 A: tar -tf ball.tar | sort >> report
 A: echo -------------------- >> report
 A: cat report
-(directory) .
-(rule) *view : report
-(command) $ cat report
 --------------------
 .output
 16-glob.sh

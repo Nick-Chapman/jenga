@@ -863,10 +863,10 @@ anythingToSee (ActionRes xs) =
     isFailure = \case ExitFailure{} -> True; ExitSuccess -> False
 
 seeActionResAndContext :: Config -> StaticRule -> ActionRes -> String
-seeActionResAndContext config sr@StaticRule{action=Action{commands}} (ActionRes xs) =
+seeActionResAndContext config@Config{flagV} sr@StaticRule{action=Action{commands}} (ActionRes xs) =
   if length commands /= length xs then error "seeActionResAndContext" else
-    seeStaticRule config sr ++
-    concat [ seeCommandAndRes command res | (command,res) <- zip commands xs ]
+    (if flagV then seeStaticRule config sr else "") ++
+    concat [ seeCommandAndRes config command res | (command,res) <- zip commands xs ]
 
 seeStaticRule :: Config -> StaticRule -> String
 seeStaticRule config StaticRule{dir,target,deps} = do
@@ -889,9 +889,9 @@ seeStaticRule config StaticRule{dir,target,deps} = do
     seeKey :: Key -> String
     seeKey key = ppKey config key
 
-seeCommandAndRes :: String -> CommandRes -> String
-seeCommandAndRes command CommandRes{exitCode,stdout,stderr} =
-  "(command) $ " ++ command ++ "\n" ++
+seeCommandAndRes :: Config -> String -> CommandRes -> String
+seeCommandAndRes Config{flagV} command CommandRes{exitCode,stdout,stderr} =
+  (if flagV then "(command) $ " ++ command ++ "\n" else "") ++
   stdout ++ -- seeOutput "(stdout) " stdout ++
   seeOutput "(stderr) " stderr ++
   seeFailureExit exitCode

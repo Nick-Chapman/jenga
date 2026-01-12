@@ -19,24 +19,12 @@ A: head -1 lots > h
 A: tail -1 lots > t
 A: touch x
 A: echo WARNING; exit 0
-(directory) .
-(rule) h t : lots
-(command) $ head -1 lots > h
-(command) $ tail -1 lots > t
-(command) $ touch x
-(command) $ echo WARNING; exit 0
 WARNING
 ran 4 commands
 checked 3 rules
 
 # And zero build (see warning even though no actions were run)
 jenga build -a
-(directory) .
-(rule) h t : lots
-(command) $ head -1 lots > h
-(command) $ tail -1 lots > t
-(command) $ touch x
-(command) $ echo WARNING; exit 0
 WARNING
 checked 3 rules
 
@@ -47,12 +35,6 @@ A: head -1 lots > h
 A: tail -1 lots > t
 A: touch x
 A: echo WARNING; exit 42
-(directory) .
-(rule) h t : lots
-(command) $ head -1 lots > h
-(command) $ tail -1 lots > t
-(command) $ touch x
-(command) $ echo WARNING; exit 42
 WARNING
 (exit-code) 42
 ran 4 commands
@@ -61,12 +43,6 @@ Build failed for 1 reason:
 
 # And zero build (see warning and error, again even though no actions were run)
 jenga build -a
-(directory) .
-(rule) h t : lots
-(command) $ head -1 lots > h
-(command) $ tail -1 lots > t
-(command) $ touch x
-(command) $ echo WARNING; exit 42
 WARNING
 (exit-code) 42
 Build failed for 1 reason:

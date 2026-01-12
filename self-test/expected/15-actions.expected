@@ -31,9 +31,6 @@ echo 'But I want to see this!' > the.out.expected
 # Rerun test; get failure
 jenga test -a
 A: diff the.out the.out.expected
-(directory) .
-(rule) *test : the.out the.out.expected
-(command) $ diff the.out the.out.expected
 1c1
 < I am the output!
 ---

@@ -1,0 +1,10 @@
+
+# text data...
+jenga -q cat text.data | hd
+00000000  41 40 42 0a                                       |A@B.|
+00000004
+
+# binary data...
+jenga -q cat bin.data | hd
+00000000  41 80 42 0a                                       |A.B.|
+00000004

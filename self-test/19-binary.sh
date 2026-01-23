@@ -1,0 +1,6 @@
+
+# text data...
+jenga -q cat text.data | hd
+
+# binary data...
+jenga -q cat bin.data | hd

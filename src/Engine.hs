@@ -12,6 +12,7 @@ import Data.List.Ordered (nubSort)
 import Data.List.Split (splitOn)
 import Data.Map (Map)
 import Data.Map qualified as Map
+import GHC.IO.Encoding (setLocaleEncoding,char8)
 import System.Directory (listDirectory,createDirectoryIfMissing,withCurrentDirectory,removePathForcibly,copyFile)
 import System.Environment (lookupEnv)
 import System.Exit(ExitCode(..),exitWith)
@@ -33,6 +34,7 @@ import WaitPid (waitpid)
 
 main :: IO ()
 main = do
+  setLocaleEncoding char8 -- see ../self-test/19-binary.sh
   config <- CommandLine.exec
   ec <- engineMain config
   exitWith ec

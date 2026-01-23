@@ -1,0 +1,6 @@
+
+text.data:
+  echo A$$(cat /dev/zero | tr '\0' '\100' | head -c 1)B > $out
+
+bin.data:
+  echo A$$(cat /dev/zero | tr '\0' '\200' | head -c 1)B > $out

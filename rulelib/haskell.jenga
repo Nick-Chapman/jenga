@@ -17,8 +17,19 @@ main.hs : main-entry
 module.names : hs.files
   cat hs.files | sed 's|\(.*\).hs$$|\1|' > module.names
 
+ghc.deps.d : : echo ghc.deps ghc.compiler > $out
+
+ghc.deps :
+  echo './ghc.compiler -M $$1 && echo $$(cat Makefile | grep ':*.hi' | cut -d: -f2)' > $out
+  chmod +x $out
+
+d.rules : module.names
+  cat $in | while read M; do echo "$$M.d : @ghc.deps.d @hs.files : ./ghc.deps $$M.hs > $$M.d"; done > $out
+
+include d.rules
+
 hs.rules : module.names
-  cat module.names | sed 's|.*|\0.o \0.hi: ghc.compiler @depends : ./ghc.compiler -c \0.hs|' > hs.rules
+  cat $in | while read M; do echo "$$M.o $$M.hi: ghc.compiler $$M.hs @$$M.d : ./ghc.compiler -c $$M.hs" ; done > $out
 
 include hs.rules
 
@@ -28,11 +39,6 @@ link.rule : executable-name
 include link.rule
 
 o.files : module.names : cat module.names | sed 's|$$|.o|' > o.files
-
-depends : ghc.compiler @hs.files ?xdepends
-  ./ghc.compiler -M *.hs -dep-makefile depends
-  touch xdepends
-  cat xdepends >> depends
 
 ghc.exe: ghc-version
   echo ~/.ghcup/bin/ghc-$$(cat ghc-version) > ghc.exe

@@ -24,7 +24,7 @@ ghc.deps :
   chmod +x $out
 
 d.rules : module.names
-  cat $in | while read M; do echo "$$M.d : @ghc.deps.d @hs.files : ./ghc.deps $$M.hs > $$M.d"; done > $out
+  cat $in | while read M; do echo "$$M.d : @depends @ghc.deps.d @hs.files : ./ghc.deps $$M.hs > $$M.d"; done > $out
 
 include d.rules
 
@@ -39,6 +39,9 @@ link.rule : executable-name
 include link.rule
 
 o.files : module.names : cat module.names | sed 's|$$|.o|' > o.files
+
+depends : ghc.compiler @hs.files
+  ./ghc.compiler -M *.hs -dep-makefile depends
 
 ghc.exe: ghc-version
   echo ~/.ghcup/bin/ghc-$$(cat ghc-version) > ghc.exe

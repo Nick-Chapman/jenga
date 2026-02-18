@@ -20,7 +20,7 @@ module.names : hs.files
 ghc.deps.d : : echo ghc.deps ghc.compiler > $out
 
 ghc.deps :
-  echo './ghc.compiler -M $$1 && echo $$(cat Makefile | grep ':*.hi' | cut -d: -f2)' > $out
+  echo './ghc.compiler -M $$1 && echo $$(cat Makefile | grep ':*.hi' | cut -d: -f2 | sort | uniq)' > $out
   chmod +x $out
 
 d.rules : module.names

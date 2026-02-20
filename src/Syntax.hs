@@ -86,7 +86,8 @@ expandChunks ppKey Config{withPromotion} dir ruleTarget deps chunks =
       AC_String s -> pure s
       AC_DollarOut -> pure dollarAtReplacement
       AC_DollarIns -> pure dollarHatReplacement
-      AC_DollarIn1 -> pure dollarLeftReplacement
+      AC_DollarIn1 -> pure dollarIn1Replacement
+      AC_DollarIn2 -> pure dollarIn2Replacement
       AC_DollarGlob globSuffix -> do
         allFiles <- glob ppKey (insistLocIsDir (dir </> globSuffix))
         pure (intercalate "\\n" (map stringOfTag allFiles))
@@ -107,9 +108,12 @@ expandChunks ppKey Config{withPromotion} dir ruleTarget deps chunks =
       intercalate " " [ stringOfTag (takeBase (dir </> name))
                       | DepPlain name <- deps ]
 
-    dollarLeftReplacement =
+    dollarIn1Replacement =
       intercalate " " (take 1 [ stringOfTag (takeBase (dir </> name))
                               | DepPlain name <- deps])
+    dollarIn2Replacement =
+      intercalate " " (take 1 $ drop 1 [ stringOfTag (takeBase (dir </> name))
+                                       | DepPlain name <- deps])
 
 glob :: (Key -> String) -> Dir -> G [Tag]
 glob ppKey dir = do
@@ -165,6 +169,7 @@ data ActChunk
   | AC_DollarOut -- TODO: $out AND $outs
   | AC_DollarIns
   | AC_DollarIn1
+  | AC_DollarIn2
   | AC_DollarGlob String
   | AC_DollarPromote
 
@@ -269,6 +274,8 @@ gram = start
       , do Par4.key "$<"; pure AC_DollarIn1
       , do Par4.key "$out"; pure AC_DollarOut
       , do Par4.key "$ins"; pure AC_DollarIns
+      , do Par4.key "$in1"; pure AC_DollarIn1
+      , do Par4.key "$in2"; pure AC_DollarIn2
       , do Par4.key "$in"; pure AC_DollarIn1
       , do Par4.key "$glob:"; dir <- identifier; pure (AC_DollarGlob dir)
       , do Par4.key "$glob"; pure (AC_DollarGlob ".")

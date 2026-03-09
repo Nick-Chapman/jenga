@@ -1,0 +1,9 @@
+
+# Generate a file here
+A : : echo A > $out
+
+# Copy a file from parent dir
+CopyTop : ../Top : cat $in > $out
+
+# Copy a file from sibling dir
+CopyB : ../subB/B : cat $in > $out

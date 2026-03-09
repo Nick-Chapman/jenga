@@ -1,0 +1,11 @@
+
+# Generate a file here
+Top : : echo Top > $out
+
+# Copy a file from a subdir to here
+CopyA : subA/A : cat $in > $out
+CopyB : subB/B : cat $in > $out
+
+# Copy a file from here to a subdir
+subA/InheritTop : Top : cat $in > $out
+subB/InheritTop : Top : cat $in > $out

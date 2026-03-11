@@ -17,6 +17,7 @@ ABBC
 
 # See memoization when building; No target is "Require"d more than once
 jenga build -a --show-demand
+B: Consulting: build.jenga
 B: Require: a
 B: Require: b
 B: Require: c

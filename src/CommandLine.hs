@@ -34,7 +34,7 @@ data Config = Config
   }
 
 data RuleDiscoveryMode = RDM_Old | RDM_New -- TODO: Have New be the only way!
-  deriving Eq
+  deriving (Eq,Show)
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
 

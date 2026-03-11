@@ -7,13 +7,13 @@ import Data.List.Split (splitOn)
 import Data.Text qualified as Text (pack)
 import Text.Printf (printf)
 
-import CommandLine (Config(..),RuleDiscoveryMode(..))
+import CommandLine (Config(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
 import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,insistLocIsDir)
 import Par4 (Pos(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: (Key -> String) -> Config -> Key -> G ()
-elaborate ppKey config@Config{homeDir,rdm} dotJengaFile0 = do -- TODO: pass ppKey in config?
+elaborate ppKey config@Config{homeDir,debugDemand,worker} dotJengaFile0 = do -- TODO: pass ppKey in config?
   elabRuleFile dotJengaFile0
   where
     dir = dirKey dotJengaFile0
@@ -22,12 +22,8 @@ elaborate ppKey config@Config{homeDir,rdm} dotJengaFile0 = do -- TODO: pass ppKe
     dirKey (Key loc) = takeDir loc
 
     elabRuleFile :: Key -> G ()
-    elabRuleFile dotJengaFile  = do
-      when (rdm == RDM_New) $ do
-        -- TODO: remove this temp dev logging once build.jenga read caching is implemented
-        let _ = GLog $ printf "elabRuleFile: %s" (show dotJengaFile)
-        pure ()
-
+    elabRuleFile dotJengaFile = do
+      when (not worker && debugDemand) $ GLog (printf "B: Consulting: %s" (ppKey dotJengaFile))
       t <- Text.pack <$> GReadKey dotJengaFile
       let filename = ppKey dotJengaFile
       case Par4.parse gram t of

@@ -43,7 +43,9 @@ main = do
 -- Engine main
 
 engineMain :: Config -> IO ExitCode
-engineMain config@Config{startDir,homeDir,cacheDirSpec,flagV} = do
+engineMain config@Config{startDir,homeDir,cacheDirSpec,flagV,rdm} = do
+
+  when (flagV && rdm == RDM_New) $ putOut (printf "rule discovery mode: %s" (show rdm))
 
   let userProg = mkUserProg config
   myPid <- getCurrentPid
@@ -418,7 +420,7 @@ runElaboration config m =
       GRet a -> k system a
       GBind m f -> loop m system $ \system a -> loop (f a) system k
       GLog mes -> do
-        Execute (XLog (printf "log: %s" mes))
+        Execute (XLog (printf "%s" mes))
         k system ()
       GFail mes -> bfail mes --ignore k
       GRule rule -> do
@@ -667,7 +669,7 @@ gatherDeps chain config how d = loop d [] k0
       DRet a -> k xs a
       DBind m f -> loop m xs $ \xs a -> loop (f a) xs k
       DLog mes -> do
-        Execute (XLog (printf "log: %s" mes))
+        Execute (XLog (printf "%s" mes))
         k xs ()
       DNeed key -> k (key:xs) ()
       DReadKey key -> do

@@ -90,7 +90,7 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Config -> UserProg -> IO ExitCode
-elaborateAndBuild config@Config{startDir,buildMode,flagV,rdm} userProg = do
+elaborateAndBuild config@Config{startDir,buildMode,flagV} userProg = do
   case buildMode of
 
     ModeListTargets -> do
@@ -219,15 +219,8 @@ elaborateAndBuild config@Config{startDir,buildMode,flagV,rdm} userProg = do
 
     ModeBuild args -> do
       fbs :: FBS <- runBuild config $ \config -> do
-
-        case rdm of
-          RDM_Old -> do
-            system <- runElaboration config (userProg args)
-            buildEverythingInSystem config system
-          RDM_New -> do
-            system <- runElaboration config (userProg args)
-            new_buildEverythingInSystem config system
-
+        system <- runElaboration config (userProg args)
+        buildEverythingInSystem config system
       ec <- newReport config fbs
       pure ec
 
@@ -278,27 +271,6 @@ buildEverythingInSystem config system = do
     [ do _ <- buildArtifact emptyChain config how key; pure ()
     | Artifact { key } <- allArtifacts
     ]
-
-
-new_buildEverythingInSystem :: Config -> System -> B () -- TODO: be the only way!
-new_buildEverythingInSystem config system = do
-  let System{rules,how=_} = system
-  --BLog "new_buildEverythingInSystem/1"
-  let
-    allArtifacts =
-        [ art
-        | Rule{target} <- rules
-        , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
-        , art <- arts
-        ]
-  --BLog "new_buildEverythingInSystem/2 -- removing how!"
-  --sequence_ [ BLog (show art) | art <- allArtifacts ]
-  let how = emptyHow
-  parallel_
-    [ do _ <- buildArtifact emptyChain config how key; pure ()
-    | Artifact { key } <- allArtifacts
-    ]
-
 
 data StaticRule = StaticRule
   { dir :: Dir
@@ -400,9 +372,6 @@ data How = How { ahow :: Map Key Rule -- map from (artifact)-key to rule
                , phow :: Map String [Rule] -- map from phoy name to set of rules -- TODO: move to just single rule
                }
 
-emptyHow :: How
-emptyHow = How { ahow = Map.empty, phow = Map.empty }
-
 runElaboration :: Config -> G () -> B System
 runElaboration config m =
   loop m system0 k0 >>= \case
@@ -489,7 +458,7 @@ tagOfKey (Key loc) = takeBase loc
 -- Build
 
 buildPhonys :: Config -> How -> [String] -> B ()
-buildPhonys config how names =
+buildPhonys config how names = -- TODO: rename downHow here and everywhere
   parallel_ [ buildPhony config how name | name <- names ]
 
 buildPhony :: Config -> How -> String -> B ()
@@ -506,47 +475,49 @@ buildPhony config@Config{worker,flagV} how@How{phow} phonyName = do
                 ]
 
 buildArtifact :: Chain -> Config -> How -> Key -> B Digest
-buildArtifact chain config@Config{rdm} how@How{ahow} = do
+buildArtifact chain config downHow = do
   -- TODO: document this flow.
   BMemoKey chain $ \sought -> do
     chain <- pure $ pushChain sought chain -- this is where we extend the dependency chain
 
-    case Map.lookup sought ahow of -- TODO: RDM_New wont do this lookup
-      Nothing -> do
-        let Key loc = sought
-        Execute (XFileExists loc) >>= \case
-          False -> do
-            case rdm of
-              RDM_Old -> do
-                bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
-              RDM_New -> do
-                rule <- discoverRule config sought
-                buildWithRule chain config how sought rule
+    let Key loc = sought
+    Execute (XFileExists loc) >>= \case
 
-          True -> do
+      True -> do
+        let how = downHow
+        --how <- getHow config downHow sought -- AHA, this causes a hang!
+        let How{ahow} = how
+        case Map.lookup sought ahow of
+          Nothing -> do
             digest <- copyIntoCache config loc
             pure digest
+          Just rule -> do
+            -- TODO: would really like to kill the (mis)feature of materialized outputs.
+            -- We can come here in the case of "!" materialized outputs
+            buildWithRule chain config downHow sought rule
 
-      Just rule -> do -- TODO: RDM_New never comes here
-        buildWithRule chain config how sought rule
+      False -> do
+        how <- getHow config downHow sought
+        let How{ahow} = how
+        case Map.lookup sought ahow of
+          Nothing -> do
+            bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
+          Just rule -> do
+            buildWithRule chain config downHow sought rule
 
 
-discoverRule :: Config -> Key -> B Rule
-discoverRule config sought = do
-  let Key loc = sought
-  let dir = takeDir loc
-  --BLog $ printf "discoverRule: %s in %s" (show loc) (show dir)
-  let dotJenga = dir </> "build.jenga"
-  let g = Syntax.elaborate (ppKey config) config (Key dotJenga) -- TODO: memoise this
-  system :: System <- runElaboration config g -- TODO: also read ancestor build.jenga files
-  let System{how} = system
-  let How{ahow} = how
-  -- We wont be here when sought is source
-  case Map.lookup sought ahow of
-    Nothing -> do
-      bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
-    Just rule ->
-      pure rule
+getHow :: Config -> How -> Key -> B How -- for both OLD and NEW discovery mode
+getHow config@Config{rdm} downHow sought =
+  case rdm of
+    RDM_Old -> pure downHow
+    RDM_New -> do
+      let Key loc = sought
+      let dir = takeDir loc
+      let dotJenga = dir </> "build.jenga"
+      let g = Syntax.elaborate (ppKey config) config (Key dotJenga) -- TODO: memoise this
+      system :: System <- runElaboration config g -- TODO: also read ancestor build.jenga files
+      let System{how} = system
+      pure how
 
 
 buildWithRule :: Chain -> Config -> How -> Key -> Rule -> B Digest

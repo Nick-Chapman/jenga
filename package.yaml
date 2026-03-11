@@ -17,6 +17,7 @@ dependencies:
 - optparse-applicative
 - process
 - split # TODO Avoid dep
+- text
 - unix
 
 default-extensions:

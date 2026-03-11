@@ -1,18 +1,19 @@
 -- | Syntax and elaboration for build.jenga files
 module Syntax (elaborate) where
 
+import Control.Monad (when)
 import Data.List (intercalate,sort)
 import Data.List.Split (splitOn)
 import Data.Text qualified as Text (pack)
 import Text.Printf (printf)
 
-import CommandLine (Config(..))
+import CommandLine (Config(..),RuleDiscoveryMode(..))
 import Interface (G(..),Rule(..),Action(..),D(..),Key(..),Target(..),Artifact(..),What(..))
 import Locate (Loc,Dir,Tag,(</>),takeDir,takeBase,locOfDir,stringOfTag,insistLocIsDir)
 import Par4 (Pos(..),Par,parse,position,skip,alts,many,some,sat,lit,key)
 
 elaborate :: (Key -> String) -> Config -> Key -> G ()
-elaborate ppKey config@Config{homeDir} dotJengaFile0 = do -- TODO: pass ppKey in config?
+elaborate ppKey config@Config{homeDir,rdm} dotJengaFile0 = do -- TODO: pass ppKey in config?
   elabRuleFile dotJengaFile0
   where
     dir = dirKey dotJengaFile0
@@ -22,6 +23,10 @@ elaborate ppKey config@Config{homeDir} dotJengaFile0 = do -- TODO: pass ppKey in
 
     elabRuleFile :: Key -> G ()
     elabRuleFile dotJengaFile  = do
+      when (rdm == RDM_New) $ do
+        -- TODO: remove this temp dev logging once build.jenga read caching is implemented
+        GLog $ printf "elabRuleFile: %s" (show dotJengaFile)
+
       t <- Text.pack <$> GReadKey dotJengaFile
       let filename = ppKey dotJengaFile
       case Par4.parse gram t of

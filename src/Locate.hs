@@ -25,8 +25,8 @@ import System.Path.NameManip (guess_dotdot)
 
 -- types... invariant: Loc and Dir *always* start with a '/'
 
-newtype Loc = LocX FilePath deriving (Eq,Ord)
-newtype Dir = DirX FilePath deriving Eq
+newtype Loc = LocX FilePath deriving (Eq,Ord,Show) -- TODO: show only for dev
+newtype Dir = DirX FilePath deriving (Eq,Show) -- TODO: show only for dev
 newtype Tag = TagX String deriving (Eq,Ord)
 
 instance Show Tag where show (TagX s) = s

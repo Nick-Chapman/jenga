@@ -42,6 +42,7 @@ data Artifact = Artifact
   { materialize :: Bool
   , key :: Key
   }
+  deriving Show -- TODO: show just for dev
 
 data Action = Action
   { commands :: [String] -- TODO: can we revert back to Action == Single Command?
@@ -59,4 +60,5 @@ data D a where
   DReadKey :: Key -> D String
   DExistsKey :: Key -> D Bool
 
-data Key = Key Loc deriving (Eq,Ord) -- TODO: what does this Key/Loc distinction buy us?
+data Key = Key Loc  -- TODO: what does this Key/Loc distinction buy us?
+  deriving (Eq,Ord,Show) -- TODO: show just for dev

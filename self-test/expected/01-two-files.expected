@@ -118,7 +118,7 @@ hello, 89 world
 jenga --help
 jenga: A build system
 
-Usage: jenga.exe COMMAND
+Usage: jenga.exe COMMAND [--old | --new]
 
 Available options:
   -h,--help                Show this help text
@@ -135,6 +135,8 @@ Available options:
   --debug-external         Debug calls to md5sum
   --debug-internal         Debug file system access
   --debug-locking          Debug locking behaviour
+  --old                    Use the original `static' rule discovery
+  --new                    Use the new `dynamic' rule discovery
 
 Available commands:
   build                    Bring the build up to date

@@ -1,7 +1,7 @@
 {-# LANGUAGE ApplicativeDo, RecordWildCards #-}
 
 module CommandLine
-  ( Config(..),BuildMode(..),CacheDirSpec(..)
+  ( Config(..),BuildMode(..),CacheDirSpec(..), RuleDiscoveryMode(..)
   , exec
   ) where
 
@@ -30,7 +30,11 @@ data Config = Config
   , flagQ :: Bool
   , flagV :: Bool
   , flagA :: Bool
+  , rdm :: RuleDiscoveryMode
   }
+
+data RuleDiscoveryMode = RDM_Old | RDM_New -- TODO: Have New be the only way!
+  deriving Eq
 
 data CacheDirSpec = CacheDirDefault | CacheDirChosen String | CacheDirTemp
 
@@ -186,6 +190,17 @@ exec = do
         hidden <>
         long "debug-locking" <>
         help "Debug locking behaviour"
+
+      rdm <-
+        (flag' RDM_Old $
+         long "old" <>
+         help "Use the original `static' rule discovery"
+        ) <|>
+        (flag' RDM_New $
+         long "new" <>
+         help "Use the new `dynamic' rule discovery"
+        ) <|>
+        pure RDM_Old -- TODO: switch default to new
 
       pure $ Config {..}
 

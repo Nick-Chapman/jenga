@@ -25,7 +25,7 @@ import System.Process (ProcessHandle,waitForProcess,CreateProcess(env),shell,pro
 import Text.Printf (printf)
 import Text.Read (readMaybe)
 
-import CommandLine (Config(..),BuildMode(..),CacheDirSpec(..))
+import CommandLine (Config(..),BuildMode(..),CacheDirSpec(..),RuleDiscoveryMode(..))
 import CommandLine qualified (exec)
 import Interface (G(..),D(..),Rule(..),Action(..),Target(..),Artifact(..), Key(..),What(..))
 import Locate (Loc,pathOfLoc,Dir,makeAbsoluteDir,pathOfDir,takeDir,(</>),insistLocIsDir,Tag,makeTag,stringOfTag,takeBase,locOfDir)
@@ -88,7 +88,7 @@ ppKeys :: Config -> [Key] -> String
 ppKeys config = unwords . map (ppKey config)
 
 elaborateAndBuild :: Config -> UserProg -> IO ExitCode
-elaborateAndBuild config@Config{startDir,buildMode,flagV} userProg = do
+elaborateAndBuild config@Config{startDir,buildMode,flagV,rdm} userProg = do
   case buildMode of
 
     ModeListTargets -> do
@@ -217,8 +217,15 @@ elaborateAndBuild config@Config{startDir,buildMode,flagV} userProg = do
 
     ModeBuild args -> do
       fbs :: FBS <- runBuild config $ \config -> do
-        system <- runElaboration config (userProg args)
-        buildEverythingInSystem config system
+
+        case rdm of
+          RDM_Old -> do
+            system <- runElaboration config (userProg args)
+            buildEverythingInSystem config system
+          RDM_New -> do
+            system <- runElaboration config (userProg args)
+            new_buildEverythingInSystem config system
+
       ec <- newReport config fbs
       pure ec
 
@@ -269,6 +276,27 @@ buildEverythingInSystem config system = do
     [ do _ <- buildArtifact emptyChain config how key; pure ()
     | Artifact { key } <- allArtifacts
     ]
+
+
+new_buildEverythingInSystem :: Config -> System -> B () -- TODO: be the only way!
+new_buildEverythingInSystem config system = do
+  let System{rules,how=_} = system
+  --BLog "new_buildEverythingInSystem/1"
+  let
+    allArtifacts =
+        [ art
+        | Rule{target} <- rules
+        , let arts = case target of Artifacts arts -> arts ; Phony{} -> []
+        , art <- arts
+        ]
+  --BLog "new_buildEverythingInSystem/2 -- removing how!"
+  --sequence_ [ BLog (show art) | art <- allArtifacts ]
+  let how = emptyHow
+  parallel_
+    [ do _ <- buildArtifact emptyChain config how key; pure ()
+    | Artifact { key } <- allArtifacts
+    ]
+
 
 data StaticRule = StaticRule
   { dir :: Dir
@@ -369,6 +397,9 @@ data System = System { rules :: [Rule], how :: How }
 data How = How { ahow :: Map Key Rule -- map from (artifact)-key to rule
                , phow :: Map String [Rule] -- map from phoy name to set of rules -- TODO: move to just single rule
                }
+
+emptyHow :: How
+emptyHow = How { ahow = Map.empty, phow = Map.empty }
 
 runElaboration :: Config -> G () -> B System
 runElaboration config m =
@@ -473,26 +504,56 @@ buildPhony config@Config{worker,flagV} how@How{phow} phonyName = do
                 ]
 
 buildArtifact :: Chain -> Config -> How -> Key -> B Digest
-buildArtifact chain config@Config{worker,debugDemand} how@How{ahow} = do
+buildArtifact chain config@Config{rdm} how@How{ahow} = do
   -- TODO: document this flow.
   BMemoKey chain $ \sought -> do
     chain <- pure $ pushChain sought chain -- this is where we extend the dependency chain
-    case Map.lookup sought ahow of
+
+    case Map.lookup sought ahow of -- TODO: RDM_New wont do this lookup
       Nothing -> do
         let Key loc = sought
         Execute (XFileExists loc) >>= \case
           False -> do
-            bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
+            case rdm of
+              RDM_Old -> do
+                bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
+              RDM_New -> do
+                rule <- discoverRule config sought
+                buildWithRule chain config how sought rule
+
           True -> do
             digest <- copyIntoCache config loc
             pure digest
 
-      Just rule -> do
-        when (not worker && debugDemand) $ BLog (printf "B: Require: %s" (ppKey config sought))
-        -- We only memoize the run of rule targeting artifacts (not phonys)
-        wtargets <- BMemoRule (buildRuleMat chain config how) rule
-        let digest = lookWitMap (tagOfKey sought) wtargets
-        pure digest
+      Just rule -> do -- TODO: RDM_New never comes here
+        buildWithRule chain config how sought rule
+
+
+discoverRule :: Config -> Key -> B Rule
+discoverRule config sought = do
+  let Key loc = sought
+  let dir = takeDir loc
+  --BLog $ printf "discoverRule: %s in %s" (show loc) (show dir)
+  let dotJenga = dir </> "build.jenga"
+  let g = Syntax.elaborate (ppKey config) config (Key dotJenga) -- TODO: memoise this
+  system :: System <- runElaboration config g -- TODO: also read ancestor build.jenga files
+  let System{how} = system
+  let How{ahow} = how
+  -- We wont be here when sought is source
+  case Map.lookup sought ahow of
+    Nothing -> do
+      bfail (printf "'%s' : is not source and has no build rule" (ppKey config sought))
+    Just rule ->
+      pure rule
+
+
+buildWithRule :: Chain -> Config -> How -> Key -> Rule -> B Digest
+buildWithRule chain config@Config{worker,debugDemand} how sought rule = do
+  when (not worker && debugDemand) $ BLog (printf "B: Require: %s" (ppKey config sought))
+  -- We only memoize the run of rule targeting artifacts (not phonys)
+  wtargets <- BMemoRule (buildRuleMat chain config how) rule
+  let digest = lookWitMap (tagOfKey sought) wtargets
+  pure digest
 
 -- build a rule; then do user materialization ("!") if specified
 buildRuleMat :: Chain -> Config -> How -> Rule -> B WitMap

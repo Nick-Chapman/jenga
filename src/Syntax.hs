@@ -25,7 +25,8 @@ elaborate ppKey config@Config{homeDir,rdm} dotJengaFile0 = do -- TODO: pass ppKe
     elabRuleFile dotJengaFile  = do
       when (rdm == RDM_New) $ do
         -- TODO: remove this temp dev logging once build.jenga read caching is implemented
-        GLog $ printf "elabRuleFile: %s" (show dotJengaFile)
+        let _ = GLog $ printf "elabRuleFile: %s" (show dotJengaFile)
+        pure ()
 
       t <- Text.pack <$> GReadKey dotJengaFile
       let filename = ppKey dotJengaFile

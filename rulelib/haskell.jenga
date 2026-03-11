@@ -60,7 +60,7 @@ maybe.unbuffer : ?/usr/bin/unbuffer
   if [ ! -f unbuffer ]; then echo exec; else echo unbuffer; fi > $out
 
 all.options : ?ghc-options ?default-extensions
-  touch ghc-option default-extensions
+  touch ghc-option default-extensions # TODO: this touch is wrong. missing "s". but found a bug in --new
   (cat ghc-options ; cat default-extensions | sed 's|^|-X|') | sort > all.options
 
 ghc.linker : ghc.exe pkgdb package-id-flags

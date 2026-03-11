@@ -685,7 +685,7 @@ readKey chain config how key = do
 
 existsKey :: How -> Key -> B Bool
 existsKey How{ahow} key =
-  if Map.member key ahow
+  if Map.member key ahow -- TODO: Dont think this plays nice with --new
   then pure True
   else do
     let Key loc = key
@@ -773,7 +773,7 @@ linkIntoCache config loc = do
         XTryHardLink loc file >>= \case
           Nothing -> pure ()
           Just err -> do
-            -- job locking ensures this can't happen
+            -- job locking ensures this can't happen -- TODO: 2026-03-11 This happenned.
             error (printf "linkIntoCache/HardLink: failure: loc=%s, file=%s, err=%s"
                    (pathOfLoc loc) (pathOfLoc file) (show err)
                   )
